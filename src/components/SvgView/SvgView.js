@@ -1,4 +1,4 @@
-/* globals d3, uki */
+/* globals d3, uki, XMLSerializer, Blob */
 import { ParentSizeViewMixin } from '../../utils/utils.js';
 
 const { SvgView, SvgViewMixin } = uki.utils.createMixinAndDefault({
@@ -40,8 +40,8 @@ const { SvgView, SvgViewMixin } = uki.utils.createMixinAndDefault({
         const copy = original.cloneNode(true);
         copyStyles(original, copy);
 
-        const data = new window.XMLSerializer().serializeToString(copy);
-        const svg = new window.Blob([data], { type: 'image/svg+xml;charset=utf-8' });
+        const data = new XMLSerializer().serializeToString(copy);
+        const svg = new Blob([data], { type: 'image/svg+xml;charset=utf-8' });
         const url = URL.createObjectURL(svg);
 
         const link = d3.select('body')

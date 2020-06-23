@@ -1,4 +1,4 @@
-/* globals d3 */
+/* globals d3, uki */
 import { goldenlayout, components, utils } from './uki-ui.esm.js';
 
 /*
@@ -63,25 +63,34 @@ class ModalLauncherView extends goldenlayout.GLView {
       .style('font-size', '0.5em')
       .style('margin-top', '-1em');
     const showModalFunc = () => {
-      const buttons = window.modal.defaultButtons;
-      buttons[1].onclick = function () {
-        modalResult.text('Clicked OK');
-        this.hide();
-        count += 1;
-        button.badge = count;
-      };
-      buttons[0].onclick = function () {
-        modalResult.text('Clicked Cancel');
-        this.hide();
-        count -= 1;
-        button.badge = count;
-      };
-      window.modal.show({
+      uki.showModal({
         content: `
           <div>This is an example modal</div>
           <div>It accepts arbitrary html</div>
         `,
-        buttons
+        buttons: [
+          {
+            label: 'Cancel',
+            className: 'cancel',
+            onclick: function () {
+              modalResult.text('Clicked OK');
+              this.hide();
+              count += 1;
+              button.badge = count;
+            }
+          },
+          {
+            label: 'OK',
+            className: 'ok',
+            primary: true,
+            onclick: function () {
+              modalResult.text('Clicked Cancel');
+              this.hide();
+              count -= 1;
+              button.badge = count;
+            }
+          }
+        ]
       });
     };
     button.on('click', showModalFunc);
@@ -97,7 +106,7 @@ class ModalLauncherView extends goldenlayout.GLView {
         });
       };
 
-      window.tooltip.showContextMenu({
+      uki.showContextMenu({
         targetBounds: this.getBoundingClientRect(),
         menuEntries: [
           { content: { label, img, badge: count, disabled, primary }, onClick: showModalFunc },
@@ -177,5 +186,3 @@ class RootView extends goldenlayout.GLRootView {
 }
 
 window.rootView = new RootView({ d3el: d3.select('#glRoot') });
-window.modal = new components.ModalView({ d3el: d3.select('#modalLayer') });
-window.tooltip = new components.TooltipView({ d3el: d3.select('#tooltipLayer') });

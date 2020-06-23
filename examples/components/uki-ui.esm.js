@@ -501,7 +501,7 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-var defaultStyle$3 = ".tooltip {\n  position: fixed;\n  z-index: 1001;\n  padding: 0.5em;\n  border-radius: 0.5em;\n  background: var(--background-color);\n  color: var(--text-color-normal);\n  box-shadow: 2px 2px 5px rgba(var(--shadow-color-rgb), 0.75);\n  pointer-events: none;\n  max-height: 50%;\n  overflow-y: auto;\n  overflow-x: hidden;\n}\n.tooltip hr {\n  margin: 0;\n}\n.tooltip.interactive {\n  pointer-events: all;\n}\n.tooltip .menuItem {\n  display: block;\n  margin: 0.5em 0;\n}\n.tooltip .menuItem.submenu {\n  margin-right: 1em;\n}\n.tooltip .menuItem.submenu:after {\n  content: '\\25b6';\n  color: var(--text-color-softer);\n  position: absolute;\n  right: -1em;\n}\n";
+var defaultStyle$3 = ".TooltipView {\n  position: fixed;\n  z-index: 1001;\n  padding: 0.5em;\n  border-radius: 0.5em;\n  background: var(--background-color);\n  color: var(--text-color-normal);\n  box-shadow: 2px 2px 5px rgba(var(--shadow-color-rgb), 0.75);\n  pointer-events: none;\n  max-height: 50%;\n  overflow-y: auto;\n  overflow-x: hidden;\n}\n.TooltipView hr {\n  margin: 0;\n}\n.TooltipView.interactive {\n  pointer-events: all;\n}\n.TooltipView .menuItem {\n  display: block;\n  margin: 0.5em 0;\n}\n.TooltipView .menuItem.submenu {\n  margin-right: 1em;\n}\n.TooltipView .menuItem.submenu:after {\n  content: '\\25b6';\n  color: var(--text-color-softer);\n  position: absolute;\n  right: -1em;\n}\n";
 
 /* globals d3, uki */
 
@@ -509,7 +509,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
   classDefFunc: SuperClass => {
     class TooltipView extends ThemeableMixin({
-      SuperClass, defaultStyle: defaultStyle$3, className: 'tooltip'
+      SuperClass, defaultStyle: defaultStyle$3, className: 'TooltipView'
     }) {
       setup () {
         super.setup(...arguments);
@@ -552,7 +552,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         interactive = false,
         nestNew = 0
       } = {}) {
-        window.clearTimeout(this._tooltipTimeout);
+        globalThis.clearTimeout(this._tooltipTimeout);
         const showEvent = d3.event;
         d3.select('body').on('click.tooltip', () => {
           if (showEvent === d3.event) {
@@ -574,7 +574,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
             this._nestedTooltips.splice(this._nestedTooltips.length - 1, 1)[0].remove();
           }
           tooltip = this.d3el.append('div')
-            .classed('tooltip', true);
+            .classed('TooltipView', true);
           this._nestedTooltips[nestNew] = tooltip;
         }
 
@@ -668,15 +668,15 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
               // Only start the timer if the user's mouse moves outside of the
               // tooltip, and cancel it if it moves back in
               tooltip.on('mouseleave.tooltip', () => {
-                this._tooltipTimeout = window.setTimeout(() => {
+                this._tooltipTimeout = globalThis.setTimeout(() => {
                   this.hide();
                 }, hideAfterMs);
               }).on('mouseenter.tooltip', () => {
-                window.clearTimeout(this._tooltipTimeout);
+                globalThis.clearTimeout(this._tooltipTimeout);
               });
             } else {
               // Start the timer immediately
-              this._tooltipTimeout = window.setTimeout(() => {
+              this._tooltipTimeout = globalThis.setTimeout(() => {
                 this.hide();
               }, hideAfterMs);
             }
@@ -775,6 +775,66 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
+var defaultStyle$4 = ".ModalView {\n  position: absolute;\n  left: 0px;\n  top: 0px;\n  right: 0px;\n  bottom: 0px;\n  display: flex;\n  z-index: 1000;\n}\n.ModalView .underlay {\n  position: absolute;\n  left: 0px;\n  top: 0px;\n  right: 0px;\n  bottom: 0px;\n  background: var(--text-color-softer);\n  opacity: 0.75;\n}\n.ModalView .centerWrapper {\n  position: relative;\n  background-color: var(--background-color);\n  opacity: 1;\n  border: 1px solid var(--shadow-color);\n  border-radius: var(--corner-radius);\n  box-shadow: 0.5em 0.5em 2em rgba(var(--shadow-color-rgb), 0.75);\n  min-width: 20em;\n  max-width: calc(100% - 4em);\n  min-height: 20em;\n  max-height: calc(100% - 4em);\n  margin: auto;\n  padding: 1em;\n}\n.ModalView .centerWrapper .contents {\n  margin-bottom: 3.5em;\n  max-height: calc(100vh - 7.5em);\n}\n.ModalView .buttonWrapper {\n  position: absolute;\n  bottom: 1em;\n  right: 1em;\n  display: flex;\n  justify-content: flex-end;\n  align-items: center;\n}\n.ModalView .buttonWrapper .button {\n  margin-left: 1em;\n}\n";
+
+var template = "<div class=\"underlay\"></div>\n<div class=\"centerWrapper\">\n  <div class=\"contents\"></div>\n  <div class=\"buttonWrapper\"></div>\n</div>\n";
+
+/* globals uki */
+
+const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
+  DefaultSuperClass: uki.View,
+  classDefFunc: SuperClass => {
+    class ModalView extends ThemeableMixin({
+      SuperClass, defaultStyle: defaultStyle$4, className: 'ModalView'
+    }) {
+      get defaultButtons () {
+        return [
+          {
+            label: 'Cancel',
+            className: 'cancel',
+            onclick: () => { this.hide(); }
+          },
+          {
+            label: 'OK',
+            className: 'ok',
+            primary: true,
+            onclick: () => { this.hide(); }
+          }
+        ];
+      }
+      show (options = {}) {
+        this.contents.html(options.content || '');
+        this.setupButtons(options.buttons || this.defaultButtons);
+        this.d3el.style('display', options.hide ? 'none' : null);
+      }
+      hide () {
+        this.show({ hide: true });
+      }
+      setup () {
+        super.setup(...arguments);
+        this.d3el
+          .style('display', 'none')
+          .html(template);
+
+        this.contents = this.d3el.select('.contents')
+          .classed(this.type, true);
+        this.buttonWrapper = this.d3el.select('.buttonWrapper');
+
+        this.setupButtons();
+      }
+      setupButtons (buttonSpecs = this.defaultButtons) {
+        this.buttonWrapper.html('');
+        for (const spec of buttonSpecs) {
+          spec.d3el = this.buttonWrapper.append('div');
+          const button = new Button(spec);
+          button.on('click', () => { spec.onclick.call(this); });
+        }
+      }
+    }
+    return ModalView;
+  }
+});
+
 var defaultVars = ":root {\n\n\t/* default theme: light background, dark text, blue accent */\n\t--theme-hue: 0;\t\t\t\t\t/* white */\n\t--accent-hue: 194;\t\t\t/* blue */\n\n\t--text-color-richer: hsl(var(--theme-hue), 0%, 5%);\t\t\t/* #0d0d0d\t\t*/\n\t--text-color-normal: hsl(var(--theme-hue), 0%, 13%);\t\t/* #222222 \t\ttext color; button:hover:active color */\n\t--text-color-softer: hsl(var(--theme-hue), 0%, 33%);\t\t/* #555555 \t\tbutton color; button:hover border */\n\n  --accent-color: hsl(var(--accent-hue), 86%, 57%);\t\t\t\t/* #33C3F0 \t\tlink; button-primary bg+border; textarea,select:focus border */\n  --accent-color-hover: hsl(var(--accent-hue), 76%, 49%);\t/* #1EAEDB \t\tlink hover; button-primary:hover:active bg+border */\n  --accent-color-disabled: hsl(var(--accent-hue), 90%, 80%);\n\n  --disabled-color: hsl(var(--theme-hue), 0%, 75%);  /* disabled button color */\n\n  --border-color-richer: hsl(var(--theme-hue), 0%, 57%);\t/* #888888\t\tbutton:hover border */\n  --border-color: hsl(var(--theme-hue), 0%, 73%);\t\t\t\t\t/* #bbbbbb\t\tbutton border */\n\t--border-color-softer: hsl(var(--theme-hue), 0%, 82%);\t/* #d1d1d1\t\ttextarea,select,code,td,hr border\t */\n\n\t--background-color: white;\t\t\t\t\t\t\t\t\t\t\t\t\t\t/* transparent body background; textarea,select background */\n\t--background-color-softer: hsl(var(--theme-hue), 0%, 95%);\n  --background-color-richer: hsl(var(--theme-hue), 0%, 95%);\t\t\t/* #f1f1f1 \t\tcode background*/\n\n  --shadow-color: black;\n  --shadow-color-rgb: 0, 0, 0;\n\n\t--button-primary-color: white;\n\n\n  /* Note: Skeleton was based off a 10px font sizing for REM  */\n\t/* 62.5% of typical 16px browser default = 10px */\n\t--base-font-size: 62.5%;\n\n\t/* Grid Defaults - default to match orig skeleton settings */\n\t--grid-max-width: 960px;\n\n  /* Button and input field height */\n  --form-element-height: 38px;\n\n  --corner-radius: 4px;\n}\n\n/*  Dark Theme\n\tNote: prefers-color-scheme selector support is still limited, but\n\tincluded for future and an example of defining a different base 'theme'\n*/\n@media screen and (prefers-color-scheme: dark) {\n\t:root {\n\t\t/* dark theme: light background, dark text, blue accent */\n\t\t--theme-hue: 0;\t\t\t\t\t/* black */\n\t\t--accent-hue: 194;\t\t\t/* blue */\n\n\t\t--text-color-richer: hsl(var(--theme-hue), 0%, 95%);\t\t/* #f2f2f2 */\n\t\t--text-color-normal: hsl(var(--theme-hue), 0%, 80%);\t\t/* #cccccc text color; button:hover:active color */\n\t\t--text-color-softer: hsl(var(--theme-hue), 0%, 67%);\t\t/* #ababab button color; button:hover border */\n\n\t\t--accent-color: hsl(var(--accent-hue), 76%, 49%);\t\t\t\t/* link; button-primary bg+border; textarea,select:focus border */\n\t\t--accent-color-hover: hsl(var(--accent-hue), 86%, 57%);\t/* link hover; button-primary:hover:active bg+border */\n\t\t--accent-color-disabled: hsl(var(--accent-hue), 90%, 80%);\n\n    --disabled-color: hsl(var(--theme-hue), 0%, 35%);  /* disabled button text color */\n\n\t\t--border-color-richer: hsl(var(--theme-hue), 0%, 67%);\t/* #ababab\t\tbutton:hover border */\n\t\t--border-color: hsl(var(--theme-hue), 0%, 27%);\t\t\t\t\t/* button border */\n\t\t--border-color-softer: hsl(var(--theme-hue), 0%, 20%);\t/* textarea,select,code,td,hr border\t */\n\n\t\t--background-color: hsl(var(--theme-hue), 0%, 12%);\t\t\t/* body background; textarea,select background */\n\t\t--background-color-softer: hsl(var(--theme-hue), 0%, 18%);\n\t\t--background-color-richer: hsl(var(--theme-hue), 0%, 5%);\t\t\t\t/* code background*/\n\n    --shadow-color: black;\n    --shadow-color-rgb: 0, 0, 0;\n\n\t\t--button-primary-color: white;\n  }\n}\n";
 
 var normalize = "/*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */\n\n/* Document\n   ========================================================================== */\n\n/**\n * 1. Correct the line height in all browsers.\n * 2. Prevent adjustments of font size after orientation changes in iOS.\n */\n\nhtml {\n  line-height: 1.15; /* 1 */\n  -webkit-text-size-adjust: 100%; /* 2 */\n}\n\n/* Sections\n   ========================================================================== */\n\n/**\n * Remove the margin in all browsers.\n */\n\nbody {\n  margin: 0;\n}\n\n/**\n * Render the `main` element consistently in IE.\n */\n\nmain {\n  display: block;\n}\n\n/**\n * Correct the font size and margin on `h1` elements within `section` and\n * `article` contexts in Chrome, Firefox, and Safari.\n */\n\nh1 {\n  font-size: 2em;\n  margin: 0.67em 0;\n}\n\n/* Grouping content\n   ========================================================================== */\n\n/**\n * 1. Add the correct box sizing in Firefox.\n * 2. Show the overflow in Edge and IE.\n */\n\nhr {\n  box-sizing: content-box; /* 1 */\n  height: 0; /* 1 */\n  overflow: visible; /* 2 */\n}\n\n/**\n * 1. Correct the inheritance and scaling of font size in all browsers.\n * 2. Correct the odd `em` font sizing in all browsers.\n */\n\npre {\n  font-family: monospace, monospace; /* 1 */\n  font-size: 1em; /* 2 */\n}\n\n/* Text-level semantics\n   ========================================================================== */\n\n/**\n * Remove the gray background on active links in IE 10.\n */\n\na {\n  background-color: transparent;\n}\n\n/**\n * 1. Remove the bottom border in Chrome 57-\n * 2. Add the correct text decoration in Chrome, Edge, IE, Opera, and Safari.\n */\n\nabbr[title] {\n  border-bottom: none; /* 1 */\n  text-decoration: underline; /* 2 */\n  text-decoration: underline dotted; /* 2 */\n}\n\n/**\n * Add the correct font weight in Chrome, Edge, and Safari.\n */\n\nb,\nstrong {\n  font-weight: bolder;\n}\n\n/**\n * 1. Correct the inheritance and scaling of font size in all browsers.\n * 2. Correct the odd `em` font sizing in all browsers.\n */\n\ncode,\nkbd,\nsamp {\n  font-family: monospace, monospace; /* 1 */\n  font-size: 1em; /* 2 */\n}\n\n/**\n * Add the correct font size in all browsers.\n */\n\nsmall {\n  font-size: 80%;\n}\n\n/**\n * Prevent `sub` and `sup` elements from affecting the line height in\n * all browsers.\n */\n\nsub,\nsup {\n  font-size: 75%;\n  line-height: 0;\n  position: relative;\n  vertical-align: baseline;\n}\n\nsub {\n  bottom: -0.25em;\n}\n\nsup {\n  top: -0.5em;\n}\n\n/* Embedded content\n   ========================================================================== */\n\n/**\n * Remove the border on images inside links in IE 10.\n */\n\nimg {\n  border-style: none;\n}\n\n/* Forms\n   ========================================================================== */\n\n/**\n * 1. Change the font styles in all browsers.\n * 2. Remove the margin in Firefox and Safari.\n */\n\nbutton,\ninput,\noptgroup,\nselect,\ntextarea {\n  font-family: inherit; /* 1 */\n  font-size: 100%; /* 1 */\n  line-height: 1.15; /* 1 */\n  margin: 0; /* 2 */\n}\n\n/**\n * Show the overflow in IE.\n * 1. Show the overflow in Edge.\n */\n\nbutton,\ninput { /* 1 */\n  overflow: visible;\n}\n\n/**\n * Remove the inheritance of text transform in Edge, Firefox, and IE.\n * 1. Remove the inheritance of text transform in Firefox.\n */\n\nbutton,\nselect { /* 1 */\n  text-transform: none;\n}\n\n/**\n * Correct the inability to style clickable types in iOS and Safari.\n */\n\nbutton,\n[type=\"button\"],\n[type=\"reset\"],\n[type=\"submit\"] {\n  -webkit-appearance: button;\n}\n\n/**\n * Remove the inner border and padding in Firefox.\n */\n\nbutton::-moz-focus-inner,\n[type=\"button\"]::-moz-focus-inner,\n[type=\"reset\"]::-moz-focus-inner,\n[type=\"submit\"]::-moz-focus-inner {\n  border-style: none;\n  padding: 0;\n}\n\n/**\n * Restore the focus styles unset by the previous rule.\n */\n\nbutton:-moz-focusring,\n[type=\"button\"]:-moz-focusring,\n[type=\"reset\"]:-moz-focusring,\n[type=\"submit\"]:-moz-focusring {\n  outline: 1px dotted ButtonText;\n}\n\n/**\n * Correct the padding in Firefox.\n */\n\nfieldset {\n  padding: 0.35em 0.75em 0.625em;\n}\n\n/**\n * 1. Correct the text wrapping in Edge and IE.\n * 2. Correct the color inheritance from `fieldset` elements in IE.\n * 3. Remove the padding so developers are not caught out when they zero out\n *    `fieldset` elements in all browsers.\n */\n\nlegend {\n  box-sizing: border-box; /* 1 */\n  color: inherit; /* 2 */\n  display: table; /* 1 */\n  max-width: 100%; /* 1 */\n  padding: 0; /* 3 */\n  white-space: normal; /* 1 */\n}\n\n/**\n * Add the correct vertical alignment in Chrome, Firefox, and Opera.\n */\n\nprogress {\n  vertical-align: baseline;\n}\n\n/**\n * Remove the default vertical scrollbar in IE 10+.\n */\n\ntextarea {\n  overflow: auto;\n}\n\n/**\n * 1. Add the correct box sizing in IE 10.\n * 2. Remove the padding in IE 10.\n */\n\n[type=\"checkbox\"],\n[type=\"radio\"] {\n  box-sizing: border-box; /* 1 */\n  padding: 0; /* 2 */\n}\n\n/**\n * Correct the cursor style of increment and decrement buttons in Chrome.\n */\n\n[type=\"number\"]::-webkit-inner-spin-button,\n[type=\"number\"]::-webkit-outer-spin-button {\n  height: auto;\n}\n\n/**\n * 1. Correct the odd appearance in Chrome and Safari.\n * 2. Correct the outline style in Safari.\n */\n\n[type=\"search\"] {\n  -webkit-appearance: textfield; /* 1 */\n  outline-offset: -2px; /* 2 */\n}\n\n/**\n * Remove the inner padding in Chrome and Safari on macOS.\n */\n\n[type=\"search\"]::-webkit-search-decoration {\n  -webkit-appearance: none;\n}\n\n/**\n * 1. Correct the inability to style clickable types in iOS and Safari.\n * 2. Change font properties to `inherit` in Safari.\n */\n\n::-webkit-file-upload-button {\n  -webkit-appearance: button; /* 1 */\n  font: inherit; /* 2 */\n}\n\n/* Interactive\n   ========================================================================== */\n\n/*\n * Add the correct display in Edge, IE 10+, and Firefox.\n */\n\ndetails {\n  display: block;\n}\n\n/*\n * Add the correct display in all browsers.\n */\n\nsummary {\n  display: list-item;\n}\n\n/* Misc\n   ========================================================================== */\n\n/**\n * Add the correct display in IE 10+.\n */\n\ntemplate {\n  display: none;\n}\n\n/**\n * Add the correct display in IE 10.\n */\n\n[hidden] {\n  display: none;\n}\n";
@@ -783,11 +843,11 @@ var honegumi = "/*\n* Based on Barebones by Steve Cochran\n* Based on Skeleton b
 
 /* globals d3, uki */
 
-const defaultStyle$4 = normalize + honegumi;
+const defaultStyle$5 = normalize + honegumi;
 
 class GlobalUI extends ThemeableMixin({
   SuperClass: uki.Model,
-  defaultStyle: defaultStyle$4,
+  defaultStyle: defaultStyle$5,
   className: 'root',
   cnNotOnD3el: true // not actually used, because there's no d3el anyway
 }) {
@@ -805,19 +865,40 @@ class GlobalUI extends ThemeableMixin({
     super(options);
     this.tooltip = options.tooltip || null;
     uki.showTooltip = tooltipArgs => { this.showTooltip(tooltipArgs); };
+    uki.showContextMenu = menuArgs => { this.showContextMenu(menuArgs); };
+    this.modal = options.modal || null;
+    uki.showModal = modalArgs => { this.showModal(modalArgs); };
   }
-  async showTooltip (tooltipArgs) {
+  async initTooltip () {
     if (!this.tooltip) {
+      // Create the tooltip layer, and make sure it's on top of the ModalView if it exists
       this.tooltip = new TooltipView({
-        d3el: d3.select('body').append('div')
+        d3el: d3.select('body').insert('div', '.ModalView + *')
       });
       await this.tooltip.render();
     }
+  }
+  async showContextMenu (menuArgs) {
+    await this.initTooltip();
+    this.tooltip.showContextMenu(menuArgs);
+  }
+  async showTooltip (tooltipArgs) {
+    await this.initTooltip();
     this.tooltip.show(tooltipArgs);
+  }
+  async showModal (modalArgs) {
+    if (!this.modal) {
+      // Create the modal layer, and make sure it's under the TooltipView if it exists
+      this.modal = new ModalView({
+        d3el: d3.select('body').insert('div', '.TooltipView')
+      });
+      await this.modal.render();
+    }
+    this.modal.show(modalArgs);
   }
 }
 
-/* globals d3, uki */
+/* globals d3, uki, XMLSerializer, Blob */
 
 const { SvgView, SvgViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
@@ -858,8 +939,8 @@ const { SvgView, SvgViewMixin } = uki.utils.createMixinAndDefault({
         const copy = original.cloneNode(true);
         copyStyles(original, copy);
 
-        const data = new window.XMLSerializer().serializeToString(copy);
-        const svg = new window.Blob([data], { type: 'image/svg+xml;charset=utf-8' });
+        const data = new XMLSerializer().serializeToString(copy);
+        const svg = new Blob([data], { type: 'image/svg+xml;charset=utf-8' });
         const url = URL.createObjectURL(svg);
 
         const link = d3.select('body')
@@ -909,66 +990,6 @@ const { IFrameView, IFrameViewMixin } = uki.utils.createMixinAndDefault({
       }
     }
     return IFrameView;
-  }
-});
-
-var defaultStyle$5 = ".ModalView {\n  position: absolute;\n  left: 0px;\n  top: 0px;\n  right: 0px;\n  bottom: 0px;\n  display: flex;\n  z-index: 1000;\n}\n.ModalView .underlay {\n  position: absolute;\n  left: 0px;\n  top: 0px;\n  right: 0px;\n  bottom: 0px;\n  background: var(--text-color-softer);\n  opacity: 0.75;\n}\n.ModalView .centerWrapper {\n  position: relative;\n  background-color: var(--background-color);\n  opacity: 1;\n  border: 1px solid var(--shadow-color);\n  border-radius: var(--corner-radius);\n  box-shadow: 0.5em 0.5em 2em rgba(var(--shadow-color-rgb), 0.75);\n  min-width: 20em;\n  max-width: calc(100% - 4em);\n  min-height: 20em;\n  max-height: calc(100% - 4em);\n  margin: auto;\n  padding: 1em;\n}\n.ModalView .centerWrapper .contents {\n  margin-bottom: 3.5em;\n  max-height: calc(100vh - 7.5em);\n}\n.ModalView .buttonWrapper {\n  position: absolute;\n  bottom: 1em;\n  right: 1em;\n  display: flex;\n  justify-content: flex-end;\n  align-items: center;\n}\n.ModalView .buttonWrapper .button {\n  margin-left: 1em;\n}\n";
-
-var template = "<div class=\"underlay\"></div>\n<div class=\"centerWrapper\">\n  <div class=\"contents\"></div>\n  <div class=\"buttonWrapper\"></div>\n</div>\n";
-
-/* globals uki */
-
-const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
-  DefaultSuperClass: uki.View,
-  classDefFunc: SuperClass => {
-    class ModalView extends ThemeableMixin({
-      SuperClass, defaultStyle: defaultStyle$5, className: 'ModalView'
-    }) {
-      get defaultButtons () {
-        return [
-          {
-            label: 'Cancel',
-            className: 'cancel',
-            onclick: () => { this.hide(); }
-          },
-          {
-            label: 'OK',
-            className: 'ok',
-            primary: true,
-            onclick: () => { this.hide(); }
-          }
-        ];
-      }
-      show (options = {}) {
-        this.contents.html(options.content || '');
-        this.setupButtons(options.buttons || this.defaultButtons);
-        this.d3el.style('display', options.hide ? 'none' : null);
-      }
-      hide () {
-        this.show({ hide: true });
-      }
-      setup () {
-        super.setup(...arguments);
-        this.d3el
-          .style('display', 'none')
-          .html(template);
-
-        this.contents = this.d3el.select('.contents')
-          .classed(this.type, true);
-        this.buttonWrapper = this.d3el.select('.buttonWrapper');
-
-        this.setupButtons();
-      }
-      setupButtons (buttonSpecs = this.defaultButtons) {
-        this.buttonWrapper.html('');
-        for (const spec of buttonSpecs) {
-          spec.d3el = this.buttonWrapper.append('div');
-          const button = new Button(spec);
-          button.on('click', () => { spec.onclick.call(this); });
-        }
-      }
-    }
-    return ModalView;
   }
 });
 
@@ -1075,8 +1096,8 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
         return Promise.all(Object.values(this.views).map(view => view.render()));
       }
       fixTabs () {
-        window.clearTimeout(this._fixTabsTimeout);
-        this._fixTabsTimeout = window.setTimeout(() => {
+        globalThis.clearTimeout(this._fixTabsTimeout);
+        this._fixTabsTimeout = globalThis.setTimeout(() => {
           // Sometimes tabs add extra stuff, which can invalidate
           // GoldenLayout's initial calculation of which tabs should be visible
           this.goldenLayout.updateSize();
@@ -1089,7 +1110,7 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
 
 var defaultStyle$7 = ".GLView.scrollArea {\n  position: absolute;\n  top: 0.5em;\n  left: 0.5em;\n  right: 0.5em;\n  bottom: 0.5em;\n  overflow: auto;\n}\n";
 
-/* globals d3, uki */
+/* globals d3, uki, Blob */
 
 const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
@@ -1137,8 +1158,8 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
         for (const icon of this.icons) {
           if (icon.svg) {
             // Convert raw SVG to an Image
-            icon.src = window.URL.createObjectURL(
-              new window.Blob([icon.svg],
+            icon.src = URL.createObjectURL(
+              new Blob([icon.svg],
                 { type: 'image/svg+xml;charset=utf-8' }));
           }
         }
@@ -1399,12 +1420,12 @@ const { BaseTableView, BaseTableViewMixin } = uki.utils.createMixinAndDefault({
         const element = d3el.node();
         if (element.clientHeight < element.scrollHeight) {
           d3el.on('mouseenter.baseTableView', () => {
-            window.uki.showTooltip({
+            globalThis.uki.showTooltip({
               content: item.data === undefined || item.data === null ? null : item.data,
               targetBounds: element.getBoundingClientRect()
             });
           }).on('mouseleave.baseTableView', () => {
-            window.uki.showTooltip({ content: null });
+            globalThis.uki.showTooltip({ content: null });
           });
         } else {
           d3el.on('mouseenter.baseTableView', null)

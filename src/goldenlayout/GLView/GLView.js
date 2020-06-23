@@ -1,4 +1,4 @@
-/* globals d3, uki */
+/* globals d3, uki, Blob */
 import { ThemeableMixin } from '../../utils/utils.js';
 import defaultStyle from './style.less';
 
@@ -48,8 +48,8 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
         for (const icon of this.icons) {
           if (icon.svg) {
             // Convert raw SVG to an Image
-            icon.src = window.URL.createObjectURL(
-              new window.Blob([icon.svg],
+            icon.src = URL.createObjectURL(
+              new Blob([icon.svg],
                 { type: 'image/svg+xml;charset=utf-8' }));
           }
         }

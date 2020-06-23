@@ -87,8 +87,8 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
         return Promise.all(Object.values(this.views).map(view => view.render()));
       }
       fixTabs () {
-        window.clearTimeout(this._fixTabsTimeout);
-        this._fixTabsTimeout = window.setTimeout(() => {
+        globalThis.clearTimeout(this._fixTabsTimeout);
+        this._fixTabsTimeout = globalThis.setTimeout(() => {
           // Sometimes tabs add extra stuff, which can invalidate
           // GoldenLayout's initial calculation of which tabs should be visible
           this.goldenLayout.updateSize();

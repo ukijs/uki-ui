@@ -146,12 +146,12 @@ const { BaseTableView, BaseTableViewMixin } = uki.utils.createMixinAndDefault({
         const element = d3el.node();
         if (element.clientHeight < element.scrollHeight) {
           d3el.on('mouseenter.baseTableView', () => {
-            window.uki.showTooltip({
+            globalThis.uki.showTooltip({
               content: item.data === undefined || item.data === null ? null : item.data,
               targetBounds: element.getBoundingClientRect()
             });
           }).on('mouseleave.baseTableView', () => {
-            window.uki.showTooltip({ content: null });
+            globalThis.uki.showTooltip({ content: null });
           });
         } else {
           d3el.on('mouseenter.baseTableView', null)

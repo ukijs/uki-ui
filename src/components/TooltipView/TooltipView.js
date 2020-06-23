@@ -7,7 +7,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
   classDefFunc: SuperClass => {
     class TooltipView extends ThemeableMixin({
-      SuperClass, defaultStyle, className: 'tooltip'
+      SuperClass, defaultStyle, className: 'TooltipView'
     }) {
       setup () {
         super.setup(...arguments);
@@ -50,7 +50,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         interactive = false,
         nestNew = 0
       } = {}) {
-        window.clearTimeout(this._tooltipTimeout);
+        globalThis.clearTimeout(this._tooltipTimeout);
         const showEvent = d3.event;
         d3.select('body').on('click.tooltip', () => {
           if (showEvent === d3.event) {
@@ -72,7 +72,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
             this._nestedTooltips.splice(this._nestedTooltips.length - 1, 1)[0].remove();
           }
           tooltip = this.d3el.append('div')
-            .classed('tooltip', true);
+            .classed('TooltipView', true);
           this._nestedTooltips[nestNew] = tooltip;
         }
 
@@ -166,15 +166,15 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
               // Only start the timer if the user's mouse moves outside of the
               // tooltip, and cancel it if it moves back in
               tooltip.on('mouseleave.tooltip', () => {
-                this._tooltipTimeout = window.setTimeout(() => {
+                this._tooltipTimeout = globalThis.setTimeout(() => {
                   this.hide();
                 }, hideAfterMs);
               }).on('mouseenter.tooltip', () => {
-                window.clearTimeout(this._tooltipTimeout);
+                globalThis.clearTimeout(this._tooltipTimeout);
               });
             } else {
               // Start the timer immediately
-              this._tooltipTimeout = window.setTimeout(() => {
+              this._tooltipTimeout = globalThis.setTimeout(() => {
                 this.hide();
               }, hideAfterMs);
             }
