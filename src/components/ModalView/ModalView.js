@@ -25,13 +25,19 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
           }
         ];
       }
-      show (options = {}) {
-        this.contents.html(options.content || '');
-        this.setupButtons(options.buttons || this.defaultButtons);
+      async show (options = {}) {
+        if (typeof options.content === 'function') {
+          await options.content(this.contents);
+        } else {
+          this.contents.html(options.content || '');
+        }
+        if (options.buttons !== null) {
+          this.setupButtons(options.buttons || this.defaultButtons);
+        }
         this.d3el.style('display', options.hide ? 'none' : null);
       }
-      hide () {
-        this.show({ hide: true });
+      async hide () {
+        await this.show({ hide: true });
       }
       setup () {
         super.setup(...arguments);
