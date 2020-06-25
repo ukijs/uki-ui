@@ -29,10 +29,11 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         return '';
       }
       async show (options = {}) {
-        if (typeof options.content === 'function') {
-          await options.content(this.contents);
+        const content = options.content || this.defaultContent;
+        if (typeof content === 'function') {
+          await content(this.contents);
         } else {
-          this.contents.html(options.content || this.defaultContent);
+          this.contents.html(content);
         }
         if (options.buttons !== null) {
           this.setupButtons(options.buttons || this.defaultButtons);
