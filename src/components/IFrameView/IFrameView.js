@@ -22,8 +22,7 @@ const { IFrameView, IFrameViewMixin } = uki.utils.createMixinAndDefault({
       set src (src) {
         this.frameLoaded = !src;
         this._src = src;
-        this.d3el.select('iframe')
-          .attr('src', this._src);
+        this.d3el.attr('src', this._src);
         this.render();
       }
       get isLoading () {

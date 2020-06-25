@@ -45,7 +45,7 @@ const { BaseTableView, BaseTableViewMixin } = uki.utils.createMixinAndDefault({
         return headers;
       }
       getRawRows () {
-        throw new Error(`getRows() not implemented by subclass`);
+        throw new Error(`getRawRows() not implemented by subclass`);
       }
       getRows () {
         let rows = this.getRawRows().map((data, itemIndex) => {

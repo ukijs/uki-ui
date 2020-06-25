@@ -267,6 +267,81 @@ li {
   margin-bottom: 0.5em; }
 
 
+/* Scrollbars
+–––––––––––––––––––––––––––––––––––––––––––––––––– */
+::-webkit-scrollbar {
+  width: 1.25em;
+  height: 1.25em;
+}
+
+/* Track, Corner background color */
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner,
+::-webkit-resizer {
+  background: transparent;
+}
+
+/* Buttons */
+::-webkit-scrollbar-button:single-button {
+  display: block;
+  width: 1.25em;
+  height: 1.25em;
+  border-radius: var(--corner-radius);
+  border-style: solid;
+}
+/* Up */
+::-webkit-scrollbar-button:vertical:decrement {
+  border-width: 0 0.625em 0.75em 0.625em;
+  border-color: transparent transparent var(--border-color-softer) transparent;
+}
+::-webkit-scrollbar-button:vertical:decrement:hover,
+::-webkit-scrollbar-button:vertical:decrement:active {
+  border-color: transparent transparent var(--text-color-softer) transparent;
+}
+/* Down */
+::-webkit-scrollbar-button:vertical:increment {
+  border-width: 0.75em 0.625em 0 0.625em;
+  border-color: var(--border-color-softer) transparent transparent transparent;
+}
+::-webkit-scrollbar-button:vertical:increment:hover,
+::-webkit-scrollbar-button:vertical:increment:active {
+  border-color: var(--text-color-softer) transparent transparent transparent;
+}
+/* Left */
+::-webkit-scrollbar-button:horizontal:decrement {
+  border-width: 0.625em 0.75em 0.625em 0;
+  border-color: transparent var(--border-color-softer) transparent transparent;
+}
+::-webkit-scrollbar-button:horizontal:decrement:hover,
+::-webkit-scrollbar-button:horizontal:decrement:active {
+  border-color: transparent var(--text-color-softer) transparent transparent;
+}
+/* Right */
+::-webkit-scrollbar-button:horizontal:increment {
+  border-width: 0.625em 0 0.625em 0.75em;
+  border-color: transparent transparent transparent var(--border-color-softer);
+}
+::-webkit-scrollbar-button:horizontal:increment:hover,
+::-webkit-scrollbar-button:horizontal:increment:active {
+  border-color: transparent transparent transparent var(--text-color-softer);
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  border-radius: var(--corner-radius);
+  border: 1px solid var(--background-color);
+  background: var(--border-color-softer);
+}
+::-webkit-scrollbar-thumb:hover {
+  cursor: grab;
+  background: var(--text-color-softer);
+}
+::-webkit-scrollbar-thumb:active {
+  cursor: grabbing;
+  background: var(--text-color-softer);
+}
+
+
 /* Code
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 code {

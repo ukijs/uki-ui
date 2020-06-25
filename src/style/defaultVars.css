@@ -3,10 +3,13 @@
 	/* default theme: light background, dark text, blue accent */
 	--theme-hue: 0;					/* white */
 	--accent-hue: 194;			/* blue */
+  --error-hue: 14;         /* red-orange */
 
 	--text-color-richer: hsl(var(--theme-hue), 0%, 5%);			/* #0d0d0d		*/
 	--text-color-normal: hsl(var(--theme-hue), 0%, 13%);		/* #222222 		text color; button:hover:active color */
 	--text-color-softer: hsl(var(--theme-hue), 0%, 33%);		/* #555555 		button color; button:hover border */
+
+  --error-color: hsl(var(--error-hue), 86%, 57%);
 
   --accent-color: hsl(var(--accent-hue), 86%, 57%);				/* #33C3F0 		link; button-primary bg+border; textarea,select:focus border */
   --accent-color-hover: hsl(var(--accent-hue), 76%, 49%);	/* #1EAEDB 		link hover; button-primary:hover:active bg+border */
@@ -50,10 +53,13 @@
 		/* dark theme: light background, dark text, blue accent */
 		--theme-hue: 0;					/* black */
 		--accent-hue: 194;			/* blue */
+    --error-hue: 14;         /* red-orange */
 
 		--text-color-richer: hsl(var(--theme-hue), 0%, 95%);		/* #f2f2f2 */
 		--text-color-normal: hsl(var(--theme-hue), 0%, 80%);		/* #cccccc text color; button:hover:active color */
 		--text-color-softer: hsl(var(--theme-hue), 0%, 67%);		/* #ababab button color; button:hover border */
+
+		--error-color: hsl(var(--error-hue), 76%, 49%);
 
 		--accent-color: hsl(var(--accent-hue), 76%, 49%);				/* link; button-primary bg+border; textarea,select:focus border */
 		--accent-color-hover: hsl(var(--accent-hue), 86%, 57%);	/* link hover; button-primary:hover:active bg+border */

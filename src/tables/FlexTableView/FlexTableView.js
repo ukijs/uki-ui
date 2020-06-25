@@ -53,21 +53,23 @@ const { FlexTableView, FlexTableViewMixin } = uki.utils.createMixinAndDefault({
           .attr('id', (d, i) => `attrCheckbox${i}`)
           .property('checked', d => this.headerIsVisible(d.index))
           .style('display', 'inline-block')
-          .style('margin-right', '1em')
+          .style('vertical-align', 'top')
+          .style('margin', '0.35em 1em 0 0')
           .on('change', d => {
             this.toggleHeader(d);
           });
         listItemsEnter.append('label')
           .attr('for', (d, i) => `attrCheckbox${i}`)
           .text(d => d.data)
-          .style('display', 'inline-block');
+          .style('display', 'inline-block')
+          .style('max-width', '13em');
       }
       headerIsVisible (headerIndex) {
         return this.visibleHeaderIndices === null ||
           this.visibleHeaderIndices.indexOf(headerIndex) !== -1;
       }
       updateHeader (d3el, header) {
-        if (d3el.node() === this.cornerHeader.node()) {
+        if (this.cornerHeader && d3el.node() === this.cornerHeader.node()) {
           if (!this.attributeSelector) {
             this.attributeSelector = new Button({
               d3el: this.cornerHeader.append('div').classed('attributeSelector', true),

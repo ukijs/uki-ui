@@ -5,10 +5,6 @@ const { SvgView, SvgViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
   classDefFunc: SuperClass => {
     class SvgView extends ParentSizeViewMixin(SuperClass) {
-      constructor (options) {
-        options.fixedTagType = 'svg';
-        super(options);
-      }
       download () {
         // Adapted from https://stackoverflow.com/a/37387449/1058935
         const containerElements = ['svg', 'g'];
