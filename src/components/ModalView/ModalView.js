@@ -30,7 +30,10 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
       }
       async show (options = {}) {
         const content = options.content || this.defaultContent;
-        if (typeof content === 'function') {
+        if (content instanceof ModalView) {
+          await content.render(this.d3el);
+          this.d3el.style('display', null);
+        } else if (typeof content === 'function') {
           await content(this.contents);
         } else {
           this.contents.html(content);
@@ -59,8 +62,7 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         this.buttonWrapper.html('');
         for (const spec of buttonSpecs) {
           spec.d3el = this.buttonWrapper.append('div');
-          const button = new Button(spec);
-          button.on('click', () => { spec.onclick.call(this); });
+          new Button(spec); // eslint-disable-line no-new
         }
       }
     }

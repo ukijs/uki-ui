@@ -129,13 +129,18 @@ const { EmptyStateView, EmptyStateViewMixin } = uki.utils.createMixinAndDefault(
     class EmptyStateView extends ThemeableMixin({
       SuperClass, defaultStyle: defaultStyle$1, className: 'EmptyStateLayer', cnNotOnD3el: true
     }) {
+      constructor (options) {
+        super(options);
+        this._renderError = null;
+      }
       get emptyMessage () {
         // Should be overridden by subclasses; return an html string (or falsey to
         // hide the empty state layer)
-        return '';
+        return (this._renderError && this._renderError.message) || '';
       }
       setup () {
         super.setup(...arguments);
+
         // Insert a layer underneath this.d3el
         const node = this.d3el.node();
         const parentNode = node.parentNode;
@@ -193,6 +198,9 @@ const { ParentSizeView, ParentSizeViewMixin } = uki.utils.createMixinAndDefault(
         super.draw(...arguments);
         const bounds = this.getBounds();
         this.d3el
+          .style('position', 'absolute')
+          .style('left', '0px')
+          .style('top', '0px')
           .attr('width', bounds.width)
           .attr('height', bounds.height);
       }
@@ -385,7 +393,7 @@ var utils = /*#__PURE__*/Object.freeze({
   ThemeableMixin: ThemeableMixin
 });
 
-var defaultStyle$2 = ".UkiButton.button {\n  position: relative;\n}\n.UkiButton.button.button-borderless {\n  border-color: transparent;\n}\n.UkiButton.button img {\n  display: inline-block;\n  position: relative;\n  top: 0.5em;\n  width: 2.5em;\n  height: 2.5em;\n  left: -1em;\n  filter: url(#recolorImageTo--text-color-softer);\n}\n.UkiButton.button.imgOnly {\n  padding: 0;\n}\n.UkiButton.button.imgOnly img {\n  left: 0;\n  padding: 0 0.5em;\n}\n.UkiButton.button .label {\n  display: inline-block;\n  white-space: nowrap;\n  vertical-align: top;\n}\n.UkiButton.button .badge {\n  position: absolute;\n  font-weight: bolder;\n  right: -1em;\n  top: -1em;\n  height: 2em;\n  line-height: 2em;\n  border-radius: var(--corner-radius);\n  text-align: right;\n  background-color: var(--accent-color);\n  color: var(--button-primary-color);\n  padding: 0 0.5em 0 0.6em;\n  z-index: 1;\n  border: 1px solid var(--background-color);\n}\n.UkiButton.button:active img,\n.UkiButton.button:hover img {\n  filter: url(#recolorImageTo--text-color-normal);\n}\n.UkiButton.button.button-primary img {\n  filter: url(#recolorImageTo--button-primary-color);\n}\n.UkiButton.button:disabled img,\n.UkiButton.button.button-disabled img {\n  filter: url(#recolorImageTo--disabled-color);\n}\n.UkiButton.button:disabled .badge,\n.UkiButton.button.button-disabled .badge {\n  color: var(--background-color);\n  background-color: var(--disabled-color);\n}\n.UkiButton.button:disabled.button-primary img,\n.UkiButton.button.button-disabled.button-primary img {\n  filter: url(#recolorImageTo--background-color);\n}\n.UkiButton.button:disabled.button-primary .badge,\n.UkiButton.button.button-disabled.button-primary .badge {\n  color: var(--background-color);\n  background-color: var(--disabled-color);\n}\n";
+var defaultStyle$2 = ".UkiButton.button {\n  position: relative;\n}\n.UkiButton.button.button-borderless {\n  border-color: transparent;\n}\n.UkiButton.button img {\n  display: inline-block;\n  position: relative;\n  top: 0.65em;\n  width: 2em;\n  height: 2em;\n  left: -1em;\n  filter: url(#recolorImageTo--text-color-softer);\n}\n.UkiButton.button.imgOnly {\n  padding: 0;\n}\n.UkiButton.button.imgOnly img {\n  left: 0;\n  padding: 0 0.5em;\n}\n.UkiButton.button .label {\n  display: inline-block;\n  white-space: nowrap;\n  vertical-align: top;\n}\n.UkiButton.button .badge {\n  position: absolute;\n  font-weight: bolder;\n  right: -1em;\n  top: -1em;\n  height: 2em;\n  line-height: 2em;\n  border-radius: var(--corner-radius);\n  text-align: right;\n  background-color: var(--accent-color);\n  color: var(--button-primary-color);\n  padding: 0 0.5em 0 0.6em;\n  z-index: 1;\n  border: 1px solid var(--background-color);\n}\n.UkiButton.button:active img,\n.UkiButton.button:hover img {\n  filter: url(#recolorImageTo--text-color-normal);\n}\n.UkiButton.button.button-primary img {\n  filter: url(#recolorImageTo--button-primary-color);\n}\n.UkiButton.button:disabled img,\n.UkiButton.button.button-disabled img {\n  filter: url(#recolorImageTo--disabled-color);\n}\n.UkiButton.button:disabled .badge,\n.UkiButton.button.button-disabled .badge {\n  color: var(--background-color);\n  background-color: var(--disabled-color);\n}\n.UkiButton.button:disabled.button-primary img,\n.UkiButton.button.button-disabled.button-primary img {\n  filter: url(#recolorImageTo--background-color);\n}\n.UkiButton.button:disabled.button-primary .badge,\n.UkiButton.button.button-disabled.button-primary .badge {\n  color: var(--background-color);\n  background-color: var(--disabled-color);\n}\n";
 
 /* globals uki */
 
@@ -399,12 +407,14 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
         super(options);
 
         this._size = options.size;
-        this._label = options.label;
+        this._label = options.label === undefined ? null : options.label;
         this._img = options.img;
         this._disabled = options.disabled || false;
         this._primary = options.primary || false;
-        this._badge = options.badge;
+        this._badge = options.badge === undefined ? null : options.badge;
         this._borderless = options.borderless || false;
+        this._tooltip = options.tooltip;
+        this._onclick = options.onclick || null;
       }
       set size (value) {
         this._size = value;
@@ -414,7 +424,7 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
         return this._size;
       }
       set label (value) {
-        this._label = value;
+        this._label = value === undefined ? null : value;
         this.render();
       }
       get label () {
@@ -449,11 +459,25 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
         return this._borderless;
       }
       set badge (value) {
-        this._badge = value;
+        this._badge = value === undefined ? null : value;
         this.render();
       }
       get badge () {
         return this._badge;
+      }
+      set tooltip (value) {
+        this._tooltip = value;
+        this.render();
+      }
+      get tooltip () {
+        return this._tooltip;
+      }
+      set onclick (value) {
+        this._onclick = value;
+        this.render();
+      }
+      get onclick () {
+        return this._onclick;
       }
       setup () {
         super.setup(...arguments);
@@ -467,9 +491,19 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
           .classed('badge', true)
           .style('display', 'none');
 
-        this.d3el.on('click', () => {
+        this.d3el.on('click.UkiButton', () => {
           if (!this.disabled) {
+            if (this.onclick) {
+              this.onclick();
+            }
             this.trigger('click');
+          }
+        }).on('mouseenter.UkiButton', () => {
+          if (this.tooltip) {
+            const tooltipArgs = Object.assign({
+              targetBounds: this.d3el.node().getBoundingClientRect()
+            }, this.tooltip);
+            globalThis.uki.showTooltip(tooltipArgs);
           }
         });
       }
@@ -482,18 +516,18 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
           .classed('button-disabled', this.disabled)
           .classed('button-borderless', this.borderless)
           .classed('hasImg', this.img)
-          .classed('imgOnly', this.img && this.label === undefined);
+          .classed('imgOnly', this.img && this.label === null);
 
         this.d3el.select('img')
           .style('display', this.img ? null : 'none')
           .attr('src', this.img);
 
         this.d3el.select('.label')
-          .style('display', this.label === undefined ? 'none' : null)
+          .style('display', this.label === null ? 'none' : null)
           .text(this.label);
 
         this.d3el.select('.badge')
-          .style('display', this.badge === undefined ? 'none' : null)
+          .style('display', this.badge === null ? 'none' : null)
           .text(this.badge);
       }
     }
@@ -693,7 +727,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
          *   will be the `Button`'s `label`). A function will be given a div
          *   for custom formatting, and no `Button` will be created. If
          *  `content` is not provided or is falsey, a separator is drawn.
-         * - Either an `onClick` function that will be called when the menu entry is
+         * - Either an `onclick` function that will be called when the menu entry is
          *   clicked, or a `subEntries` list of additional menuEntries
          * @param  {Object} [targetBounds=null]
          * Specifies a target rectangle that the tooltip should be positioned
@@ -740,8 +774,8 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
                 contentFuncPromises.push(item.render());
               }
               item.on('click', function () {
-                if (d.onClick) {
-                  d.onClick();
+                if (d.onclick) {
+                  d.onclick();
                   self.hide();
                 } else if (d.subEntries) {
                   let targetBounds = this instanceof Button
@@ -807,7 +841,10 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
       }
       async show (options = {}) {
         const content = options.content || this.defaultContent;
-        if (typeof content === 'function') {
+        if (content instanceof ModalView) {
+          await content.render(this.d3el);
+          this.d3el.style('display', null);
+        } else if (typeof content === 'function') {
           await content(this.contents);
         } else {
           this.contents.html(content);
@@ -836,8 +873,7 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         this.buttonWrapper.html('');
         for (const spec of buttonSpecs) {
           spec.d3el = this.buttonWrapper.append('div');
-          const button = new Button(spec);
-          button.on('click', () => { spec.onclick.call(this); });
+          new Button(spec); // eslint-disable-line no-new
         }
       }
     }
@@ -849,7 +885,7 @@ var defaultVars = ":root {\n\n\t/* default theme: light background, dark text, b
 
 var normalize = "/*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */\n\n/* Document\n   ========================================================================== */\n\n/**\n * 1. Correct the line height in all browsers.\n * 2. Prevent adjustments of font size after orientation changes in iOS.\n */\n\nhtml {\n  line-height: 1.15; /* 1 */\n  -webkit-text-size-adjust: 100%; /* 2 */\n}\n\n/* Sections\n   ========================================================================== */\n\n/**\n * Remove the margin in all browsers.\n */\n\nbody {\n  margin: 0;\n}\n\n/**\n * Render the `main` element consistently in IE.\n */\n\nmain {\n  display: block;\n}\n\n/**\n * Correct the font size and margin on `h1` elements within `section` and\n * `article` contexts in Chrome, Firefox, and Safari.\n */\n\nh1 {\n  font-size: 2em;\n  margin: 0.67em 0;\n}\n\n/* Grouping content\n   ========================================================================== */\n\n/**\n * 1. Add the correct box sizing in Firefox.\n * 2. Show the overflow in Edge and IE.\n */\n\nhr {\n  box-sizing: content-box; /* 1 */\n  height: 0; /* 1 */\n  overflow: visible; /* 2 */\n}\n\n/**\n * 1. Correct the inheritance and scaling of font size in all browsers.\n * 2. Correct the odd `em` font sizing in all browsers.\n */\n\npre {\n  font-family: monospace, monospace; /* 1 */\n  font-size: 1em; /* 2 */\n}\n\n/* Text-level semantics\n   ========================================================================== */\n\n/**\n * Remove the gray background on active links in IE 10.\n */\n\na {\n  background-color: transparent;\n}\n\n/**\n * 1. Remove the bottom border in Chrome 57-\n * 2. Add the correct text decoration in Chrome, Edge, IE, Opera, and Safari.\n */\n\nabbr[title] {\n  border-bottom: none; /* 1 */\n  text-decoration: underline; /* 2 */\n  text-decoration: underline dotted; /* 2 */\n}\n\n/**\n * Add the correct font weight in Chrome, Edge, and Safari.\n */\n\nb,\nstrong {\n  font-weight: bolder;\n}\n\n/**\n * 1. Correct the inheritance and scaling of font size in all browsers.\n * 2. Correct the odd `em` font sizing in all browsers.\n */\n\ncode,\nkbd,\nsamp {\n  font-family: monospace, monospace; /* 1 */\n  font-size: 1em; /* 2 */\n}\n\n/**\n * Add the correct font size in all browsers.\n */\n\nsmall {\n  font-size: 80%;\n}\n\n/**\n * Prevent `sub` and `sup` elements from affecting the line height in\n * all browsers.\n */\n\nsub,\nsup {\n  font-size: 75%;\n  line-height: 0;\n  position: relative;\n  vertical-align: baseline;\n}\n\nsub {\n  bottom: -0.25em;\n}\n\nsup {\n  top: -0.5em;\n}\n\n/* Embedded content\n   ========================================================================== */\n\n/**\n * Remove the border on images inside links in IE 10.\n */\n\nimg {\n  border-style: none;\n}\n\n/* Forms\n   ========================================================================== */\n\n/**\n * 1. Change the font styles in all browsers.\n * 2. Remove the margin in Firefox and Safari.\n */\n\nbutton,\ninput,\noptgroup,\nselect,\ntextarea {\n  font-family: inherit; /* 1 */\n  font-size: 100%; /* 1 */\n  line-height: 1.15; /* 1 */\n  margin: 0; /* 2 */\n}\n\n/**\n * Show the overflow in IE.\n * 1. Show the overflow in Edge.\n */\n\nbutton,\ninput { /* 1 */\n  overflow: visible;\n}\n\n/**\n * Remove the inheritance of text transform in Edge, Firefox, and IE.\n * 1. Remove the inheritance of text transform in Firefox.\n */\n\nbutton,\nselect { /* 1 */\n  text-transform: none;\n}\n\n/**\n * Correct the inability to style clickable types in iOS and Safari.\n */\n\nbutton,\n[type=\"button\"],\n[type=\"reset\"],\n[type=\"submit\"] {\n  -webkit-appearance: button;\n}\n\n/**\n * Remove the inner border and padding in Firefox.\n */\n\nbutton::-moz-focus-inner,\n[type=\"button\"]::-moz-focus-inner,\n[type=\"reset\"]::-moz-focus-inner,\n[type=\"submit\"]::-moz-focus-inner {\n  border-style: none;\n  padding: 0;\n}\n\n/**\n * Restore the focus styles unset by the previous rule.\n */\n\nbutton:-moz-focusring,\n[type=\"button\"]:-moz-focusring,\n[type=\"reset\"]:-moz-focusring,\n[type=\"submit\"]:-moz-focusring {\n  outline: 1px dotted ButtonText;\n}\n\n/**\n * Correct the padding in Firefox.\n */\n\nfieldset {\n  padding: 0.35em 0.75em 0.625em;\n}\n\n/**\n * 1. Correct the text wrapping in Edge and IE.\n * 2. Correct the color inheritance from `fieldset` elements in IE.\n * 3. Remove the padding so developers are not caught out when they zero out\n *    `fieldset` elements in all browsers.\n */\n\nlegend {\n  box-sizing: border-box; /* 1 */\n  color: inherit; /* 2 */\n  display: table; /* 1 */\n  max-width: 100%; /* 1 */\n  padding: 0; /* 3 */\n  white-space: normal; /* 1 */\n}\n\n/**\n * Add the correct vertical alignment in Chrome, Firefox, and Opera.\n */\n\nprogress {\n  vertical-align: baseline;\n}\n\n/**\n * Remove the default vertical scrollbar in IE 10+.\n */\n\ntextarea {\n  overflow: auto;\n}\n\n/**\n * 1. Add the correct box sizing in IE 10.\n * 2. Remove the padding in IE 10.\n */\n\n[type=\"checkbox\"],\n[type=\"radio\"] {\n  box-sizing: border-box; /* 1 */\n  padding: 0; /* 2 */\n}\n\n/**\n * Correct the cursor style of increment and decrement buttons in Chrome.\n */\n\n[type=\"number\"]::-webkit-inner-spin-button,\n[type=\"number\"]::-webkit-outer-spin-button {\n  height: auto;\n}\n\n/**\n * 1. Correct the odd appearance in Chrome and Safari.\n * 2. Correct the outline style in Safari.\n */\n\n[type=\"search\"] {\n  -webkit-appearance: textfield; /* 1 */\n  outline-offset: -2px; /* 2 */\n}\n\n/**\n * Remove the inner padding in Chrome and Safari on macOS.\n */\n\n[type=\"search\"]::-webkit-search-decoration {\n  -webkit-appearance: none;\n}\n\n/**\n * 1. Correct the inability to style clickable types in iOS and Safari.\n * 2. Change font properties to `inherit` in Safari.\n */\n\n::-webkit-file-upload-button {\n  -webkit-appearance: button; /* 1 */\n  font: inherit; /* 2 */\n}\n\n/* Interactive\n   ========================================================================== */\n\n/*\n * Add the correct display in Edge, IE 10+, and Firefox.\n */\n\ndetails {\n  display: block;\n}\n\n/*\n * Add the correct display in all browsers.\n */\n\nsummary {\n  display: list-item;\n}\n\n/* Misc\n   ========================================================================== */\n\n/**\n * Add the correct display in IE 10+.\n */\n\ntemplate {\n  display: none;\n}\n\n/**\n * Add the correct display in IE 10.\n */\n\n[hidden] {\n  display: none;\n}\n";
 
-var honegumi = "/*\n* Based on Barebones by Steve Cochran\n* Based on Skeleton by Dave Gamache\n*\n* Free to use under the MIT license.\n*/\n\n/* CSS Variable definitions omitted (defaultVars.css is always loaded by UkiSettings.js)\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* Grid\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/* CSS Grid depends much more on CSS than HTML, so there is less boilerplate\n\t than with skeleton. Only basic 1-4 column grids are included.\n\t Any additional needs should be made using custom CSS directives */\n\n.grid-container {\n\tposition: relative;\n\tmax-width: var(--grid-max-width);\n\tmargin: 0 auto;\n\tpadding: 20px;\n\ttext-align: center;\n\tdisplay: grid;\n\tgrid-gap: 20px;\n\tgap: 20px;\n\n\t/* by default use min 200px wide columns auto-fit into width */\n\tgrid-template-columns: minmax(200px, 1fr);\n}\n\n/* grids to 3 columns above mobile sizes */\n@media (min-width: 600px) {\n\t.grid-container {\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t\tpadding: 10px 0;\n\t}\n\n\t/* basic grids */\n\t.grid-container.fifths {\n\t\tgrid-template-columns: repeat(5, 1fr);\n\t}\n\t.grid-container.quarters {\n\t\tgrid-template-columns: repeat(4, 1fr);\n\t}\n\t.grid-container.thirds {\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t}\n\t.grid-container.halves {\n\t\tgrid-template-columns: repeat(2, 1fr);\n\t}\n\t.grid-container.full {\n\t\tgrid-template-columns: 1fr;\n\t}\n}\n\n/* Base Styles\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhtml {\n  font-size: var(--base-font-size);\n  scroll-behavior: smooth;\n}\nbody {\n  font-size: 1.6em;\t\t/* changed from 15px in orig skeleton */\n  line-height: 1.6;\n  font-weight: 400;\n  font-family: \"Raleway\", \"HelveticaNeue\", \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n  color: var(--text-color-normal);\n  background-color: var(--background-color);;\n}\n\n\n/* Typography\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nh1, h2, h3, h4, h5, h6 {\n  margin-top: 0;\n  margin-bottom: 2em;\n  font-weight: 300; }\nh1 { font-size: 4.0em; line-height: 1.2;  letter-spacing: -.1em;}\nh2 { font-size: 3.6em; line-height: 1.25; letter-spacing: -.1em; }\nh3 { font-size: 3.0em; line-height: 1.3;  letter-spacing: -.1em; }\nh4 { font-size: 2.4em; line-height: 1.35; letter-spacing: -.08em; }\nh5 { font-size: 1.8em; line-height: 1.5;  letter-spacing: -.05em; }\nh6 { font-size: 1.5em; line-height: 1.6;  letter-spacing: 0; }\n\n/* Larger than phablet */\n@media (min-width: 600px) {\n  h1 { font-size: 5.0em; }\n  h2 { font-size: 4.2em; }\n  h3 { font-size: 3.6em; }\n  h4 { font-size: 3.0em; }\n  h5 { font-size: 2.4em; }\n  h6 { font-size: 1.5em; }\n}\n\np {\n  margin-top: 0; }\n\n\n/* Links\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\na {\n  color: var(--accent-color); }\na:hover {\n  color: var(--accent-color-hover); }\n\n\n/* Buttons\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.button,\nbutton,\ninput[type=\"submit\"],\ninput[type=\"reset\"],\ninput[type=\"button\"] {\n  display: inline-block;\n  height: var(--form-element-height);\n  padding: 0 30px;\n  color: var(--text-color-softer);\n  text-align: center;\n  font-size: 11px;\n  font-weight: 600;\n  line-height: var(--form-element-height);\n  letter-spacing: .1em;\n  text-transform: uppercase;\n  text-decoration: none;\n  white-space: nowrap;\n  background-color: transparent;\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--border-color);\n  cursor: pointer;\n  user-select: none;\n  vertical-align: bottom;\n  box-sizing: border-box; }\n.button:hover,\nbutton:hover,\ninput[type=\"submit\"]:hover,\ninput[type=\"reset\"]:hover,\ninput[type=\"button\"]:hover,\n.button:active,\nbutton:active,\ninput[type=\"submit\"]:active,\ninput[type=\"reset\"]:active,\ninput[type=\"button\"]:active {\n  color: var(--text-color-normal);\n  border-color: var(--text-color-softer);\n  outline: 0; }\n.button.button-primary,\nbutton.button-primary,\ninput[type=\"submit\"].button-primary,\ninput[type=\"reset\"].button-primary,\ninput[type=\"button\"].button-primary {\n  color: var(--button-primary-color);\n  background-color: var(--accent-color);\n  border-color: var(--accent-color); }\n.button.button-primary:hover,\nbutton.button-primary:hover,\ninput[type=\"submit\"].button-primary:hover,\ninput[type=\"reset\"].button-primary:hover,\ninput[type=\"button\"].button-primary:hover,\n.button.button-primary:active,\nbutton.button-primary:active,\ninput[type=\"submit\"].button-primary:active,\ninput[type=\"reset\"].button-primary:active,\ninput[type=\"button\"].button-primary:active {\n  color: var(--button-primary-color);\n  background-color: var(--accent-color-hover);\n  border-color: var(--accent-color-hover); }\n.button.button-disabled,\n.button:disabled,\nbutton:disabled,\ninput[type=\"submit\"]:disabled,\ninput[type=\"reset\"]:disabled,\ninput[type=\"button\"]:disabled {\n\tcolor: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n.button.button-primary.button-disabled,\n.button.button-primary:disabled,\nbutton.button-primary:disabled,\ninput[type=\"submit\"].button-primary:disabled,\ninput[type=\"reset\"].button-primary:disabled,\ninput[type=\"button\"].button-primary:disabled {\n\tcolor: var(--background-color);\n\tbackground-color: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n\n\n/* Forms\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ntextarea,\nselect {\n  height: var(--form-element-height);\n  padding: 6px 10px; /* The 6px vertically centers text on FF, ignored by Webkit */\n  background-color: var(--background-color);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius);\n  box-shadow: none;\n  box-sizing: border-box; }\n/* Removes awkward default styles on some inputs for iOS */\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ninput[type=\"button\"],\ninput[type=\"submit\"],\ntextarea {\n  -webkit-appearance: none;\n     -moz-appearance: none;\n          appearance: none; }\ntextarea {\n  min-height: 65px;\n  padding-top: 6px;\n  padding-bottom: 6px; }\ninput[type=\"email\"]:focus,\ninput[type=\"number\"]:focus,\ninput[type=\"search\"]:focus,\ninput[type=\"text\"]:focus,\ninput[type=\"tel\"]:focus,\ninput[type=\"url\"]:focus,\ninput[type=\"password\"]:focus,\ntextarea:focus,\nselect:focus {\n  border: 1px solid var(--accent-color);\n  outline: 0; }\nlabel,\nlegend {\n  display: block;\n  margin-bottom: .5em;\n  font-weight: 600; }\nfieldset {\n  padding: 0;\n  border-width: 0; }\ninput[type=\"checkbox\"],\ninput[type=\"radio\"] {\n  display: inline; }\nlabel > .label-body {\n  display: inline-block;\n  margin-left: .5em;\n  font-weight: normal; }\n\n\n/* Lists\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nul {\n  list-style: circle inside; }\nol {\n  list-style: decimal inside; }\nol, ul {\n  padding-left: 0;\n  margin-top: 0; }\nul ul, ul ol, ol ol, ol ul {\n\tfont-size: 100%;\n\tmargin: 1em 0 1em 3em;\n\tcolor: var(--text-color-softer);\n}\nli {\n  margin-bottom: 0.5em; }\n\n\n/* Scrollbars\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n::-webkit-scrollbar {\n  width: 1.25em;\n  height: 1.25em;\n}\n\n/* Track, Corner background color */\n::-webkit-scrollbar-track,\n::-webkit-scrollbar-corner,\n::-webkit-resizer {\n  background: transparent;\n}\n\n/* Buttons */\n::-webkit-scrollbar-button:single-button {\n  display: block;\n  width: 1.25em;\n  height: 1.25em;\n  border-radius: var(--corner-radius);\n  border-style: solid;\n}\n/* Up */\n::-webkit-scrollbar-button:vertical:decrement {\n  border-width: 0 0.625em 0.75em 0.625em;\n  border-color: transparent transparent var(--border-color-softer) transparent;\n}\n::-webkit-scrollbar-button:vertical:decrement:hover,\n::-webkit-scrollbar-button:vertical:decrement:active {\n  border-color: transparent transparent var(--text-color-softer) transparent;\n}\n/* Down */\n::-webkit-scrollbar-button:vertical:increment {\n  border-width: 0.75em 0.625em 0 0.625em;\n  border-color: var(--border-color-softer) transparent transparent transparent;\n}\n::-webkit-scrollbar-button:vertical:increment:hover,\n::-webkit-scrollbar-button:vertical:increment:active {\n  border-color: var(--text-color-softer) transparent transparent transparent;\n}\n/* Left */\n::-webkit-scrollbar-button:horizontal:decrement {\n  border-width: 0.625em 0.75em 0.625em 0;\n  border-color: transparent var(--border-color-softer) transparent transparent;\n}\n::-webkit-scrollbar-button:horizontal:decrement:hover,\n::-webkit-scrollbar-button:horizontal:decrement:active {\n  border-color: transparent var(--text-color-softer) transparent transparent;\n}\n/* Right */\n::-webkit-scrollbar-button:horizontal:increment {\n  border-width: 0.625em 0 0.625em 0.75em;\n  border-color: transparent transparent transparent var(--border-color-softer);\n}\n::-webkit-scrollbar-button:horizontal:increment:hover,\n::-webkit-scrollbar-button:horizontal:increment:active {\n  border-color: transparent transparent transparent var(--text-color-softer);\n}\n\n/* Handle */\n::-webkit-scrollbar-thumb {\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--background-color);\n  background: var(--border-color-softer);\n}\n::-webkit-scrollbar-thumb:hover {\n  cursor: grab;\n  background: var(--text-color-softer);\n}\n::-webkit-scrollbar-thumb:active {\n  cursor: grabbing;\n  background: var(--text-color-softer);\n}\n\n\n/* Code\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ncode {\n  padding: .2em .5em;\n  margin: 0 .2em;\n  font-size: 90%;\n  white-space: nowrap;\n  background: var(--background-color-richer);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius); }\npre > code {\n  display: block;\n  padding: 1em 1.5em;\n  white-space: pre;\n  overflow: auto; }\n\n\n/* Tables\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nth,\ntd {\n  padding: 12px 15px;\n  text-align: left;\n  border-bottom: 1px solid var(--border-color-softer); }\nth:first-child,\ntd:first-child {\n  padding-left: 0; }\nth:last-child,\ntd:last-child {\n  padding-right: 0; }\n\n\n/* Spacing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nbutton,\n.button {\n  margin-bottom: 1em; }\ninput,\ntextarea,\nselect,\nfieldset {\n  margin-bottom: 1.5em; }\npre,\nblockquote,\ndl,\nfigure,\ntable,\np,\nul,\nol,\nform {\n  margin-bottom: 2.5em; }\n\n\n/* Utilities\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.u-full-width {\n  width: 100%;\n  box-sizing: border-box; }\n.u-max-full-width {\n  max-width: 100%;\n  box-sizing: border-box; }\n.u-pull-right {\n  float: right; }\n.u-pull-left {\n  float: left; }\n.u-align-left {\n\ttext-align: left; }\n.u-align-right {\n\ttext-align: right; }\n\n\n/* Misc\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhr {\n  margin-top: 3em;\n  margin-bottom: 3.5em;\n  border-width: 0;\n  border-top: 1px solid var(--border-color-softer); }\n\n\n/* Clearing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* Self Clearing Goodness */\n/*.container:after,\n.row:after,\n.u-cf {\n  content: \"\";\n  display: table;\n  clear: both; }*/\n\n\n/* Media Queries\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/*\nNote: The best way to structure the use of media queries is to create the queries\nnear the relevant code. For example, if you wanted to change the styles for buttons\non small devices, paste the mobile query code up in the buttons section and style it\nthere.\n*/\n\n\n/* Larger than mobile (default point when grid becomes active) */\n@media (min-width: 600px) {}\n\n/* Larger than phablet */\n@media (min-width: 900px) {}\n\n/* Larger than tablet */\n@media (min-width: 1200px) {}\n";
+var honegumi = "/*\n* Based on Barebones by Steve Cochran\n* Based on Skeleton by Dave Gamache\n*\n* Free to use under the MIT license.\n*/\n\n/* CSS Variable definitions omitted (defaultVars.css is always loaded by UkiSettings.js)\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* Grid\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/* CSS Grid depends much more on CSS than HTML, so there is less boilerplate\n\t than with skeleton. Only basic 1-4 column grids are included.\n\t Any additional needs should be made using custom CSS directives */\n\n.grid-container {\n\tposition: relative;\n\tmax-width: var(--grid-max-width);\n\tmargin: 0 auto;\n\tpadding: 20px;\n\ttext-align: center;\n\tdisplay: grid;\n\tgrid-gap: 20px;\n\tgap: 20px;\n\n\t/* by default use min 200px wide columns auto-fit into width */\n\tgrid-template-columns: minmax(200px, 1fr);\n}\n\n/* grids to 3 columns above mobile sizes */\n@media (min-width: 600px) {\n\t.grid-container {\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t\tpadding: 10px 0;\n\t}\n\n\t/* basic grids */\n\t.grid-container.fifths {\n\t\tgrid-template-columns: repeat(5, 1fr);\n\t}\n\t.grid-container.quarters {\n\t\tgrid-template-columns: repeat(4, 1fr);\n\t}\n\t.grid-container.thirds {\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t}\n\t.grid-container.halves {\n\t\tgrid-template-columns: repeat(2, 1fr);\n\t}\n\t.grid-container.full {\n\t\tgrid-template-columns: 1fr;\n\t}\n}\n\n/* Base Styles\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhtml {\n  font-size: var(--base-font-size);\n  scroll-behavior: smooth;\n}\nbody {\n  font-size: 1.6em;\t\t/* changed from 15px in orig skeleton */\n  line-height: 1.6;\n  font-weight: 400;\n  font-family: \"Raleway\", \"HelveticaNeue\", \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n  color: var(--text-color-normal);\n  background-color: var(--background-color);;\n}\n\n\n/* Typography\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nh1, h2, h3, h4, h5, h6 {\n  margin-top: 0;\n  margin-bottom: 2rem;\n  font-weight: 300; }\nh1 { font-size: 4.0rem; line-height: 1.2;  letter-spacing: -.1rem;}\nh2 { font-size: 3.6rem; line-height: 1.25; letter-spacing: -.1rem; }\nh3 { font-size: 3.0rem; line-height: 1.3;  letter-spacing: -.1rem; }\nh4 { font-size: 2.4rem; line-height: 1.35; letter-spacing: -.08rem; }\nh5 { font-size: 1.8rem; line-height: 1.5;  letter-spacing: -.05rem; }\nh6 { font-size: 1.5rem; line-height: 1.6;  letter-spacing: 0; }\n\n/* Larger than phablet */\n@media (min-width: 600px) {\n  h1 { font-size: 5.0rem; }\n  h2 { font-size: 4.2rem; }\n  h3 { font-size: 3.6rem; }\n  h4 { font-size: 3.0rem; }\n  h5 { font-size: 2.4rem; }\n  h6 { font-size: 1.5rem; }\n}\n\np {\n  margin-top: 0; }\n\n\n/* Links\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\na {\n  color: var(--accent-color); }\na:hover {\n  color: var(--accent-color-hover); }\n\n\n/* Buttons\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.button,\nbutton,\ninput[type=\"submit\"],\ninput[type=\"reset\"],\ninput[type=\"button\"] {\n  display: inline-block;\n  height: var(--form-element-height);\n  padding: 0 30px;\n  color: var(--text-color-softer);\n  text-align: center;\n  font-size: 11px;\n  font-weight: 600;\n  line-height: var(--form-element-height);\n  letter-spacing: .1em;\n  text-transform: uppercase;\n  text-decoration: none;\n  white-space: nowrap;\n  background-color: transparent;\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--border-color);\n  cursor: pointer;\n  user-select: none;\n  vertical-align: bottom;\n  box-sizing: border-box; }\n.button:hover,\nbutton:hover,\ninput[type=\"submit\"]:hover,\ninput[type=\"reset\"]:hover,\ninput[type=\"button\"]:hover,\n.button:active,\nbutton:active,\ninput[type=\"submit\"]:active,\ninput[type=\"reset\"]:active,\ninput[type=\"button\"]:active {\n  color: var(--text-color-normal);\n  border-color: var(--text-color-softer);\n  outline: 0; }\n.button.button-primary,\nbutton.button-primary,\ninput[type=\"submit\"].button-primary,\ninput[type=\"reset\"].button-primary,\ninput[type=\"button\"].button-primary {\n  color: var(--button-primary-color);\n  background-color: var(--accent-color);\n  border-color: var(--accent-color); }\n.button.button-primary:hover,\nbutton.button-primary:hover,\ninput[type=\"submit\"].button-primary:hover,\ninput[type=\"reset\"].button-primary:hover,\ninput[type=\"button\"].button-primary:hover,\n.button.button-primary:active,\nbutton.button-primary:active,\ninput[type=\"submit\"].button-primary:active,\ninput[type=\"reset\"].button-primary:active,\ninput[type=\"button\"].button-primary:active {\n  color: var(--button-primary-color);\n  background-color: var(--accent-color-hover);\n  border-color: var(--accent-color-hover); }\n.button.button-disabled,\n.button:disabled,\nbutton:disabled,\ninput[type=\"submit\"]:disabled,\ninput[type=\"reset\"]:disabled,\ninput[type=\"button\"]:disabled {\n\tcolor: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n.button.button-primary.button-disabled,\n.button.button-primary:disabled,\nbutton.button-primary:disabled,\ninput[type=\"submit\"].button-primary:disabled,\ninput[type=\"reset\"].button-primary:disabled,\ninput[type=\"button\"].button-primary:disabled {\n\tcolor: var(--background-color);\n\tbackground-color: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n\n\n/* Forms\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ntextarea,\nselect {\n  height: var(--form-element-height);\n  padding: 6px 10px; /* The 6px vertically centers text on FF, ignored by Webkit */\n  background-color: var(--background-color);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius);\n  box-shadow: none;\n  box-sizing: border-box; }\n/* Removes awkward default styles on some inputs for iOS */\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ninput[type=\"button\"],\ninput[type=\"submit\"],\ntextarea {\n  -webkit-appearance: none;\n     -moz-appearance: none;\n          appearance: none; }\ntextarea {\n  min-height: 65px;\n  padding-top: 6px;\n  padding-bottom: 6px; }\ninput[type=\"email\"]:focus,\ninput[type=\"number\"]:focus,\ninput[type=\"search\"]:focus,\ninput[type=\"text\"]:focus,\ninput[type=\"tel\"]:focus,\ninput[type=\"url\"]:focus,\ninput[type=\"password\"]:focus,\ntextarea:focus,\nselect:focus {\n  border: 1px solid var(--accent-color);\n  outline: 0; }\nlabel,\nlegend {\n  display: block;\n  margin-bottom: .5em;\n  font-weight: 600; }\nfieldset {\n  padding: 0;\n  border-width: 0; }\ninput[type=\"checkbox\"],\ninput[type=\"radio\"] {\n  display: inline; }\nlabel > .label-body {\n  display: inline-block;\n  margin-left: .5em;\n  font-weight: normal; }\n\n\n/* Lists\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nul {\n  list-style: circle inside; }\nol {\n  list-style: decimal inside; }\nol, ul {\n  padding-left: 0;\n  margin-top: 0; }\nul ul, ul ol, ol ol, ol ul {\n\tfont-size: 100%;\n\tmargin: 1em 0 1em 3em;\n\tcolor: var(--text-color-softer);\n}\nli {\n  margin-bottom: 0.5em; }\n\n\n/* Scrollbars\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n::-webkit-scrollbar {\n  width: 1.25em;\n  height: 1.25em;\n}\n\n/* Track, Corner background color */\n::-webkit-scrollbar-track,\n::-webkit-scrollbar-corner,\n::-webkit-resizer {\n  background: transparent;\n}\n\n/* Buttons */\n::-webkit-scrollbar-button:single-button {\n  display: block;\n  width: 1.25em;\n  height: 1.25em;\n  border-radius: var(--corner-radius);\n  border-style: solid;\n}\n/* Up */\n::-webkit-scrollbar-button:vertical:decrement {\n  border-width: 0 0.625em 0.75em 0.625em;\n  border-color: transparent transparent var(--border-color-softer) transparent;\n}\n::-webkit-scrollbar-button:vertical:decrement:hover,\n::-webkit-scrollbar-button:vertical:decrement:active {\n  border-color: transparent transparent var(--text-color-softer) transparent;\n}\n/* Down */\n::-webkit-scrollbar-button:vertical:increment {\n  border-width: 0.75em 0.625em 0 0.625em;\n  border-color: var(--border-color-softer) transparent transparent transparent;\n}\n::-webkit-scrollbar-button:vertical:increment:hover,\n::-webkit-scrollbar-button:vertical:increment:active {\n  border-color: var(--text-color-softer) transparent transparent transparent;\n}\n/* Left */\n::-webkit-scrollbar-button:horizontal:decrement {\n  border-width: 0.625em 0.75em 0.625em 0;\n  border-color: transparent var(--border-color-softer) transparent transparent;\n}\n::-webkit-scrollbar-button:horizontal:decrement:hover,\n::-webkit-scrollbar-button:horizontal:decrement:active {\n  border-color: transparent var(--text-color-softer) transparent transparent;\n}\n/* Right */\n::-webkit-scrollbar-button:horizontal:increment {\n  border-width: 0.625em 0 0.625em 0.75em;\n  border-color: transparent transparent transparent var(--border-color-softer);\n}\n::-webkit-scrollbar-button:horizontal:increment:hover,\n::-webkit-scrollbar-button:horizontal:increment:active {\n  border-color: transparent transparent transparent var(--text-color-softer);\n}\n\n/* Handle */\n::-webkit-scrollbar-thumb {\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--background-color);\n  background: var(--border-color-softer);\n}\n::-webkit-scrollbar-thumb:hover {\n  cursor: grab;\n  background: var(--text-color-softer);\n}\n::-webkit-scrollbar-thumb:active {\n  cursor: grabbing;\n  background: var(--text-color-softer);\n}\n\n\n/* Code\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ncode {\n  padding: .2em .5em;\n  margin: 0 .2em;\n  font-size: 90%;\n  white-space: nowrap;\n  background: var(--background-color-richer);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius); }\npre > code {\n  display: block;\n  padding: 1em 1.5em;\n  white-space: pre;\n  overflow: auto; }\n\n\n/* Tables\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nth,\ntd {\n  padding: 12px 15px;\n  text-align: left;\n  border-bottom: 1px solid var(--border-color-softer); }\nth:first-child,\ntd:first-child {\n  padding-left: 0; }\nth:last-child,\ntd:last-child {\n  padding-right: 0; }\n\n\n/* Spacing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nbutton,\n.button {\n  margin-bottom: 1em; }\ninput,\ntextarea,\nselect,\nfieldset {\n  margin-bottom: 1.5em; }\npre,\nblockquote,\ndl,\nfigure,\ntable,\np,\nul,\nol,\nform {\n  margin-bottom: 2.5em; }\n\n\n/* Utilities\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.u-full-width {\n  width: 100%;\n  box-sizing: border-box; }\n.u-max-full-width {\n  max-width: 100%;\n  box-sizing: border-box; }\n.u-pull-right {\n  float: right; }\n.u-pull-left {\n  float: left; }\n.u-align-left {\n\ttext-align: left; }\n.u-align-right {\n\ttext-align: right; }\n\n\n/* Misc\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhr {\n  margin-top: 3em;\n  margin-bottom: 3.5em;\n  border-width: 0;\n  border-top: 1px solid var(--border-color-softer); }\n\n\n/* Clearing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* Self Clearing Goodness */\n/*.container:after,\n.row:after,\n.u-cf {\n  content: \"\";\n  display: table;\n  clear: both; }*/\n\n\n/* Media Queries\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/*\nNote: The best way to structure the use of media queries is to create the queries\nnear the relevant code. For example, if you wanted to change the styles for buttons\non small devices, paste the mobile query code up in the buttons section and style it\nthere.\n*/\n\n\n/* Larger than mobile (default point when grid becomes active) */\n@media (min-width: 600px) {}\n\n/* Larger than phablet */\n@media (min-width: 900px) {}\n\n/* Larger than tablet */\n@media (min-width: 1200px) {}\n";
 
 /* globals d3, uki */
 
@@ -875,9 +911,11 @@ class GlobalUI extends ThemeableMixin({
     super(options);
     this.tooltip = options.tooltip || null;
     uki.showTooltip = tooltipArgs => { this.showTooltip(tooltipArgs); };
+    uki.hideTooltip = () => { this.hideTooltip(); };
     uki.showContextMenu = menuArgs => { this.showContextMenu(menuArgs); };
     this.modal = options.modal || null;
     uki.showModal = modalArgs => { this.showModal(modalArgs); };
+    uki.hideModal = () => { this.hideModal(); };
   }
   async initTooltip () {
     if (!this.tooltip) {
@@ -896,6 +934,11 @@ class GlobalUI extends ThemeableMixin({
     await this.initTooltip();
     this.tooltip.show(tooltipArgs);
   }
+  hideTooltip () {
+    if (this.tooltip) {
+      this.tooltip.hide();
+    }
+  }
   async showModal (modalArgs) {
     if (!this.modal) {
       // Create the modal layer, and make sure it's under the TooltipView if it exists
@@ -906,6 +949,11 @@ class GlobalUI extends ThemeableMixin({
     }
     this.modal.show(modalArgs);
   }
+  hideModal () {
+    if (this.modal) {
+      this.modal.hide();
+    }
+  }
 }
 
 /* globals d3, uki, XMLSerializer, Blob */
@@ -914,6 +962,13 @@ const { SvgView, SvgViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
   classDefFunc: SuperClass => {
     class SvgView extends ParentSizeViewMixin(SuperClass) {
+      setup () {
+        const tagName = this.d3el.node().tagName.toUpperCase();
+        if (tagName !== 'SVG') {
+          throw new Error(`SvgView's d3el is ${tagName}, not SVG`);
+        }
+        super.setup(...arguments);
+      }
       download () {
         // Adapted from https://stackoverflow.com/a/37387449/1058935
         const containerElements = ['svg', 'g'];
@@ -961,6 +1016,32 @@ const { SvgView, SvgViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
+/* globals d3, uki */
+
+const { CanvasView, CanvasViewMixin } = uki.utils.createMixinAndDefault({
+  DefaultSuperClass: uki.View,
+  classDefFunc: SuperClass => {
+    class CanvasView extends ParentSizeViewMixin(SuperClass) {
+      setup () {
+        const tagName = this.d3el.node().tagName.toUpperCase();
+        if (tagName !== 'CANVAS') {
+          throw new Error(`CanvasView's d3el is ${tagName}, not CANVAS`);
+        }
+        super.setup(...arguments);
+      }
+      download () {
+        const link = d3.select('body')
+          .append('a')
+          .attr('download', `${this.title}.png`)
+          .attr('href', this.d3el.node().toDataURL('image/png;base64'));
+        link.node().click();
+        link.remove();
+      }
+    }
+    return CanvasView;
+  }
+});
+
 /* globals uki */
 
 const { IFrameView, IFrameViewMixin } = uki.utils.createMixinAndDefault({
@@ -973,6 +1054,10 @@ const { IFrameView, IFrameViewMixin } = uki.utils.createMixinAndDefault({
         this.frameLoaded = !this._src; // We are loaded if no src is initially provided
       }
       setup () {
+        const tagName = this.d3el.node().tagName.toUpperCase();
+        if (tagName !== 'IFRAME') {
+          throw new Error(`IFrameView's d3el is ${tagName}, not IFRAME`);
+        }
         super.setup(...arguments);
         this.d3el
           .on('load', () => { this.trigger('viewLoaded'); })
@@ -1002,6 +1087,8 @@ var components = /*#__PURE__*/Object.freeze({
   __proto__: null,
   SvgView: SvgView,
   SvgViewMixin: SvgViewMixin,
+  CanvasView: CanvasView,
+  CanvasViewMixin: CanvasViewMixin,
   IFrameView: IFrameView,
   IFrameViewMixin: IFrameViewMixin,
   Button: Button,
@@ -1073,19 +1160,57 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
         for (const [className, ViewClass] of Object.entries(this.viewClassLookup)) {
           const self = this;
           this.goldenLayout.registerComponent(className, function (container, state) {
-            const view = new ViewClass({
-              glContainer: container,
-              glState: state
-            });
-            self.views[className] = view;
+            const view = self.createView(ViewClass, container, state);
+            self.views[view.viewID] = view;
             view.on('tabDrawn', () => { self.fixTabs(); });
           });
         }
+        this.goldenLayout.on('windowOpened', () => {
+          // TODO: deal with popouts
+        });
+        this.goldenLayout.on('itemDestroyed', component => {
+          const recurse = (component) => {
+            if (component.instance) {
+              this.handleViewDestruction(component.instance);
+            } else if (component.contentItems) {
+              for (const childComponent of component.contentItems) {
+                recurse(childComponent);
+              }
+            }
+          };
+          recurse(component);
+          this.renderAllViews();
+        });
         window.addEventListener('resize', () => {
           this.goldenLayout.updateSize();
           this.render();
         });
         this.goldenLayout.init();
+      }
+      createView (ViewClass, glContainer, glState) {
+        return new ViewClass({ glContainer, glState });
+      }
+      handleViewDestruction (view) {
+        // Prevent the view from rendering and remove it from our lookup
+        view.pauseRender = true;
+        delete this.views[view.viewID];
+      }
+      raiseView (view) {
+        let child = view.glContainer;
+        let parent = child.parent;
+        while (parent !== null && parent.setActiveContentItem) {
+          child = child.parent;
+          parent = parent.parent;
+        }
+        if (parent.setActiveContentItem) {
+          parent.setActiveContentItem(child);
+        }
+      }
+      setLayout (layout) {
+        while (this.goldenLayout.root.contentItems.length > 0) {
+          this.goldenLayout.root.contentItems[0].remove();
+        }
+        this.goldenLayout.root.addChild(layout);
       }
       setup () {
         super.setup(...arguments);
@@ -1126,7 +1251,13 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
       constructor (options) {
         super(options);
         this.glContainer = options.glContainer;
-        this.state = options.glState;
+        this.glState = options.glState;
+        if (options.viewID) {
+          this.viewID = options.viewID;
+        } else {
+          this.viewID = this.type + '_' + GLView.NEXT_VIEW_ID;
+          GLView.NEXT_VIEW_ID += 1;
+        }
         this.icons = options.icons || [];
         this.initIcons();
         this.isHidden = false;
@@ -1208,6 +1339,7 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
         }
       }
     }
+    GLView.NEXT_VIEW_ID = 0;
     return GLView;
   }
 });
@@ -1236,6 +1368,33 @@ const { SvgGLView, SvgGLViewMixin } = uki.utils.createMixinAndDefault({
       }
     }
     return SvgGLView;
+  }
+});
+
+var download$1 = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- Generator: Adobe Illustrator 19.2.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->\n<svg version=\"1.1\" id=\"Layer_1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" x=\"0px\" y=\"0px\"\n\t viewBox=\"0 0 512 512\" style=\"enable-background:new 0 0 512 512;\" xml:space=\"preserve\">\n<style type=\"text/css\">\n\t.st0{fill:#000000;}\n</style>\n<g>\n\t<path class=\"st0\" d=\"M6,358.5c7.7-21.2,14.4-25.8,37.4-25.8c41.4,0,82.8-0.1,124.2,0.2c4.1,0,9,2.2,12,5c11.3,10.6,22,21.9,33,32.9\n\t\tc26.3,26.1,60.3,26.2,86.7,0.1c11.2-11.1,22.1-22.5,33.7-33.3c2.8-2.7,7.5-4.7,11.4-4.7c41.4-0.3,82.8-0.2,124.2-0.2\n\t\tc23.1,0,29.7,4.6,37.4,25.8c0,34.2,0,68.3,0,102.5c-7.7,20.8-14.2,25.1-37,25.1c-142,0-284,0-426,0c-22.8,0-29.3-4.4-37-25.1\n\t\tC6,426.8,6,392.7,6,358.5z M390,428.6c-0.1-10.1-8.6-18.7-18.6-18.9c-10.2-0.2-19.3,8.9-19.2,19.1c0.1,10.4,9.1,19,19.5,18.7\n\t\tC381.8,447.3,390.1,438.7,390,428.6z M447.9,447.7c9.9,0,18.8-8.7,19.1-18.6c0.3-10-9-19.4-19.1-19.4c-10.1,0-19.3,9.4-19.1,19.4\n\t\tC429.1,439,438,447.7,447.9,447.7z\"/>\n\t<path class=\"st0\" d=\"M313.5,179.3c19.9,0,38.8,0,57.6,0c5.4,0,10.9,0.1,16.3,0c9.4-0.3,16.7,2.8,20.6,11.9\n\t\tc3.9,9.3,0.4,16.3-6.3,22.9c-41.1,40.9-82,81.9-123,122.9c-20.3,20.3-25.2,20.3-45.4,0.1c-40.8-40.8-81.6-81.6-122.5-122.3\n\t\tc-6.7-6.7-11-13.6-7-23.4c3.7-8.8,10.5-12.1,19.7-12.1c22,0.1,44,0,66,0c2.8,0,5.5,0,8.9,0c0-3.9,0-6.7,0-9.5\n\t\tc0-40.1,0-80.2,0-120.3c0-16.4,7.2-23.5,23.7-23.6c22.8-0.1,45.5-0.1,68.3,0c15.9,0.1,23,7.4,23.1,23.4c0,40.1,0,80.2,0,120.3\n\t\tC313.5,172.5,313.5,175.3,313.5,179.3z\"/>\n</g>\n</svg>\n";
+
+/* globals uki */
+
+const { CanvasGLView, CanvasGLViewMixin } = uki.utils.createMixinAndDefault({
+  DefaultSuperClass: GLView,
+  classDefFunc: SuperClass => {
+    class CanvasGLView extends CanvasViewMixin(SuperClass) {
+      constructor (options) {
+        options.icons = [{
+          svg: download$1,
+          onclick: () => {
+            this.download();
+          }
+        }];
+        super(options);
+      }
+      setupD3El () {
+        return this.glEl.append('canvas')
+          .attr('src', this.src)
+          .on('load', () => { this.trigger('viewLoaded'); });
+      }
+    }
+    return CanvasGLView;
   }
 });
 
@@ -1273,6 +1432,8 @@ var goldenlayout = /*#__PURE__*/Object.freeze({
   GLViewMixin: GLViewMixin,
   SvgGLView: SvgGLView,
   SvgGLViewMixin: SvgGLViewMixin,
+  CanvasGLView: CanvasGLView,
+  CanvasGLViewMixin: CanvasGLViewMixin,
   IFrameGLView: IFrameGLView,
   IFrameGLViewMixin: IFrameGLViewMixin
 });
@@ -1559,14 +1720,199 @@ var tables = /*#__PURE__*/Object.freeze({
   FlexTableViewMixin: FlexTableViewMixin
 });
 
+var defaultStyle$8 = ".LineChartView path {\n  fill: none;\n  stroke-width: 1px;\n  stroke: var(--text-color-normal);\n}\n";
+
+var template$2 = "<defs>\n  <clipPath>\n    <rect></rect>\n  </clipPath>\n</defs>\n<g class=\"chart\">\n  <path></path>\n</g>\n<g class=\"y axis\"></g>\n<g class=\"x axis\"></g>\n";
+
+/* globals d3, uki */
+
+const { LineChartView, LineChartViewMixin } = uki.utils.createMixinAndDefault({
+  DefaultSuperClass: SvgView,
+  classDefFunc: SuperClass => {
+    class LineChartView extends SvgViewMixin(ThemeableMixin({
+      SuperClass, defaultStyle: defaultStyle$8, className: 'LineChartView'
+    })) {
+      constructor (options) {
+        super(options);
+
+        this._margins = options.margins || { bottom: 30, top: 20, left: 40, right: 20 };
+        this._timeSeries = options.timeSeries || [];
+      }
+      get margins () {
+        return this._margins;
+      }
+      set margins (value) {
+        this._margins = value;
+        this.render();
+      }
+      get timeSeries () {
+        return this._timeSeries;
+      }
+      set timeSeries (value) {
+        this._timeSeries = value;
+        this.render();
+      }
+      setup () {
+        super.setup(...arguments);
+
+        // Ensure clipPath has a unique ID across the page
+        this.clipPathId = 'lineChartView' + LineChartView.CLIP_PATH_NEXT_ID;
+        LineChartView.CLIP_PATH_NEXT_ID += 1;
+
+        this.d3el.html(template$2);
+        this.d3el.select('clipPath')
+          .attr('id', this.clipPathId);
+      }
+      draw () {
+        super.draw(...arguments);
+        if (this.isHidden) {
+          return;
+        }
+
+        const bounds = this.getBounds();
+
+        // Position chart and axes, and adjust clipPath accordingly
+        this.d3el.selectAll('.chart, .y.axis')
+          .attr('transform', `translate(${this.margins.left},${this.margins.top})`);
+        this.d3el.select('.x.axis')
+          .attr('transform', `translate(${this.margins.left},${bounds.height - this.margins.bottom})`);
+
+        const width = bounds.width - this.margins.left - this.margins.right;
+        const height = bounds.height - this.margins.top - this.margins.bottom;
+
+        this.d3el.select(`#${this.clipPathId} rect`)
+          .attr('width', width)
+          .attr('height', height);
+
+        // Update the scales
+        this.xScale = this.getXScale(width);
+        this.yScale = this.getYScale(height);
+
+        // Update the axes
+        this.d3el.select('.x.axis')
+          .call(d3.axisBottom(this.xScale));
+        this.d3el.select('.y.axis')
+          .call(d3.axisLeft(this.yScale));
+
+        // Update the lines
+        const lineGenerator = this.getLineGenerator();
+        this.d3el.select('.chart path')
+          .datum(this.timeSeries)
+          .attr('d', lineGenerator);
+      }
+      getXScale (width) {
+        return d3.scaleLinear()
+          .domain(d3.extent(this.timeSeries, d => d.x))
+          .range([0, width]);
+      }
+      getYScale (height) {
+        return d3.scaleLinear()
+          .domain(d3.extent(this.timeSeries, d => d.y))
+          .range([height, 0]);
+      }
+      getLineGenerator () {
+        return d3.line()
+          .x(d => this.xScale(d.x))
+          .y(d => this.yScale(d.y));
+      }
+    }
+    LineChartView.CLIP_PATH_NEXT_ID = 0;
+    return LineChartView;
+  }
+});
+
+/* globals uki, vega, vegaLite */
+
+const { VegaView, VegaViewMixin } = uki.utils.createMixinAndDefault({
+  DefaultSuperClass: uki.View,
+  classDefFunc: SuperClass => {
+    class VegaView extends SuperClass {
+      constructor (options) {
+        options.resources = options.resources || [];
+        if (!globalThis.vega) {
+          // Ensure that vega-core is loaded (d3 already should be)
+          options.resources.push({
+            type: 'js', url: 'https://cdn.jsdelivr.net/npm/vega@5/build/vega-core.min.js'
+          });
+        }
+        if (options.liteSpec && !globalThis.vegaLite) {
+          // Ensure that vega-lite is loaded if we know that we're going to need it
+          options.resources.push({
+            type: 'js', url: 'https://cdn.jsdelivr.net/npm/vega-lite@4'
+          });
+        }
+        super(options);
+
+        this.spec = options.spec;
+        this.liteSpec = options.spec;
+        this.renderer = options.renderer || 'svg';
+        this.vegaView = null;
+      }
+      get isLoading () {
+        return super.isLoading || this.vegaView === null;
+      }
+      getBounds () {
+        // Temporarily set the rendered element's size to 0,0 so that it doesn't
+        // influence the natural bounds calculation
+        const renderedEl = this.d3el.select(this.renderer);
+        const previousBounds = {
+          width: renderedEl.attr('width'),
+          height: renderedEl.attr('height')
+        };
+        renderedEl
+          .attr('width', 0)
+          .attr('height', 0);
+        const bounds = this.d3el.node().getBoundingClientRect();
+        // Restore the bounds
+        renderedEl
+          .attr('width', previousBounds.width)
+          .attr('height', previousBounds.height);
+        return bounds;
+      }
+      setup () {
+        super.setup(...arguments);
+
+        const parsedSpec = vega.parse(this.spec || vegaLite.compile(this.liteSpec));
+
+        this.vegaView = new vega.View(parsedSpec, {
+          renderer: this.renderer,
+          container: this.d3el.node(),
+          // tooltip: (...args) => this.showTooltip(...args),
+          hover: true
+        });
+      }
+      draw () {
+        super.draw(...arguments);
+
+        const bounds = this.getBounds();
+
+        this.vegaView
+          .width(bounds.width)
+          .height(bounds.height)
+          .runAsync();
+      }
+    }
+    return VegaView;
+  }
+});
+
+var vis = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  LineChartView: LineChartView,
+  LineChartViewMixin: LineChartViewMixin,
+  VegaView: VegaView,
+  VegaViewMixin: VegaViewMixin
+});
+
 if (globalThis.uki) {
   globalThis.uki.ui = {
     utils,
     components,
     goldenlayout,
     tables,
+    vis,
     globalUI: new GlobalUI(globalThis.uki.globalOptions || {})
   };
 }
 
-export { components, goldenlayout, tables, utils };
+export { components, goldenlayout, tables, utils, vis };

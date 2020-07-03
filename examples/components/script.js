@@ -1,5 +1,5 @@
 /* globals d3, uki */
-import { goldenlayout, components, utils } from './uki-ui.esm.js';
+import { goldenlayout, components, utils, vis } from './uki-ui.esm.js';
 
 /*
  * WARNING: The capabilities in this example are still totally undocumented and
@@ -72,10 +72,10 @@ class ModalLauncherView extends goldenlayout.GLView {
           {
             label: 'Cancel',
             className: 'cancel',
-            onclick: function () {
-              modalResult.text('Clicked OK');
-              this.hide();
-              count += 1;
+            onclick: () => {
+              modalResult.text('Clicked Cancel');
+              uki.hideModal();
+              count -= 1;
               button.badge = count;
             }
           },
@@ -83,10 +83,10 @@ class ModalLauncherView extends goldenlayout.GLView {
             label: 'OK',
             className: 'ok',
             primary: true,
-            onclick: function () {
-              modalResult.text('Clicked Cancel');
-              this.hide();
-              count -= 1;
+            onclick: () => {
+              modalResult.text('Clicked OK');
+              uki.hideModal();
+              count += 1;
               button.badge = count;
             }
           }
@@ -109,7 +109,7 @@ class ModalLauncherView extends goldenlayout.GLView {
       uki.showContextMenu({
         targetBounds: this.getBoundingClientRect(),
         menuEntries: [
-          { content: { label, img, badge: count, disabled, primary }, onClick: showModalFunc },
+          { content: { label, img, badge: count, disabled, primary }, onclick: showModalFunc },
           { content: null },
           { content: 'Button properties',
             subEntries: [
@@ -161,13 +161,58 @@ class IFrameView extends utils.LoadingViewMixin(
   }
 }
 
+class LineView extends utils.LoadingViewMixin(
+                       utils.EmptyStateViewMixin(
+                       vis.LineChartViewMixin(goldenlayout.SvgGLView))) {
+  constructor (options) {
+    options.resources = options.resources || [];
+    options.resources.push({
+      type: 'json',
+      url: 'lineData.json',
+      name: 'lineData',
+      then: rawData => {
+        return rawData.map(point => {
+          point.timestamp = new Date(point.timestamp);
+          return point;
+        });
+      }
+    });
+    super(options);
+    this.ready.then(() => {
+      this.timeSeries = this.getNamedResource('lineData');
+    });
+  }
+  getXScale (width) {
+    return d3.scaleTime()
+      .domain(d3.extent(this.timeSeries, d => d.timestamp))
+      .range([0, width]);
+  }
+  getYScale (height) {
+    return d3.scaleLinear()
+      .domain(d3.extent(this.timeSeries, d => d.count))
+      .range([height, 0]);
+  }
+  getLineGenerator () {
+    return d3.line()
+      .x(d => this.xScale(d.timestamp))
+      .y(d => this.yScale(d.count));
+  }
+  updateTimeSeries () {
+    const now = +(new Date());
+    this.timeSeries = Array.from({ length: Math.floor(Math.random() * 300) }, (d, i) => {
+      return { timestamp: new Date(now + i * 60 * 1000), count: Math.random() * 300 };
+    });
+  }
+}
+
 class RootView extends goldenlayout.GLRootView {
   constructor (options) {
     options.viewClassLookup = {
       BasicDemoView,
       SvgDemoView,
       IFrameView,
-      ModalLauncherView
+      ModalLauncherView,
+      LineView
     };
     options.glSettings = {
       content: [{
@@ -177,7 +222,8 @@ class RootView extends goldenlayout.GLRootView {
           { type: 'component', componentName: 'BasicDemoView', componentState: {} },
           { type: 'component', componentName: 'IFrameView', componentState: {} },
           { type: 'component', componentName: 'SvgDemoView', componentState: {} },
-          { type: 'component', componentName: 'ModalLauncherView', componentState: {} }
+          { type: 'component', componentName: 'ModalLauncherView', componentState: {} },
+          { type: 'component', componentName: 'LineView', componentState: {} }
         ]
       }]
     };

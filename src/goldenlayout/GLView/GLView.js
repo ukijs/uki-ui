@@ -11,7 +11,13 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
       constructor (options) {
         super(options);
         this.glContainer = options.glContainer;
-        this.state = options.glState;
+        this.glState = options.glState;
+        if (options.viewID) {
+          this.viewID = options.viewID;
+        } else {
+          this.viewID = this.type + '_' + GLView.NEXT_VIEW_ID;
+          GLView.NEXT_VIEW_ID += 1;
+        }
         this.icons = options.icons || [];
         this.initIcons();
         this.isHidden = false;
@@ -93,6 +99,7 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
         }
       }
     }
+    GLView.NEXT_VIEW_ID = 0;
     return GLView;
   }
 });

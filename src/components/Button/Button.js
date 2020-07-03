@@ -12,12 +12,14 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
         super(options);
 
         this._size = options.size;
-        this._label = options.label;
+        this._label = options.label === undefined ? null : options.label;
         this._img = options.img;
         this._disabled = options.disabled || false;
         this._primary = options.primary || false;
-        this._badge = options.badge;
+        this._badge = options.badge === undefined ? null : options.badge;
         this._borderless = options.borderless || false;
+        this._tooltip = options.tooltip;
+        this._onclick = options.onclick || null;
       }
       set size (value) {
         this._size = value;
@@ -27,7 +29,7 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
         return this._size;
       }
       set label (value) {
-        this._label = value;
+        this._label = value === undefined ? null : value;
         this.render();
       }
       get label () {
@@ -62,11 +64,25 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
         return this._borderless;
       }
       set badge (value) {
-        this._badge = value;
+        this._badge = value === undefined ? null : value;
         this.render();
       }
       get badge () {
         return this._badge;
+      }
+      set tooltip (value) {
+        this._tooltip = value;
+        this.render();
+      }
+      get tooltip () {
+        return this._tooltip;
+      }
+      set onclick (value) {
+        this._onclick = value;
+        this.render();
+      }
+      get onclick () {
+        return this._onclick;
       }
       setup () {
         super.setup(...arguments);
@@ -80,9 +96,19 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
           .classed('badge', true)
           .style('display', 'none');
 
-        this.d3el.on('click', () => {
+        this.d3el.on('click.UkiButton', () => {
           if (!this.disabled) {
+            if (this.onclick) {
+              this.onclick();
+            }
             this.trigger('click');
+          }
+        }).on('mouseenter.UkiButton', () => {
+          if (this.tooltip) {
+            const tooltipArgs = Object.assign({
+              targetBounds: this.d3el.node().getBoundingClientRect()
+            }, this.tooltip);
+            globalThis.uki.showTooltip(tooltipArgs);
           }
         });
       }
@@ -95,18 +121,18 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
           .classed('button-disabled', this.disabled)
           .classed('button-borderless', this.borderless)
           .classed('hasImg', this.img)
-          .classed('imgOnly', this.img && this.label === undefined);
+          .classed('imgOnly', this.img && this.label === null);
 
         this.d3el.select('img')
           .style('display', this.img ? null : 'none')
           .attr('src', this.img);
 
         this.d3el.select('.label')
-          .style('display', this.label === undefined ? 'none' : null)
+          .style('display', this.label === null ? 'none' : null)
           .text(this.label);
 
         this.d3el.select('.badge')
-          .style('display', this.badge === undefined ? 'none' : null)
+          .style('display', this.badge === null ? 'none' : null)
           .text(this.badge);
       }
     }

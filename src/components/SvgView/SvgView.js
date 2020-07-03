@@ -5,6 +5,13 @@ const { SvgView, SvgViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
   classDefFunc: SuperClass => {
     class SvgView extends ParentSizeViewMixin(SuperClass) {
+      setup () {
+        const tagName = this.d3el.node().tagName.toUpperCase();
+        if (tagName !== 'SVG') {
+          throw new Error(`SvgView's d3el is ${tagName}, not SVG`);
+        }
+        super.setup(...arguments);
+      }
       download () {
         // Adapted from https://stackoverflow.com/a/37387449/1058935
         const containerElements = ['svg', 'g'];

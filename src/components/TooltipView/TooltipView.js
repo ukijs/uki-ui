@@ -191,7 +191,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
          *   will be the `Button`'s `label`). A function will be given a div
          *   for custom formatting, and no `Button` will be created. If
          *  `content` is not provided or is falsey, a separator is drawn.
-         * - Either an `onClick` function that will be called when the menu entry is
+         * - Either an `onclick` function that will be called when the menu entry is
          *   clicked, or a `subEntries` list of additional menuEntries
          * @param  {Object} [targetBounds=null]
          * Specifies a target rectangle that the tooltip should be positioned
@@ -240,8 +240,8 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
                 contentFuncPromises.push(item.render());
               }
               item.on('click', function () {
-                if (d.onClick) {
-                  d.onClick();
+                if (d.onclick) {
+                  d.onclick();
                   self.hide();
                 } else if (d.subEntries) {
                   let targetBounds = this instanceof Button

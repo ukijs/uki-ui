@@ -8,13 +8,18 @@ const { EmptyStateView, EmptyStateViewMixin } = uki.utils.createMixinAndDefault(
     class EmptyStateView extends ThemeableMixin({
       SuperClass, defaultStyle, className: 'EmptyStateLayer', cnNotOnD3el: true
     }) {
+      constructor (options) {
+        super(options);
+        this._renderError = null;
+      }
       get emptyMessage () {
         // Should be overridden by subclasses; return an html string (or falsey to
         // hide the empty state layer)
-        return '';
+        return (this._renderError && this._renderError.message) || '';
       }
       setup () {
         super.setup(...arguments);
+
         // Insert a layer underneath this.d3el
         const node = this.d3el.node();
         const parentNode = node.parentNode;

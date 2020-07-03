@@ -59,19 +59,57 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
         for (const [className, ViewClass] of Object.entries(this.viewClassLookup)) {
           const self = this;
           this.goldenLayout.registerComponent(className, function (container, state) {
-            const view = new ViewClass({
-              glContainer: container,
-              glState: state
-            });
-            self.views[className] = view;
+            const view = self.createView(ViewClass, container, state);
+            self.views[view.viewID] = view;
             view.on('tabDrawn', () => { self.fixTabs(); });
           });
         }
+        this.goldenLayout.on('windowOpened', () => {
+          // TODO: deal with popouts
+        });
+        this.goldenLayout.on('itemDestroyed', component => {
+          const recurse = (component) => {
+            if (component.instance) {
+              this.handleViewDestruction(component.instance);
+            } else if (component.contentItems) {
+              for (const childComponent of component.contentItems) {
+                recurse(childComponent);
+              }
+            }
+          };
+          recurse(component);
+          this.renderAllViews();
+        });
         window.addEventListener('resize', () => {
           this.goldenLayout.updateSize();
           this.render();
         });
         this.goldenLayout.init();
+      }
+      createView (ViewClass, glContainer, glState) {
+        return new ViewClass({ glContainer, glState });
+      }
+      handleViewDestruction (view) {
+        // Prevent the view from rendering and remove it from our lookup
+        view.pauseRender = true;
+        delete this.views[view.viewID];
+      }
+      raiseView (view) {
+        let child = view.glContainer;
+        let parent = child.parent;
+        while (parent !== null && parent.setActiveContentItem) {
+          child = child.parent;
+          parent = parent.parent;
+        }
+        if (parent.setActiveContentItem) {
+          parent.setActiveContentItem(child);
+        }
+      }
+      setLayout (layout) {
+        while (this.goldenLayout.root.contentItems.length > 0) {
+          this.goldenLayout.root.contentItems[0].remove();
+        }
+        this.goldenLayout.root.addChild(layout);
       }
       setup () {
         super.setup(...arguments);
