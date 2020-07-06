@@ -9,12 +9,12 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
     class TooltipView extends ThemeableMixin({
       SuperClass, defaultStyle, className: 'TooltipView'
     }) {
-      setup () {
-        super.setup(...arguments);
+      async setup () {
+        await super.setup(...arguments);
         this.hide();
       }
-      draw () {
-        super.draw(...arguments);
+      async draw () {
+        await super.draw(...arguments);
         // TODO: migrate a lot of the show() stuff here?
       }
       hide () {

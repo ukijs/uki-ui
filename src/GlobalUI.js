@@ -11,7 +11,7 @@ const defaultStyle = normalize + honegumi;
 class GlobalUI extends ThemeableMixin({
   SuperClass: uki.Model,
   defaultStyle,
-  className: 'root',
+  className: 'GlobalUI',
   cnNotOnD3el: true // not actually used, because there's no d3el anyway
 }) {
   constructor (options) {
@@ -19,7 +19,7 @@ class GlobalUI extends ThemeableMixin({
     // defaultVars is required, but only contains variables that can be ignored
     // / overridden
     options.resources.unshift({
-      type: 'css', raw: defaultVars
+      type: 'css', raw: defaultVars, name: 'defaultVars'
     });
     // Users can manipulate the global theme via globalThis.uki
     if (uki.theme !== undefined) {
@@ -33,6 +33,18 @@ class GlobalUI extends ThemeableMixin({
     this.modal = options.modal || null;
     uki.showModal = modalArgs => { this.showModal(modalArgs); };
     uki.hideModal = () => { this.hideModal(); };
+  }
+  async setTheme (value) {
+    await this.ready;
+    const oldGlobalTheme = this.getNamedResource('GlobalUIDefaultTheme');
+    if (oldGlobalTheme) {
+      // Remove the stylesheet if it has already been added to the head element
+      oldGlobalTheme.remove();
+    }
+    if (value) {
+      value.name = 'GlobalUIDefaultTheme';
+      await this.loadLateResource(value);
+    }
   }
   async initTooltip () {
     if (!this.tooltip) {

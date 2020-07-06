@@ -84,8 +84,8 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
       get onclick () {
         return this._onclick;
       }
-      setup () {
-        super.setup(...arguments);
+      async setup () {
+        await super.setup(...arguments);
         this.d3el.classed('button', true);
         this.d3el.append('img')
           .style('display', 'none');
@@ -112,8 +112,8 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
           }
         });
       }
-      draw () {
-        super.draw(...arguments);
+      async draw () {
+        await super.draw(...arguments);
 
         this.d3el
           .classed('large', this.size === 'large')

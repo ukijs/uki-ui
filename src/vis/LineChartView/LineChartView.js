@@ -30,8 +30,8 @@ const { LineChartView, LineChartViewMixin } = uki.utils.createMixinAndDefault({
         this._timeSeries = value;
         this.render();
       }
-      setup () {
-        super.setup(...arguments);
+      async setup () {
+        await super.setup(...arguments);
 
         // Ensure clipPath has a unique ID across the page
         this.clipPathId = 'lineChartView' + LineChartView.CLIP_PATH_NEXT_ID;
@@ -41,8 +41,8 @@ const { LineChartView, LineChartViewMixin } = uki.utils.createMixinAndDefault({
         this.d3el.select('clipPath')
           .attr('id', this.clipPathId);
       }
-      draw () {
-        super.draw(...arguments);
+      async draw () {
+        await super.draw(...arguments);
         if (this.isHidden) {
           return;
         }

@@ -37,7 +37,7 @@ const ThemeableMixin = function ({
         } else {
           // Leaving options.theme as undefined applies the default stylesheets
           for (const { sheet, type } of Object.values(Themeable.prototype._defaultThemeSheets)) {
-            const resource = { type, raw: sheet };
+            const resource = { type, raw: sheet, name: className + 'DefaultTheme' };
             applyLessOverrides(resource);
             options.resources.push(resource);
           }
@@ -46,8 +46,8 @@ const ThemeableMixin = function ({
       super(options);
       this._cssOverrides = options.cssOverrides || {};
     }
-    setup () {
-      super.setup(...arguments);
+    async setup () {
+      await super.setup(...arguments);
       for (const [className, { cnNotOnD3el }] of Object.entries(Themeable.prototype._defaultThemeSheets)) {
         if (cnNotOnD3el === false) {
           // The className applies to the view's d3el

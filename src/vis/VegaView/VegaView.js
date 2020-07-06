@@ -46,8 +46,8 @@ const { VegaView, VegaViewMixin } = uki.utils.createMixinAndDefault({
           .attr('height', previousBounds.height);
         return bounds;
       }
-      setup () {
-        super.setup(...arguments);
+      async setup () {
+        await super.setup(...arguments);
 
         const parsedSpec = vega.parse(this.spec || vegaLite.compile(this.liteSpec));
 
@@ -58,8 +58,8 @@ const { VegaView, VegaViewMixin } = uki.utils.createMixinAndDefault({
           hover: true
         });
       }
-      draw () {
-        super.draw(...arguments);
+      async draw () {
+        await super.draw(...arguments);
 
         const bounds = this.getBounds();
 

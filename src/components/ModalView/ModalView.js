@@ -46,8 +46,8 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
       async hide () {
         await this.show({ hide: true });
       }
-      setup () {
-        super.setup(...arguments);
+      async setup () {
+        await super.setup(...arguments);
         this.d3el
           .style('display', 'none')
           .html(template);

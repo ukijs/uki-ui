@@ -6,19 +6,19 @@ import * as goldenlayout from './goldenlayout/goldenlayout.js';
 import * as tables from './tables/tables.js';
 import * as vis from './vis/vis.js';
 
-if (globalThis.uki) {
-  globalThis.uki.ui = {
-    utils,
-    components,
-    goldenlayout,
-    tables,
-    vis,
-    globalUI: new GlobalUI(globalThis.uki.globalOptions || {})
-  };
-}
+import pkg from '../package.json';
+const version = pkg.version;
 
-export { utils };
-export { components };
-export { goldenlayout };
-export { tables };
-export { vis };
+const globalUI = new GlobalUI(globalThis.uki.globalOptions || {});
+
+globalThis.uki.ui = {
+  utils,
+  components,
+  goldenlayout,
+  tables,
+  vis,
+  version,
+  globalUI
+};
+
+export { utils, components, goldenlayout, tables, vis, version, globalUI };

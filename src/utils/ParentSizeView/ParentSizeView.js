@@ -21,8 +21,8 @@ const { ParentSizeView, ParentSizeViewMixin } = uki.utils.createMixinAndDefault(
           .attr('height', previousBounds.height);
         return bounds;
       }
-      draw () {
-        super.draw(...arguments);
+      async draw () {
+        await super.draw(...arguments);
         const bounds = this.getBounds();
         this.d3el
           .style('position', 'absolute')

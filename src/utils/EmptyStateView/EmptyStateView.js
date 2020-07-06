@@ -17,8 +17,8 @@ const { EmptyStateView, EmptyStateViewMixin } = uki.utils.createMixinAndDefault(
         // hide the empty state layer)
         return (this._renderError && this._renderError.message) || '';
       }
-      setup () {
-        super.setup(...arguments);
+      async setup () {
+        await super.setup(...arguments);
 
         // Insert a layer underneath this.d3el
         const node = this.d3el.node();
@@ -31,8 +31,8 @@ const { EmptyStateView, EmptyStateViewMixin } = uki.utils.createMixinAndDefault(
         this.emptyStateContent = this.emptyStateWrapper.append('div')
           .classed('EmptyStateLayerContent', true);
       }
-      draw () {
-        super.draw(...arguments);
+      async draw () {
+        await super.draw(...arguments);
         const message = this.emptyMessage;
         // Match the position / size of this.d3el
         const bounds = this.getBounds();

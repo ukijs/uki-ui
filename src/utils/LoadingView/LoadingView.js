@@ -19,16 +19,14 @@ const { LoadingView, LoadingViewMixin } = uki.utils.createMixinAndDefault({
       get isLoading () {
         return !this._loaded;
       }
-      setup () {
-        super.setup(...arguments);
+      async setup () {
+        await super.setup(...arguments);
         // Place a layer on top of this.d3el
         const parent = d3.select(this.d3el.node().parentNode);
         this.spinner = parent.append('div')
-          .classed('LoadingSpinner', true)
-          .style('display', 'none');
+          .classed('LoadingSpinner', true);
       }
-      draw () {
-        super.draw(...arguments);
+      async draw () {
         // Match the position / size of this.d3el
         const bounds = this.getBounds();
         const parentBounds = this.getBounds(d3.select(this.d3el.node().parentNode));
@@ -37,7 +35,11 @@ const { LoadingView, LoadingViewMixin } = uki.utils.createMixinAndDefault({
           .style('left', bounds.left - parentBounds.left)
           .style('right', bounds.right - parentBounds.right)
           .style('bottom', bounds.bottom - parentBounds.bottom)
-          .style('display', this.isLoading ? null : 'none');
+          .style('display', null);
+
+        await super.draw(...arguments);
+
+        this.spinner.style('display', this.isLoading ? null : 'none');
       }
     }
     return LoadingView;

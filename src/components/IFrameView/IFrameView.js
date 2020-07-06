@@ -10,12 +10,12 @@ const { IFrameView, IFrameViewMixin } = uki.utils.createMixinAndDefault({
         this._src = options.src;
         this.frameLoaded = !this._src; // We are loaded if no src is initially provided
       }
-      setup () {
+      async setup () {
         const tagName = this.d3el.node().tagName.toUpperCase();
         if (tagName !== 'IFRAME') {
           throw new Error(`IFrameView's d3el is ${tagName}, not IFRAME`);
         }
-        super.setup(...arguments);
+        await super.setup(...arguments);
         this.d3el
           .on('load', () => { this.trigger('viewLoaded'); })
           .attr('src', this.src);

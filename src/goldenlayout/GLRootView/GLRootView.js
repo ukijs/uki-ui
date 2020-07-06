@@ -111,14 +111,14 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
         }
         this.goldenLayout.root.addChild(layout);
       }
-      setup () {
-        super.setup(...arguments);
+      async setup () {
+        await super.setup(...arguments);
 
         this.setupLayout();
         this.renderAllViews();
       }
-      draw () {
-        super.draw(...arguments);
+      async draw () {
+        await super.draw(...arguments);
         this.renderAllViews();
       }
       async renderAllViews () {

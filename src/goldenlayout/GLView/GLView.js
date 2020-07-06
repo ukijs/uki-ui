@@ -92,8 +92,8 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
       getAvailableSpace (content = this.d3el) {
         return content.node().getBoundingClientRect();
       }
-      draw () {
-        super.draw(...arguments);
+      async draw () {
+        await super.draw(...arguments);
         if (this.glTabEl) {
           this.drawTab();
         }

@@ -59,13 +59,13 @@ const { BaseTableView, BaseTableViewMixin } = uki.utils.createMixinAndDefault({
         }
         return rows;
       }
-      setup () {
-        super.setup(...arguments);
+      async setup () {
+        await super.setup(...arguments);
 
         this.d3el.html(template);
       }
-      draw () {
-        super.draw(...arguments);
+      async draw () {
+        await super.draw(...arguments);
 
         if (this.isHidden || this.isLoading || this.emptyMessage) {
           return;

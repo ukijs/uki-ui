@@ -5,12 +5,12 @@ const { CanvasView, CanvasViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
   classDefFunc: SuperClass => {
     class CanvasView extends ParentSizeViewMixin(SuperClass) {
-      setup () {
+      async setup () {
         const tagName = this.d3el.node().tagName.toUpperCase();
         if (tagName !== 'CANVAS') {
           throw new Error(`CanvasView's d3el is ${tagName}, not CANVAS`);
         }
-        super.setup(...arguments);
+        await super.setup(...arguments);
       }
       download () {
         const link = d3.select('body')

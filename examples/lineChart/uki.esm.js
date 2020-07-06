@@ -5,6 +5,7 @@ class Model {
     this._eventHandlers = {};
     this._stickyTriggers = {};
     this._resourceSpecs = options.resources || [];
+    this._resourceLookup = {};
     this.ready = new Promise(async (resolve, reject) => {
       await this._loadResources(this._resourceSpecs);
       this.trigger('load');
@@ -155,6 +156,16 @@ class Model {
       await window._ukiLessPromise;
     }
   }
+  async loadLateResource (spec) {
+    await this.ready;
+    if (spec.type === 'less') {
+      await this.ensureLessIsLoaded();
+    }
+    if (spec.name) {
+      this._resourceLookup[spec.name] = this.resources.length;
+    }
+    this.resources.push(await this._getCoreResourcePromise(spec));
+  }
   async _loadResources (specs = []) {
     // uki itself needs d3.js; make sure it exists
     if (!window.d3) {
@@ -167,7 +178,6 @@ class Model {
     }
 
     // First, construct a lookup of named dependencies
-    this._resourceLookup = {};
     specs.forEach((spec, i) => {
       if (spec.name) {
         this._resourceLookup[spec.name] = i;
@@ -304,6 +314,7 @@ class View extends Model {
     super(options);
     this.d3el = this.checkForEmptySelection(options.d3el || null);
     this.dirty = true;
+    this._pauseRender = false;
     this._drawTimeout = null;
     this._renderResolves = [];
     this.debounceWait = options.debounceWait || 100;
@@ -321,23 +332,35 @@ class View extends Model {
       return d3el;
     }
   }
+  get pauseRender () {
+    return this._pauseRender;
+  }
+  set pauseRender (value) {
+    this._pauseRender = value;
+    if (!this._pauseRender) {
+      // Automatically start another render call if we unpause
+      this.render();
+    }
+  }
   async render (d3el = this.d3el) {
     d3el = this.checkForEmptySelection(d3el);
     if (!this.d3el || (d3el && d3el.node() !== this.d3el.node())) {
       this.d3el = d3el;
       this.dirty = true;
     }
-    if (!this.d3el) {
+
+    await this.ready;
+    if (!this.d3el || this._pauseRender) {
       // Don't execute any render calls until all resources are loaded,
-      // and we've actually been given a d3 element to work with
+      // we've actually been given a d3 element to work with, and we're not
+      // paused
       return new Promise((resolve, reject) => {
         this._renderResolves.push(resolve);
       });
     }
-    await this.ready;
+
     if (this.dirty && this._setupPromise === undefined) {
       // Need a fresh render; call setup immediately
-      this.d3el = d3el;
       this.updateContainerCharacteristics(this.d3el);
       this._setupPromise = this.setup(this.d3el);
       this.dirty = false;
@@ -345,6 +368,7 @@ class View extends Model {
       delete this._setupPromise;
       this.trigger('setupFinished');
     }
+
     // Debounce the actual draw call, and return a promise that will resolve
     // when draw() actually finishes
     return new Promise((resolve, reject) => {
@@ -354,6 +378,11 @@ class View extends Model {
         this._drawTimeout = null;
         if (this._setupPromise) {
           await this._setupPromise;
+        }
+        if (this._pauseRender) {
+          // Do a _pauseRender check immediately before we do a draw call;
+          // resolve for this Promise has already been added to _renderResolves
+          return;
         }
         const result = await this.draw(this.d3el);
         this.trigger('drawFinished');
@@ -500,9 +529,59 @@ var utils = /*#__PURE__*/Object.freeze({
   IntrospectableMixin: IntrospectableMixin
 });
 
+var name = "uki";
+var version = "0.6.8";
+var description = "Minimal, d3-based Model-View library";
+var module = "dist/uki.esm.js";
+var scripts = {
+	example: "bash examples/run.sh",
+	build: "rollup -c && ls -d examples/*/ | xargs -n 1 cp -v dist/uki.esm.js",
+	dev: "rollup -c -w"
+};
+var repository = {
+	type: "git",
+	url: "git+https://github.com/ukijs/uki.git"
+};
+var author = "Alex Bigelow";
+var license = "MIT";
+var bugs = {
+	url: "https://github.com/ukijs/uki/issues"
+};
+var homepage = "https://github.com/ukijs/uki#readme";
+var devDependencies = {
+	"@rollup/plugin-json": "^4.1.0",
+	rollup: "^2.17.1",
+	serve: "^11.3.2"
+};
+var peerDependencies = {
+	d3: "^5.16.0"
+};
+var optionalDependencies = {
+	less: "^3.11.3"
+};
+var pkg = {
+	name: name,
+	version: version,
+	description: description,
+	module: module,
+	"jsnext:main": "dist/uki.esm.js",
+	scripts: scripts,
+	repository: repository,
+	author: author,
+	license: license,
+	bugs: bugs,
+	homepage: homepage,
+	devDependencies: devDependencies,
+	peerDependencies: peerDependencies,
+	optionalDependencies: optionalDependencies
+};
+
+const version$1 = pkg.version;
+
 globalThis.uki = globalThis.uki || {};
 globalThis.uki.Model = Model;
 globalThis.uki.View = View;
 globalThis.uki.utils = utils;
+globalThis.uki.version = version$1;
 
-export { Model, View, utils };
+export { Model, View, utils, version$1 as version };

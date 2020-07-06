@@ -14,8 +14,8 @@ const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixi
           this.updateRecolorFilters();
         });
       }
-      setup () {
-        super.setup(...arguments);
+      async setup () {
+        await super.setup(...arguments);
         this.updateRecolorFilters();
       }
       updateRecolorFilters () {

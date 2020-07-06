@@ -1,5 +1,6 @@
 import { string } from 'rollup-plugin-string';
 import less from 'rollup-plugin-less';
+import json from '@rollup/plugin-json';
 import pkg from './package.json';
 
 // Derive some of the configuration from package.json
@@ -15,7 +16,8 @@ const commonPlugins = [
     include: ['**/*.less'],
     output: false,
     insert: false
-  })
+  }),
+  json()
 ];
 
 // Basic build formats, without minification
