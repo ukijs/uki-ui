@@ -12,19 +12,20 @@ const { SvgView, SvgViewMixin } = uki.utils.createMixinAndDefault({
         }
         await super.setup(...arguments);
       }
+
       download () {
         // Adapted from https://stackoverflow.com/a/37387449/1058935
         const containerElements = ['svg', 'g'];
         const relevantStyles = {
-          'svg': ['width', 'height'],
-          'rect': ['fill', 'stroke', 'stroke-width', 'opacity'],
-          'p': ['font', 'opacity'],
+          svg: ['width', 'height'],
+          rect: ['fill', 'stroke', 'stroke-width', 'opacity'],
+          p: ['font', 'opacity'],
           '.node': ['cursor', 'opacity'],
-          'path': ['fill', 'stroke', 'stroke-width', 'opacity'],
-          'circle': ['fill', 'stroke', 'stroke-width', 'opacity'],
-          'line': ['stroke', 'stroke-width', 'opacity'],
-          'text': ['fill', 'font-size', 'text-anchor', 'opacity'],
-          'polygon': ['stroke', 'fill', 'opacity']
+          path: ['fill', 'stroke', 'stroke-width', 'opacity'],
+          circle: ['fill', 'stroke', 'stroke-width', 'opacity'],
+          line: ['stroke', 'stroke-width', 'opacity'],
+          text: ['fill', 'font-size', 'text-anchor', 'opacity'],
+          polygon: ['stroke', 'fill', 'opacity']
         };
         const copyStyles = (original, copy) => {
           const tagName = original.tagName;

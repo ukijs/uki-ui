@@ -18,16 +18,19 @@ class LineView extends uki.ui.utils.LoadingViewMixin(uki.ui.vis.LineChartView) {
       this.timeSeries = this.getNamedResource('lineData');
     });
   }
+
   getXScale (width) {
     return d3.scaleTime()
       .domain(d3.extent(this.timeSeries, d => d.timestamp))
       .range([0, width]);
   }
+
   getYScale (height) {
     return d3.scaleLinear()
       .domain(d3.extent(this.timeSeries, d => d.count))
       .range([height, 0]);
   }
+
   getLineGenerator () {
     return d3.line()
       .x(d => this.xScale(d.timestamp))

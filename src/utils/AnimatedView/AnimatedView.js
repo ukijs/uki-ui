@@ -13,6 +13,7 @@ const { AnimatedView, AnimatedViewMixin } = uki.utils.createMixinAndDefault({
           this.startAnimationLoop();
         });
       }
+
       startAnimationLoop () {
         this.stop = false;
         const timestamp = () => {
@@ -22,7 +23,7 @@ const { AnimatedView, AnimatedViewMixin } = uki.utils.createMixinAndDefault({
         let now;
         let dt = 0;
         let last = timestamp();
-        let step = 1 / this.framerate;
+        const step = 1 / this.framerate;
 
         const frame = () => {
           if (this.stop) {
@@ -39,9 +40,11 @@ const { AnimatedView, AnimatedViewMixin } = uki.utils.createMixinAndDefault({
         };
         window.requestAnimationFrame(frame);
       }
+
       stopAnimationLoop () {
         this.stop = true;
       }
+
       drawFrame (d3el, timeSinceLastFrame) {}
     }
     return AnimatedView;

@@ -1,12 +1,13 @@
 {
   "name": "@ukijs/uki-ui",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "A UI toolkit using the uki.js library",
   "module": "dist/uki-ui.esm.js",
   "jsnext:main": "dist/uki-ui.esm.js",
   "scripts": {
     "example": "bash examples/run.sh",
     "build": "rollup -c && ls -d examples/*/ | xargs -n 1 cp -v dist/uki-ui.esm.js && ls -d examples/*/ | xargs -n 1 cp -v node_modules/uki/dist/uki.esm.js",
+    "lint": "eslint **/*.js --quiet",
     "dev": "rollup -c -w"
   },
   "repository": {
@@ -21,18 +22,29 @@
   "homepage": "https://github.com/ukijs/uki-ui#readme",
   "devDependencies": {
     "@rollup/plugin-json": "^4.1.0",
+    "d3": "^5.16.0",
+    "eslint": "^7.4.0",
+    "eslint-config-semistandard": "^15.0.1",
+    "eslint-config-standard": "^14.1.1",
+    "eslint-plugin-import": "^2.22.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
     "normalize.css": "^8.0.1",
-    "rollup": "^2.17.1",
+    "rollup": "^2.22.0",
     "rollup-plugin-less": "^1.1.2",
     "rollup-plugin-string": "^3.0.0",
-    "serve": "^11.3.2"
+    "serve": "^11.3.2",
+    "uki": "^0.6.9"
   },
   "peerDependencies": {
     "d3": "^5.16.0",
-    "uki": "^0.6.6"
+    "uki": "^0.6.9"
   },
   "optionalDependencies": {
     "golden-layout": "^1.5.9",
-    "less": "^3.11.3"
+    "less": "^3.12.2",
+    "vega": "^5.13.0",
+    "vega-lite": "^4.13.1"
   }
 }

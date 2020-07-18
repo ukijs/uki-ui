@@ -16,20 +16,25 @@ const { LineChartView, LineChartViewMixin } = uki.utils.createMixinAndDefault({
         this._margins = options.margins || { bottom: 30, top: 20, left: 40, right: 20 };
         this._timeSeries = options.timeSeries || [];
       }
+
       get margins () {
         return this._margins;
       }
+
       set margins (value) {
         this._margins = value;
         this.render();
       }
+
       get timeSeries () {
         return this._timeSeries;
       }
+
       set timeSeries (value) {
         this._timeSeries = value;
         this.render();
       }
+
       async setup () {
         await super.setup(...arguments);
 
@@ -41,6 +46,7 @@ const { LineChartView, LineChartViewMixin } = uki.utils.createMixinAndDefault({
         this.d3el.select('clipPath')
           .attr('id', this.clipPathId);
       }
+
       async draw () {
         await super.draw(...arguments);
         if (this.isHidden) {
@@ -78,16 +84,19 @@ const { LineChartView, LineChartViewMixin } = uki.utils.createMixinAndDefault({
           .datum(this.timeSeries)
           .attr('d', lineGenerator);
       }
+
       getXScale (width) {
         return d3.scaleLinear()
           .domain(d3.extent(this.timeSeries, d => d.x))
           .range([0, width]);
       }
+
       getYScale (height) {
         return d3.scaleLinear()
           .domain(d3.extent(this.timeSeries, d => d.y))
           .range([height, 0]);
       }
+
       getLineGenerator () {
         return d3.line()
           .x(d => this.xScale(d.x))

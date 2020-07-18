@@ -16,6 +16,7 @@ class BasicDemoView extends utils.LoadingViewMixin(goldenlayout.GLView) {
     }];
     super(options);
   }
+
   setup () {
     super.setup(...arguments);
     this.d3el.html(this.getNamedResource('lipsum'));
@@ -26,10 +27,15 @@ class ModalLauncherView extends goldenlayout.GLView {
   get title () {
     return 'Buttons, Tooltips, and Modals';
   }
+
   setup () {
-    super.setup({ lessArgs: { modifyVars: {
+    super.setup({
+ lessArgs: {
+ modifyVars: {
       '@contentPadding': '2em'
-    } } });
+    }
+}
+});
     this.d3el.style('padding', '1em');
 
     for (const disabled of [false, true]) {
@@ -45,6 +51,7 @@ class ModalLauncherView extends goldenlayout.GLView {
       }
     }
   }
+
   createButton (wrapper, img, label, showBadge, disabled, primary) {
     const container = wrapper.append('div')
       .style('display', 'inline-block')
@@ -111,17 +118,21 @@ class ModalLauncherView extends goldenlayout.GLView {
         menuEntries: [
           { content: { label, img, badge: count, disabled, primary }, onclick: showModalFunc },
           { content: null },
-          { content: 'Button properties',
+          {
+ content: 'Button properties',
             subEntries: [
             { content: 'badge: ' + (count === 0 && !showBadge ? 'hidden' : count) },
             { content: 'label: ' + (label || '(no label)') },
             { content: 'img: ' + (img || '(no img)') },
             { content: 'primary: ' + primary.toString() },
             { content: 'disabled: ' + disabled.toString() }
-          ] },
+          ]
+},
           { content: null },
-          { content: 'Random Submenu Test',
-            subEntries: generateRandomEntries(100) }
+          {
+ content: 'Random Submenu Test',
+            subEntries: generateRandomEntries(100)
+}
         ]
       });
     });
@@ -131,8 +142,9 @@ class ModalLauncherView extends goldenlayout.GLView {
 class SvgDemoView extends utils.LoadingViewMixin(
                           utils.EmptyStateViewMixin(goldenlayout.SvgGLView)) {
   get emptyMessage () {
-    return `This is an SVG view`;
+    return 'This is an SVG view';
   }
+
   setup () {
     super.setup(...arguments);
     const circle = this.d3el.append('circle').attr('r', 20);
@@ -144,6 +156,7 @@ class SvgDemoView extends utils.LoadingViewMixin(
         .style('fill', 'var(--text-color-softer)');
     });
   }
+
   drawFrame () {
     console.log('frame');
   }
@@ -156,6 +169,7 @@ class IFrameView extends utils.LoadingViewMixin(
     options.src = 'https://www.xkcd.com';
     super(options);
   }
+
   get emptyMessage () {
     return 'This is an iframe view';
   }
@@ -182,26 +196,41 @@ class LineView extends utils.LoadingViewMixin(
       this.timeSeries = this.getNamedResource('lineData');
     });
   }
+
   getXScale (width) {
     return d3.scaleTime()
       .domain(d3.extent(this.timeSeries, d => d.timestamp))
       .range([0, width]);
   }
+
   getYScale (height) {
     return d3.scaleLinear()
       .domain(d3.extent(this.timeSeries, d => d.count))
       .range([height, 0]);
   }
+
   getLineGenerator () {
     return d3.line()
       .x(d => this.xScale(d.timestamp))
       .y(d => this.yScale(d.count));
   }
+
   updateTimeSeries () {
     const now = +(new Date());
     this.timeSeries = Array.from({ length: Math.floor(Math.random() * 300) }, (d, i) => {
       return { timestamp: new Date(now + i * 60 * 1000), count: Math.random() * 300 };
     });
+  }
+}
+
+class VegaView extends vis.VegaViewMixin(goldenlayout.GLView) {
+  constructor (options) {
+    options.resources = options.resources || [];
+    options.resources.push({
+      type: 'json', url: 'vegaLiteSpec.json', name: 'liteSpec'
+    });
+    options.liteSpec = 'liteSpec';
+    super(options);
   }
 }
 
@@ -212,7 +241,8 @@ class RootView extends goldenlayout.GLRootView {
       SvgDemoView,
       IFrameView,
       ModalLauncherView,
-      LineView
+      LineView,
+      VegaView
     };
     options.glSettings = {
       content: [{
@@ -223,7 +253,8 @@ class RootView extends goldenlayout.GLRootView {
           { type: 'component', componentName: 'IFrameView', componentState: {} },
           { type: 'component', componentName: 'SvgDemoView', componentState: {} },
           { type: 'component', componentName: 'ModalLauncherView', componentState: {} },
-          { type: 'component', componentName: 'LineView', componentState: {} }
+          { type: 'component', componentName: 'LineView', componentState: {} },
+          { type: 'component', componentName: 'VegaView', componentState: {} }
         ]
       }]
     };

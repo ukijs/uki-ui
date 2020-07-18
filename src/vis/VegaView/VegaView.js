@@ -21,13 +21,15 @@ const { VegaView, VegaViewMixin } = uki.utils.createMixinAndDefault({
         super(options);
 
         this.spec = options.spec;
-        this.liteSpec = options.spec;
+        this.liteSpec = options.liteSpec;
         this.renderer = options.renderer || 'svg';
         this.vegaView = null;
       }
+
       get isLoading () {
         return super.isLoading || this.vegaView === null;
       }
+
       getBounds () {
         // Temporarily set the rendered element's size to 0,0 so that it doesn't
         // influence the natural bounds calculation
@@ -46,10 +48,22 @@ const { VegaView, VegaViewMixin } = uki.utils.createMixinAndDefault({
           .attr('height', previousBounds.height);
         return bounds;
       }
+
       async setup () {
         await super.setup(...arguments);
 
-        const parsedSpec = vega.parse(this.spec || vegaLite.compile(this.liteSpec));
+        let parsedSpec;
+        if (typeof this.spec === 'string') {
+          parsedSpec = this.getNamedResource(this.spec);
+        } else if (typeof this.spec === 'object') {
+          parsedSpec = this.spec;
+        } else if (typeof this.liteSpec === 'string') {
+          parsedSpec = vegaLite.compile(this.getNamedResource(this.liteSpec));
+        } else if (typeof this.liteSpec === 'object') {
+          parsedSpec = vegaLite.compile(this.liteSpec);
+        } else {
+          throw new Error("Can't parse vega spec; either spec or liteSpec should be a string or object");
+        }
 
         this.vegaView = new vega.View(parsedSpec, {
           renderer: this.renderer,
@@ -58,6 +72,7 @@ const { VegaView, VegaViewMixin } = uki.utils.createMixinAndDefault({
           hover: true
         });
       }
+
       async draw () {
         await super.draw(...arguments);
 

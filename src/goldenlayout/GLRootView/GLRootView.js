@@ -16,8 +16,8 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
           options.resources.unshift(options.glCoreStyleResource);
         } else {
           options.resources.unshift({
-            'type': 'css',
-            'url': 'https://golden-layout.com/files/latest/css/goldenlayout-base.css'
+            type: 'css',
+            url: 'https://golden-layout.com/files/latest/css/goldenlayout-base.css'
           });
         }
 
@@ -45,6 +45,7 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
         this.glSettings = options.glSettings;
         this.viewClassLookup = options.viewClassLookup;
       }
+
       setupLayout () {
         // Add some default settings if they're not already set
         this.glSettings.dimensions = this.glSettings.dimensions || {};
@@ -86,14 +87,17 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
         });
         this.goldenLayout.init();
       }
+
       createView (ViewClass, glContainer, glState) {
         return new ViewClass({ glContainer, glState });
       }
+
       handleViewDestruction (view) {
         // Prevent the view from rendering and remove it from our lookup
         view.pauseRender = true;
         delete this.views[view.viewID];
       }
+
       raiseView (view) {
         let child = view.glContainer;
         let parent = child.parent;
@@ -105,25 +109,30 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
           parent.setActiveContentItem(child);
         }
       }
+
       setLayout (layout) {
         while (this.goldenLayout.root.contentItems.length > 0) {
           this.goldenLayout.root.contentItems[0].remove();
         }
         this.goldenLayout.root.addChild(layout);
       }
+
       async setup () {
         await super.setup(...arguments);
 
         this.setupLayout();
         this.renderAllViews();
       }
+
       async draw () {
         await super.draw(...arguments);
         this.renderAllViews();
       }
+
       async renderAllViews () {
         return Promise.all(Object.values(this.views).map(view => view.render()));
       }
+
       fixTabs () {
         globalThis.clearTimeout(this._fixTabsTimeout);
         this._fixTabsTimeout = globalThis.setTimeout(() => {

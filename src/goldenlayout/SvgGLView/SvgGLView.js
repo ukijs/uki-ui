@@ -16,6 +16,7 @@ const { SvgGLView, SvgGLViewMixin } = uki.utils.createMixinAndDefault({
         }];
         super(options);
       }
+
       setupD3El () {
         return this.glEl.append('svg')
           .attr('src', this.src)

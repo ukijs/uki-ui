@@ -47,9 +47,11 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
         });
         this.glContainer.on('resize', () => this.render());
       }
+
       get title () {
         return this.humanReadableType;
       }
+
       initIcons () {
         for (const icon of this.icons) {
           if (icon.svg) {
@@ -60,10 +62,12 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
           }
         }
       }
+
       setupTab () {
         this.glTabEl.classed(this.type + 'Tab', true)
           .insert('div', '.lm_title + *').classed('icons', true);
       }
+
       drawTab () {
         this.glTabEl.select(':scope > .lm_title')
           .text(this.title);
@@ -84,14 +88,17 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
 
         this.trigger('tabDrawn');
       }
+
       setupD3El () {
         // Default setup is a scrollable div; subclasses might override this
         return this.glEl.append('div')
           .classed('scrollArea', true);
       }
+
       getAvailableSpace (content = this.d3el) {
         return content.node().getBoundingClientRect();
       }
+
       async draw () {
         await super.draw(...arguments);
         if (this.glTabEl) {

@@ -17,6 +17,7 @@ const { FlexTableView, FlexTableViewMixin } = uki.utils.createMixinAndDefault({
         // By default, show all headers in their original order
         this.visibleHeaderIndices = null;
       }
+
       getHeaders () {
         const headers = super.getHeaders();
         if (this.visibleHeaderIndices === null) {
@@ -27,13 +28,14 @@ const { FlexTableView, FlexTableViewMixin } = uki.utils.createMixinAndDefault({
           });
         }
       }
+
       drawFlexMenu (tooltipEl) {
         const fullHeaderList = super.getHeaders();
         if (this.rowIndexMode !== 'none') {
           fullHeaderList.splice(0, 1);
         }
 
-        tooltipEl.html(`<p style="margin-bottom:1em">Show columns:</p><ul style="margin:0"></ul>`);
+        tooltipEl.html('<p style="margin-bottom:1em">Show columns:</p><ul style="margin:0"></ul>');
 
         let listItems = tooltipEl.select('ul')
           .selectAll('li').data(fullHeaderList);
@@ -64,10 +66,12 @@ const { FlexTableView, FlexTableViewMixin } = uki.utils.createMixinAndDefault({
           .style('display', 'inline-block')
           .style('max-width', '13em');
       }
+
       headerIsVisible (headerIndex) {
         return this.visibleHeaderIndices === null ||
           this.visibleHeaderIndices.indexOf(headerIndex) !== -1;
       }
+
       updateHeader (d3el, header) {
         if (this.cornerHeader && d3el.node() === this.cornerHeader.node()) {
           if (!this.attributeSelector) {
@@ -89,6 +93,7 @@ const { FlexTableView, FlexTableViewMixin } = uki.utils.createMixinAndDefault({
           super.updateHeader(d3el, header);
         }
       }
+
       toggleHeader (header) {
         if (this.visibleHeaderIndices === null) {
           // Show all but the header toggled

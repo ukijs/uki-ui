@@ -16,6 +16,7 @@ const { IFrameGLView, IFrameGLViewMixin } = uki.utils.createMixinAndDefault({
         }];
         super(options);
       }
+
       setupD3El () {
         return this.glEl.append('iframe')
           .style('border', 'none');

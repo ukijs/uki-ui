@@ -46,6 +46,7 @@ const ThemeableMixin = function ({
       super(options);
       this._cssOverrides = options.cssOverrides || {};
     }
+
     async setup () {
       await super.setup(...arguments);
       for (const [className, { cnNotOnD3el }] of Object.entries(Themeable.prototype._defaultThemeSheets)) {
@@ -91,9 +92,11 @@ const { LoadingView, LoadingViewMixin } = uki.utils.createMixinAndDefault({
           this.render();
         });
       }
+
       get isLoading () {
         return !this._loaded;
       }
+
       async setup () {
         await super.setup(...arguments);
         // Place a layer on top of this.d3el
@@ -101,6 +104,7 @@ const { LoadingView, LoadingViewMixin } = uki.utils.createMixinAndDefault({
         this.spinner = parent.append('div')
           .classed('LoadingSpinner', true);
       }
+
       async draw () {
         // Match the position / size of this.d3el
         const bounds = this.getBounds();
@@ -135,11 +139,13 @@ const { EmptyStateView, EmptyStateViewMixin } = uki.utils.createMixinAndDefault(
         super(options);
         this._renderError = null;
       }
+
       get emptyMessage () {
         // Should be overridden by subclasses; return an html string (or falsey to
         // hide the empty state layer)
         return (this._renderError && this._renderError.message) || '';
       }
+
       async setup () {
         await super.setup(...arguments);
 
@@ -154,6 +160,7 @@ const { EmptyStateView, EmptyStateViewMixin } = uki.utils.createMixinAndDefault(
         this.emptyStateContent = this.emptyStateWrapper.append('div')
           .classed('EmptyStateLayerContent', true);
       }
+
       async draw () {
         await super.draw(...arguments);
         const message = this.emptyMessage;
@@ -196,6 +203,7 @@ const { ParentSizeView, ParentSizeViewMixin } = uki.utils.createMixinAndDefault(
           .attr('height', previousBounds.height);
         return bounds;
       }
+
       async draw () {
         await super.draw(...arguments);
         const bounds = this.getBounds();
@@ -226,6 +234,7 @@ const { AnimatedView, AnimatedViewMixin } = uki.utils.createMixinAndDefault({
           this.startAnimationLoop();
         });
       }
+
       startAnimationLoop () {
         this.stop = false;
         const timestamp = () => {
@@ -235,7 +244,7 @@ const { AnimatedView, AnimatedViewMixin } = uki.utils.createMixinAndDefault({
         let now;
         let dt = 0;
         let last = timestamp();
-        let step = 1 / this.framerate;
+        const step = 1 / this.framerate;
 
         const frame = () => {
           if (this.stop) {
@@ -252,9 +261,11 @@ const { AnimatedView, AnimatedViewMixin } = uki.utils.createMixinAndDefault({
         };
         window.requestAnimationFrame(frame);
       }
+
       stopAnimationLoop () {
         this.stop = true;
       }
+
       drawFrame (d3el, timeSinceLastFrame) {}
     }
     return AnimatedView;
@@ -277,10 +288,12 @@ const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixi
           this.updateRecolorFilters();
         });
       }
+
       async setup () {
         await super.setup(...arguments);
         this.updateRecolorFilters();
       }
+
       updateRecolorFilters () {
         const temp = this.d3el.append('p');
 
@@ -295,7 +308,7 @@ const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixi
               for (const rule of Array.from(resource.sheet.cssRules || resource.sheet.rules)) {
                 if (rule.style && rule.style.filter) {
                   // First check for CSS variables
-                  let cssVar = /#recolorImageTo(--[^)"]*)/.exec(rule.style.filter);
+                  const cssVar = /#recolorImageTo(--[^)"]*)/.exec(rule.style.filter);
                   if (cssVar && cssVar[1]) {
                     temp.node().setAttribute('style', `color: var(${cssVar[1]})`);
                     const styles = window.getComputedStyle(temp.node());
@@ -313,7 +326,7 @@ const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixi
                     }
                   } else {
                     // Try for raw hex codes
-                    let hexCode = cssVar || /#recolorImageTo(......)/.exec(rule.style.filter);
+                    const hexCode = cssVar || /#recolorImageTo(......)/.exec(rule.style.filter);
                     if (hexCode && hexCode[1]) {
                       // Convert the hex code to 0-1 rgb
                       this._recolorFilters[hexCode[1]] = {
@@ -337,7 +350,7 @@ const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixi
 
         // Create a special hidden SVG element if it doesn't already exist
         if (d3.select('#recolorImageFilters').size() === 0) {
-          let svg = d3.select('body').append('svg')
+          const svg = d3.select('body').append('svg')
             .attr('id', 'recolorImageFilters')
             .attr('width', 0)
             .attr('height', 0);
@@ -352,11 +365,11 @@ const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixi
         // Note that we do NOT mess with / remove exit() filters; these things
         // might be added from many sources, and we want to leave stuff that's
         // already there
-        let recolorFiltersEnter = recolorFilters.enter().append('filter')
+        const recolorFiltersEnter = recolorFilters.enter().append('filter')
           .attr('class', 'recolor')
           .attr('id', d => 'recolorImageTo' + d[0]);
         recolorFilters = recolorFilters.merge(recolorFiltersEnter);
-        let cmpTransferEnter = recolorFiltersEnter.append('feComponentTransfer')
+        const cmpTransferEnter = recolorFiltersEnter.append('feComponentTransfer')
           .attr('in', 'SourceAlpha')
           .attr('result', 'color');
         cmpTransferEnter.append('feFuncR')
@@ -418,69 +431,88 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
         this._tooltip = options.tooltip;
         this._onclick = options.onclick || null;
       }
+
       set size (value) {
         this._size = value;
         this.render();
       }
+
       get size () {
         return this._size;
       }
+
       set label (value) {
         this._label = value === undefined ? null : value;
         this.render();
       }
+
       get label () {
         return this._label;
       }
+
       set img (value) {
         this._img = value;
         this.render();
       }
+
       get img () {
         return this._img;
       }
+
       set disabled (value) {
         this._disabled = value;
         this.render();
       }
+
       get disabled () {
         return this._disabled;
       }
+
       set primary (value) {
         this._primary = value;
         this.render();
       }
+
       get primary () {
         return this._primary;
       }
+
       set borderless (value) {
         this._borderless = value;
         this.render();
       }
+
       get borderless () {
         return this._borderless;
       }
+
       set badge (value) {
         this._badge = value === undefined ? null : value;
         this.render();
       }
+
       get badge () {
         return this._badge;
       }
+
       set tooltip (value) {
         this._tooltip = value;
         this.render();
       }
+
       get tooltip () {
         return this._tooltip;
       }
+
       set onclick (value) {
         this._onclick = value;
         this.render();
       }
+
       get onclick () {
         return this._onclick;
       }
+
       async setup () {
         await super.setup(...arguments);
         this.d3el.classed('button', true);
@@ -509,6 +541,7 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
           }
         });
       }
+
       async draw () {
         await super.draw(...arguments);
 
@@ -551,13 +584,16 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         await super.setup(...arguments);
         this.hide();
       }
+
       async draw () {
         await super.draw(...arguments);
         // TODO: migrate a lot of the show() stuff here?
       }
+
       hide () {
         this.show({ content: null });
       }
+
       /**
          * @param  {String | Function} [content='']
          * The message that will be displayed; a falsey value hides the tooltip.
@@ -629,7 +665,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
           } else {
             tooltip.html(content);
           }
-          let tooltipBounds = tooltip.node().getBoundingClientRect();
+          const tooltipBounds = tooltip.node().getBoundingClientRect();
 
           let left;
           let top;
@@ -719,6 +755,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
           }
         }
       }
+
       /**
          * @param  {Array} [menuEntries]
          * A list of objects for each menu item. Each object can have these
@@ -838,9 +875,11 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
           }
         ];
       }
+
       get defaultContent () {
         return '';
       }
+
       async show (options = {}) {
         const content = options.content || this.defaultContent;
         if (content instanceof ModalView) {
@@ -856,9 +895,11 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         }
         this.d3el.style('display', options.hide ? 'none' : null);
       }
+
       async hide () {
         await this.show({ hide: true });
       }
+
       async setup () {
         await super.setup(...arguments);
         this.d3el
@@ -871,6 +912,7 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
 
         this.setupButtons();
       }
+
       setupButtons (buttonSpecs = this.defaultButtons) {
         this.buttonWrapper.html('');
         for (const spec of buttonSpecs) {
@@ -919,6 +961,7 @@ class GlobalUI extends ThemeableMixin({
     uki.showModal = modalArgs => { this.showModal(modalArgs); };
     uki.hideModal = () => { this.hideModal(); };
   }
+
   async setTheme (value) {
     await this.ready;
     const oldGlobalTheme = this.getNamedResource('GlobalUIDefaultTheme');
@@ -931,6 +974,7 @@ class GlobalUI extends ThemeableMixin({
       await this.loadLateResource(value);
     }
   }
+
   async initTooltip () {
     if (!this.tooltip) {
       // Create the tooltip layer, and make sure it's on top of the ModalView if it exists
@@ -940,19 +984,23 @@ class GlobalUI extends ThemeableMixin({
       await this.tooltip.render();
     }
   }
+
   async showContextMenu (menuArgs) {
     await this.initTooltip();
     this.tooltip.showContextMenu(menuArgs);
   }
+
   async showTooltip (tooltipArgs) {
     await this.initTooltip();
     this.tooltip.show(tooltipArgs);
   }
+
   hideTooltip () {
     if (this.tooltip) {
       this.tooltip.hide();
     }
   }
+
   async showModal (modalArgs) {
     if (!this.modal) {
       // Create the modal layer, and make sure it's under the TooltipView if it exists
@@ -963,6 +1011,7 @@ class GlobalUI extends ThemeableMixin({
     }
     this.modal.show(modalArgs);
   }
+
   hideModal () {
     if (this.modal) {
       this.modal.hide();
@@ -983,19 +1032,20 @@ const { SvgView, SvgViewMixin } = uki.utils.createMixinAndDefault({
         }
         await super.setup(...arguments);
       }
+
       download () {
         // Adapted from https://stackoverflow.com/a/37387449/1058935
         const containerElements = ['svg', 'g'];
         const relevantStyles = {
-          'svg': ['width', 'height'],
-          'rect': ['fill', 'stroke', 'stroke-width', 'opacity'],
-          'p': ['font', 'opacity'],
+          svg: ['width', 'height'],
+          rect: ['fill', 'stroke', 'stroke-width', 'opacity'],
+          p: ['font', 'opacity'],
           '.node': ['cursor', 'opacity'],
-          'path': ['fill', 'stroke', 'stroke-width', 'opacity'],
-          'circle': ['fill', 'stroke', 'stroke-width', 'opacity'],
-          'line': ['stroke', 'stroke-width', 'opacity'],
-          'text': ['fill', 'font-size', 'text-anchor', 'opacity'],
-          'polygon': ['stroke', 'fill', 'opacity']
+          path: ['fill', 'stroke', 'stroke-width', 'opacity'],
+          circle: ['fill', 'stroke', 'stroke-width', 'opacity'],
+          line: ['stroke', 'stroke-width', 'opacity'],
+          text: ['fill', 'font-size', 'text-anchor', 'opacity'],
+          polygon: ['stroke', 'fill', 'opacity']
         };
         const copyStyles = (original, copy) => {
           const tagName = original.tagName;
@@ -1043,6 +1093,7 @@ const { CanvasView, CanvasViewMixin } = uki.utils.createMixinAndDefault({
         }
         await super.setup(...arguments);
       }
+
       download () {
         const link = d3.select('body')
           .append('a')
@@ -1067,6 +1118,7 @@ const { IFrameView, IFrameViewMixin } = uki.utils.createMixinAndDefault({
         this._src = options.src;
         this.frameLoaded = !this._src; // We are loaded if no src is initially provided
       }
+
       async setup () {
         const tagName = this.d3el.node().tagName.toUpperCase();
         if (tagName !== 'IFRAME') {
@@ -1077,18 +1129,22 @@ const { IFrameView, IFrameViewMixin } = uki.utils.createMixinAndDefault({
           .on('load', () => { this.trigger('viewLoaded'); })
           .attr('src', this.src);
       }
+
       get src () {
         return this._src;
       }
+
       set src (src) {
         this.frameLoaded = !src;
         this._src = src;
         this.d3el.attr('src', this._src);
         this.render();
       }
+
       get isLoading () {
         return super.isLoading || !this.frameLoaded;
       }
+
       openAsTab () {
         window.open(this._src, '_blank');
       }
@@ -1131,8 +1187,8 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
           options.resources.unshift(options.glCoreStyleResource);
         } else {
           options.resources.unshift({
-            'type': 'css',
-            'url': 'https://golden-layout.com/files/latest/css/goldenlayout-base.css'
+            type: 'css',
+            url: 'https://golden-layout.com/files/latest/css/goldenlayout-base.css'
           });
         }
 
@@ -1160,6 +1216,7 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
         this.glSettings = options.glSettings;
         this.viewClassLookup = options.viewClassLookup;
       }
+
       setupLayout () {
         // Add some default settings if they're not already set
         this.glSettings.dimensions = this.glSettings.dimensions || {};
@@ -1201,14 +1258,17 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
         });
         this.goldenLayout.init();
       }
+
       createView (ViewClass, glContainer, glState) {
         return new ViewClass({ glContainer, glState });
       }
+
       handleViewDestruction (view) {
         // Prevent the view from rendering and remove it from our lookup
         view.pauseRender = true;
         delete this.views[view.viewID];
       }
+
       raiseView (view) {
         let child = view.glContainer;
         let parent = child.parent;
@@ -1220,25 +1280,30 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
           parent.setActiveContentItem(child);
         }
       }
+
       setLayout (layout) {
         while (this.goldenLayout.root.contentItems.length > 0) {
           this.goldenLayout.root.contentItems[0].remove();
         }
         this.goldenLayout.root.addChild(layout);
       }
+
       async setup () {
         await super.setup(...arguments);
 
         this.setupLayout();
         this.renderAllViews();
       }
+
       async draw () {
         await super.draw(...arguments);
         this.renderAllViews();
       }
+
       async renderAllViews () {
         return Promise.all(Object.values(this.views).map(view => view.render()));
       }
+
       fixTabs () {
         globalThis.clearTimeout(this._fixTabsTimeout);
         this._fixTabsTimeout = globalThis.setTimeout(() => {
@@ -1301,9 +1366,11 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
         });
         this.glContainer.on('resize', () => this.render());
       }
+
       get title () {
         return this.humanReadableType;
       }
+
       initIcons () {
         for (const icon of this.icons) {
           if (icon.svg) {
@@ -1314,10 +1381,12 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
           }
         }
       }
+
       setupTab () {
         this.glTabEl.classed(this.type + 'Tab', true)
           .insert('div', '.lm_title + *').classed('icons', true);
       }
+
       drawTab () {
         this.glTabEl.select(':scope > .lm_title')
           .text(this.title);
@@ -1338,14 +1407,17 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
 
         this.trigger('tabDrawn');
       }
+
       setupD3El () {
         // Default setup is a scrollable div; subclasses might override this
         return this.glEl.append('div')
           .classed('scrollArea', true);
       }
+
       getAvailableSpace (content = this.d3el) {
         return content.node().getBoundingClientRect();
       }
+
       async draw () {
         await super.draw(...arguments);
         if (this.glTabEl) {
@@ -1375,6 +1447,7 @@ const { SvgGLView, SvgGLViewMixin } = uki.utils.createMixinAndDefault({
         }];
         super(options);
       }
+
       setupD3El () {
         return this.glEl.append('svg')
           .attr('src', this.src)
@@ -1402,6 +1475,7 @@ const { CanvasGLView, CanvasGLViewMixin } = uki.utils.createMixinAndDefault({
         }];
         super(options);
       }
+
       setupD3El () {
         return this.glEl.append('canvas')
           .attr('src', this.src)
@@ -1429,6 +1503,7 @@ const { IFrameGLView, IFrameGLViewMixin } = uki.utils.createMixinAndDefault({
         }];
         super(options);
       }
+
       setupD3El () {
         return this.glEl.append('iframe')
           .style('border', 'none');
@@ -1466,20 +1541,25 @@ const { BaseTableView, BaseTableViewMixin } = uki.utils.createMixinAndDefault({
         this._rowSortFunc = options.rowSortFunc || null;
         this._rowIndexMode = options.rowIndexMode || 'none';
       }
+
       get rowIndexMode () {
         return this._rowIndexMode;
       }
+
       set rowIndexMode (value) {
         this._rowIndexMode = value;
         this.render();
       }
+
       get rowSortFunc () {
         return this._rowSortFunc;
       }
+
       set rowSortFunc (func) {
         this._rowSortFunc = func;
         this.render();
       }
+
       getRawHeaders () {
         const rawRows = this.getRawRows();
         if (rawRows.length === 0) {
@@ -1488,8 +1568,9 @@ const { BaseTableView, BaseTableViewMixin } = uki.utils.createMixinAndDefault({
           return Object.keys(rawRows[0]);
         }
       }
+
       getHeaders () {
-        let headers = this.getRawHeaders().map((data, index) => {
+        const headers = this.getRawHeaders().map((data, index) => {
           return { index, data };
         });
         if (this.rowIndexMode === 'rowIndex') {
@@ -1499,11 +1580,13 @@ const { BaseTableView, BaseTableViewMixin } = uki.utils.createMixinAndDefault({
         }
         return headers;
       }
+
       getRawRows () {
-        throw new Error(`getRawRows() not implemented by subclass`);
+        throw new Error('getRawRows() not implemented by subclass');
       }
+
       getRows () {
-        let rows = this.getRawRows().map((data, itemIndex) => {
+        const rows = this.getRawRows().map((data, itemIndex) => {
           return { itemIndex, rowIndex: itemIndex, data };
         });
         if (this.rowSortFunc) {
@@ -1514,11 +1597,13 @@ const { BaseTableView, BaseTableViewMixin } = uki.utils.createMixinAndDefault({
         }
         return rows;
       }
+
       async setup () {
         await super.setup(...arguments);
 
         this.d3el.html(template$1);
       }
+
       async draw () {
         await super.draw(...arguments);
 
@@ -1529,6 +1614,7 @@ const { BaseTableView, BaseTableViewMixin } = uki.utils.createMixinAndDefault({
         this.drawRows();
         this.drawCells();
       }
+
       drawHeaders () {
         const headersToDraw = this.getHeaders();
 
@@ -1554,9 +1640,11 @@ const { BaseTableView, BaseTableViewMixin } = uki.utils.createMixinAndDefault({
             self.updateHoverListeners(d3el, d);
           });
       }
+
       updateHeader (d3el, header) {
         d3el.text(header.data);
       }
+
       drawRows () {
         this.rows = this.d3el.select('tbody')
           .selectAll('tr').data(this.getRows(), d => d.itemIndex)
@@ -1565,6 +1653,7 @@ const { BaseTableView, BaseTableViewMixin } = uki.utils.createMixinAndDefault({
         const rowsEnter = this.rows.enter().append('tr');
         this.rows = this.rows.merge(rowsEnter);
       }
+
       drawCells () {
         this.cells = this.rows.selectAll('td')
           .data(row => this.getHeaders().map((header, columnIndex) => {
@@ -1592,9 +1681,11 @@ const { BaseTableView, BaseTableViewMixin } = uki.utils.createMixinAndDefault({
             self.updateHoverListeners(d3el, d);
           });
       }
+
       updateCell (d3el, cell) {
         d3el.text(cell.data);
       }
+
       updateHoverListeners (d3el, item) {
         // Show a tooltip on the parent td or th element if the contents are
         // truncated by text-overflow: ellipsis
@@ -1636,6 +1727,7 @@ const { FlexTableView, FlexTableViewMixin } = uki.utils.createMixinAndDefault({
         // By default, show all headers in their original order
         this.visibleHeaderIndices = null;
       }
+
       getHeaders () {
         const headers = super.getHeaders();
         if (this.visibleHeaderIndices === null) {
@@ -1646,13 +1738,14 @@ const { FlexTableView, FlexTableViewMixin } = uki.utils.createMixinAndDefault({
           });
         }
       }
+
       drawFlexMenu (tooltipEl) {
         const fullHeaderList = super.getHeaders();
         if (this.rowIndexMode !== 'none') {
           fullHeaderList.splice(0, 1);
         }
 
-        tooltipEl.html(`<p style="margin-bottom:1em">Show columns:</p><ul style="margin:0"></ul>`);
+        tooltipEl.html('<p style="margin-bottom:1em">Show columns:</p><ul style="margin:0"></ul>');
 
         let listItems = tooltipEl.select('ul')
           .selectAll('li').data(fullHeaderList);
@@ -1683,10 +1776,12 @@ const { FlexTableView, FlexTableViewMixin } = uki.utils.createMixinAndDefault({
           .style('display', 'inline-block')
           .style('max-width', '13em');
       }
+
       headerIsVisible (headerIndex) {
         return this.visibleHeaderIndices === null ||
           this.visibleHeaderIndices.indexOf(headerIndex) !== -1;
       }
+
       updateHeader (d3el, header) {
         if (this.cornerHeader && d3el.node() === this.cornerHeader.node()) {
           if (!this.attributeSelector) {
@@ -1708,6 +1803,7 @@ const { FlexTableView, FlexTableViewMixin } = uki.utils.createMixinAndDefault({
           super.updateHeader(d3el, header);
         }
       }
+
       toggleHeader (header) {
         if (this.visibleHeaderIndices === null) {
           // Show all but the header toggled
@@ -1752,20 +1848,25 @@ const { LineChartView, LineChartViewMixin } = uki.utils.createMixinAndDefault({
         this._margins = options.margins || { bottom: 30, top: 20, left: 40, right: 20 };
         this._timeSeries = options.timeSeries || [];
       }
+
       get margins () {
         return this._margins;
       }
+
       set margins (value) {
         this._margins = value;
         this.render();
       }
+
       get timeSeries () {
         return this._timeSeries;
       }
+
       set timeSeries (value) {
         this._timeSeries = value;
         this.render();
       }
+
       async setup () {
         await super.setup(...arguments);
 
@@ -1777,6 +1878,7 @@ const { LineChartView, LineChartViewMixin } = uki.utils.createMixinAndDefault({
         this.d3el.select('clipPath')
           .attr('id', this.clipPathId);
       }
+
       async draw () {
         await super.draw(...arguments);
         if (this.isHidden) {
@@ -1814,16 +1916,19 @@ const { LineChartView, LineChartViewMixin } = uki.utils.createMixinAndDefault({
           .datum(this.timeSeries)
           .attr('d', lineGenerator);
       }
+
       getXScale (width) {
         return d3.scaleLinear()
           .domain(d3.extent(this.timeSeries, d => d.x))
           .range([0, width]);
       }
+
       getYScale (height) {
         return d3.scaleLinear()
           .domain(d3.extent(this.timeSeries, d => d.y))
           .range([height, 0]);
       }
+
       getLineGenerator () {
         return d3.line()
           .x(d => this.xScale(d.x))
@@ -1858,13 +1963,15 @@ const { VegaView, VegaViewMixin } = uki.utils.createMixinAndDefault({
         super(options);
 
         this.spec = options.spec;
-        this.liteSpec = options.spec;
+        this.liteSpec = options.liteSpec;
         this.renderer = options.renderer || 'svg';
         this.vegaView = null;
       }
+
       get isLoading () {
         return super.isLoading || this.vegaView === null;
       }
+
       getBounds () {
         // Temporarily set the rendered element's size to 0,0 so that it doesn't
         // influence the natural bounds calculation
@@ -1883,10 +1990,22 @@ const { VegaView, VegaViewMixin } = uki.utils.createMixinAndDefault({
           .attr('height', previousBounds.height);
         return bounds;
       }
+
       async setup () {
         await super.setup(...arguments);
 
-        const parsedSpec = vega.parse(this.spec || vegaLite.compile(this.liteSpec));
+        let parsedSpec;
+        if (typeof this.spec === 'string') {
+          parsedSpec = this.getNamedResource(this.spec);
+        } else if (typeof this.spec === 'object') {
+          parsedSpec = this.spec;
+        } else if (typeof this.liteSpec === 'string') {
+          parsedSpec = vegaLite.compile(this.getNamedResource(this.liteSpec));
+        } else if (typeof this.liteSpec === 'object') {
+          parsedSpec = vegaLite.compile(this.liteSpec);
+        } else {
+          throw new Error("Can't parse vega spec; either spec or liteSpec should be a string or object");
+        }
 
         this.vegaView = new vega.View(parsedSpec, {
           renderer: this.renderer,
@@ -1895,6 +2014,7 @@ const { VegaView, VegaViewMixin } = uki.utils.createMixinAndDefault({
           hover: true
         });
       }
+
       async draw () {
         await super.draw(...arguments);
 
@@ -1919,12 +2039,13 @@ var vis = /*#__PURE__*/Object.freeze({
 });
 
 var name = "@ukijs/uki-ui";
-var version = "0.1.5";
+var version = "0.1.7";
 var description = "A UI toolkit using the uki.js library";
 var module = "dist/uki-ui.esm.js";
 var scripts = {
 	example: "bash examples/run.sh",
 	build: "rollup -c && ls -d examples/*/ | xargs -n 1 cp -v dist/uki-ui.esm.js && ls -d examples/*/ | xargs -n 1 cp -v node_modules/uki/dist/uki.esm.js",
+	lint: "eslint **/*.js --quiet",
 	dev: "rollup -c -w"
 };
 var repository = {
@@ -1939,19 +2060,30 @@ var bugs = {
 var homepage = "https://github.com/ukijs/uki-ui#readme";
 var devDependencies = {
 	"@rollup/plugin-json": "^4.1.0",
+	d3: "^5.16.0",
+	eslint: "^7.4.0",
+	"eslint-config-semistandard": "^15.0.1",
+	"eslint-config-standard": "^14.1.1",
+	"eslint-plugin-import": "^2.22.0",
+	"eslint-plugin-node": "^11.1.0",
+	"eslint-plugin-promise": "^4.2.1",
+	"eslint-plugin-standard": "^4.0.1",
 	"normalize.css": "^8.0.1",
-	rollup: "^2.17.1",
+	rollup: "^2.22.0",
 	"rollup-plugin-less": "^1.1.2",
 	"rollup-plugin-string": "^3.0.0",
-	serve: "^11.3.2"
+	serve: "^11.3.2",
+	uki: "^0.6.9"
 };
 var peerDependencies = {
 	d3: "^5.16.0",
-	uki: "^0.6.6"
+	uki: "^0.6.9"
 };
 var optionalDependencies = {
 	"golden-layout": "^1.5.9",
-	less: "^3.11.3"
+	less: "^3.12.2",
+	vega: "^5.13.0",
+	"vega-lite": "^4.13.1"
 };
 var pkg = {
 	name: name,

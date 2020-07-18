@@ -12,6 +12,7 @@ const { CanvasView, CanvasViewMixin } = uki.utils.createMixinAndDefault({
         }
         await super.setup(...arguments);
       }
+
       download () {
         const link = d3.select('body')
           .append('a')

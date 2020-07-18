@@ -16,6 +16,7 @@ const { CanvasGLView, CanvasGLViewMixin } = uki.utils.createMixinAndDefault({
         }];
         super(options);
       }
+
       setupD3El () {
         return this.glEl.append('canvas')
           .attr('src', this.src)

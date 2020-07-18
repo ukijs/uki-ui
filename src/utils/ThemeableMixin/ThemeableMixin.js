@@ -46,6 +46,7 @@ const ThemeableMixin = function ({
       super(options);
       this._cssOverrides = options.cssOverrides || {};
     }
+
     async setup () {
       await super.setup(...arguments);
       for (const [className, { cnNotOnD3el }] of Object.entries(Themeable.prototype._defaultThemeSheets)) {

@@ -13,13 +13,16 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         await super.setup(...arguments);
         this.hide();
       }
+
       async draw () {
         await super.draw(...arguments);
         // TODO: migrate a lot of the show() stuff here?
       }
+
       hide () {
         this.show({ content: null });
       }
+
       /**
          * @param  {String | Function} [content='']
          * The message that will be displayed; a falsey value hides the tooltip.
@@ -91,7 +94,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
           } else {
             tooltip.html(content);
           }
-          let tooltipBounds = tooltip.node().getBoundingClientRect();
+          const tooltipBounds = tooltip.node().getBoundingClientRect();
 
           let left;
           let top;
@@ -181,6 +184,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
           }
         }
       }
+
       /**
          * @param  {Array} [menuEntries]
          * A list of objects for each menu item. Each object can have these

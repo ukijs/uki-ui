@@ -21,69 +21,88 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
         this._tooltip = options.tooltip;
         this._onclick = options.onclick || null;
       }
+
       set size (value) {
         this._size = value;
         this.render();
       }
+
       get size () {
         return this._size;
       }
+
       set label (value) {
         this._label = value === undefined ? null : value;
         this.render();
       }
+
       get label () {
         return this._label;
       }
+
       set img (value) {
         this._img = value;
         this.render();
       }
+
       get img () {
         return this._img;
       }
+
       set disabled (value) {
         this._disabled = value;
         this.render();
       }
+
       get disabled () {
         return this._disabled;
       }
+
       set primary (value) {
         this._primary = value;
         this.render();
       }
+
       get primary () {
         return this._primary;
       }
+
       set borderless (value) {
         this._borderless = value;
         this.render();
       }
+
       get borderless () {
         return this._borderless;
       }
+
       set badge (value) {
         this._badge = value === undefined ? null : value;
         this.render();
       }
+
       get badge () {
         return this._badge;
       }
+
       set tooltip (value) {
         this._tooltip = value;
         this.render();
       }
+
       get tooltip () {
         return this._tooltip;
       }
+
       set onclick (value) {
         this._onclick = value;
         this.render();
       }
+
       get onclick () {
         return this._onclick;
       }
+
       async setup () {
         await super.setup(...arguments);
         this.d3el.classed('button', true);
@@ -112,6 +131,7 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
           }
         });
       }
+
       async draw () {
         await super.draw(...arguments);
 

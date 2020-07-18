@@ -34,6 +34,7 @@ class GlobalUI extends ThemeableMixin({
     uki.showModal = modalArgs => { this.showModal(modalArgs); };
     uki.hideModal = () => { this.hideModal(); };
   }
+
   async setTheme (value) {
     await this.ready;
     const oldGlobalTheme = this.getNamedResource('GlobalUIDefaultTheme');
@@ -46,6 +47,7 @@ class GlobalUI extends ThemeableMixin({
       await this.loadLateResource(value);
     }
   }
+
   async initTooltip () {
     if (!this.tooltip) {
       // Create the tooltip layer, and make sure it's on top of the ModalView if it exists
@@ -55,19 +57,23 @@ class GlobalUI extends ThemeableMixin({
       await this.tooltip.render();
     }
   }
+
   async showContextMenu (menuArgs) {
     await this.initTooltip();
     this.tooltip.showContextMenu(menuArgs);
   }
+
   async showTooltip (tooltipArgs) {
     await this.initTooltip();
     this.tooltip.show(tooltipArgs);
   }
+
   hideTooltip () {
     if (this.tooltip) {
       this.tooltip.hide();
     }
   }
+
   async showModal (modalArgs) {
     if (!this.modal) {
       // Create the modal layer, and make sure it's under the TooltipView if it exists
@@ -78,6 +84,7 @@ class GlobalUI extends ThemeableMixin({
     }
     this.modal.show(modalArgs);
   }
+
   hideModal () {
     if (this.modal) {
       this.modal.hide();

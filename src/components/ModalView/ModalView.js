@@ -25,9 +25,11 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
           }
         ];
       }
+
       get defaultContent () {
         return '';
       }
+
       async show (options = {}) {
         const content = options.content || this.defaultContent;
         if (content instanceof ModalView) {
@@ -43,9 +45,11 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         }
         this.d3el.style('display', options.hide ? 'none' : null);
       }
+
       async hide () {
         await this.show({ hide: true });
       }
+
       async setup () {
         await super.setup(...arguments);
         this.d3el
@@ -58,6 +62,7 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
 
         this.setupButtons();
       }
+
       setupButtons (buttonSpecs = this.defaultButtons) {
         this.buttonWrapper.html('');
         for (const spec of buttonSpecs) {

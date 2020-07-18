@@ -14,10 +14,12 @@ const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixi
           this.updateRecolorFilters();
         });
       }
+
       async setup () {
         await super.setup(...arguments);
         this.updateRecolorFilters();
       }
+
       updateRecolorFilters () {
         const temp = this.d3el.append('p');
 
@@ -32,7 +34,7 @@ const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixi
               for (const rule of Array.from(resource.sheet.cssRules || resource.sheet.rules)) {
                 if (rule.style && rule.style.filter) {
                   // First check for CSS variables
-                  let cssVar = /#recolorImageTo(--[^)"]*)/.exec(rule.style.filter);
+                  const cssVar = /#recolorImageTo(--[^)"]*)/.exec(rule.style.filter);
                   if (cssVar && cssVar[1]) {
                     temp.node().setAttribute('style', `color: var(${cssVar[1]})`);
                     const styles = window.getComputedStyle(temp.node());
@@ -50,7 +52,7 @@ const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixi
                     }
                   } else {
                     // Try for raw hex codes
-                    let hexCode = cssVar || /#recolorImageTo(......)/.exec(rule.style.filter);
+                    const hexCode = cssVar || /#recolorImageTo(......)/.exec(rule.style.filter);
                     if (hexCode && hexCode[1]) {
                       // Convert the hex code to 0-1 rgb
                       this._recolorFilters[hexCode[1]] = {
@@ -74,7 +76,7 @@ const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixi
 
         // Create a special hidden SVG element if it doesn't already exist
         if (d3.select('#recolorImageFilters').size() === 0) {
-          let svg = d3.select('body').append('svg')
+          const svg = d3.select('body').append('svg')
             .attr('id', 'recolorImageFilters')
             .attr('width', 0)
             .attr('height', 0);
@@ -89,11 +91,11 @@ const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixi
         // Note that we do NOT mess with / remove exit() filters; these things
         // might be added from many sources, and we want to leave stuff that's
         // already there
-        let recolorFiltersEnter = recolorFilters.enter().append('filter')
+        const recolorFiltersEnter = recolorFilters.enter().append('filter')
           .attr('class', 'recolor')
           .attr('id', d => 'recolorImageTo' + d[0]);
         recolorFilters = recolorFilters.merge(recolorFiltersEnter);
-        let cmpTransferEnter = recolorFiltersEnter.append('feComponentTransfer')
+        const cmpTransferEnter = recolorFiltersEnter.append('feComponentTransfer')
           .attr('in', 'SourceAlpha')
           .attr('result', 'color');
         cmpTransferEnter.append('feFuncR')

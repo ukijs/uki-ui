@@ -12,11 +12,13 @@ const { EmptyStateView, EmptyStateViewMixin } = uki.utils.createMixinAndDefault(
         super(options);
         this._renderError = null;
       }
+
       get emptyMessage () {
         // Should be overridden by subclasses; return an html string (or falsey to
         // hide the empty state layer)
         return (this._renderError && this._renderError.message) || '';
       }
+
       async setup () {
         await super.setup(...arguments);
 
@@ -31,6 +33,7 @@ const { EmptyStateView, EmptyStateViewMixin } = uki.utils.createMixinAndDefault(
         this.emptyStateContent = this.emptyStateWrapper.append('div')
           .classed('EmptyStateLayerContent', true);
       }
+
       async draw () {
         await super.draw(...arguments);
         const message = this.emptyMessage;

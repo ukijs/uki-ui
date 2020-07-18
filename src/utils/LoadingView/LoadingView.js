@@ -16,9 +16,11 @@ const { LoadingView, LoadingViewMixin } = uki.utils.createMixinAndDefault({
           this.render();
         });
       }
+
       get isLoading () {
         return !this._loaded;
       }
+
       async setup () {
         await super.setup(...arguments);
         // Place a layer on top of this.d3el
@@ -26,6 +28,7 @@ const { LoadingView, LoadingViewMixin } = uki.utils.createMixinAndDefault({
         this.spinner = parent.append('div')
           .classed('LoadingSpinner', true);
       }
+
       async draw () {
         // Match the position / size of this.d3el
         const bounds = this.getBounds();
