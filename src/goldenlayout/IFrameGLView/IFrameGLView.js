@@ -1,7 +1,7 @@
 /* globals uki */
 import { IFrameViewMixin } from '../../components/IFrameView/IFrameView.js';
 import { GLView } from '../GLView/GLView.js';
-import linkIcon from './link.svg';
+import linkIcon from './link.text.svg';
 
 const { IFrameGLView, IFrameGLViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: GLView,

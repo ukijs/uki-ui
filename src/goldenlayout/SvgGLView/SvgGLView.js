@@ -1,7 +1,7 @@
 /* globals uki */
 import { SvgViewMixin } from '../../components/SvgView/SvgView.js';
 import { GLView } from '../GLView/GLView.js';
-import download from './download.svg';
+import download from './download.text.svg';
 
 const { SvgGLView, SvgGLViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: GLView,

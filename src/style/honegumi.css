@@ -148,7 +148,7 @@ button.button-primary,
 input[type="submit"].button-primary,
 input[type="reset"].button-primary,
 input[type="button"].button-primary {
-  color: var(--button-primary-color);
+  color: var(--inverted-shadow-color);
   background-color: var(--accent-color);
   border-color: var(--accent-color); }
 .button.button-primary:hover,
@@ -161,7 +161,7 @@ button.button-primary:active,
 input[type="submit"].button-primary:active,
 input[type="reset"].button-primary:active,
 input[type="button"].button-primary:active {
-  color: var(--button-primary-color);
+  color: var(--inverted-shadow-color);
   background-color: var(--accent-color-hover);
   border-color: var(--accent-color-hover); }
 .button.button-disabled,

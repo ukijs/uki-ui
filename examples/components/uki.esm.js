@@ -168,6 +168,7 @@ class Model {
       this._resourceLookup[spec.name] = this.resources.length;
     }
     this.resources.push(await this._getCoreResourcePromise(spec));
+    this.trigger('load');
   }
 
   async _loadResources (specs = []) {
@@ -377,7 +378,16 @@ class View extends Model {
       this.updateContainerCharacteristics(this.d3el);
       this._setupPromise = this.setup(this.d3el);
       this.dirty = false;
-      await this._setupPromise;
+      try {
+        await this._setupPromise;
+      } catch (err) {
+        if (this.setupError) {
+          this._setupPromise = this.setupError(this.d3el, err);
+          await this._setupPromise;
+        } else {
+          throw err;
+        }
+      }
       delete this._setupPromise;
       this.trigger('setupFinished');
     }
@@ -390,6 +400,8 @@ class View extends Model {
       this._drawTimeout = setTimeout(async () => {
         this._drawTimeout = null;
         if (this._setupPromise) {
+          // Don't try / catch here because if there's an error, it will
+          // be handled exactly once in the original context
           await this._setupPromise;
         }
         if (this._pauseRender) {
@@ -397,7 +409,16 @@ class View extends Model {
           // resolve for this Promise has already been added to _renderResolves
           return;
         }
-        const result = await this.draw(this.d3el);
+        let result;
+        try {
+          result = await this.draw(this.d3el);
+        } catch (err) {
+          if (this.drawError) {
+            result = await this.drawError(this.d3el, err);
+          } else {
+            throw err;
+          }
+        }
         this.trigger('drawFinished');
         const temp = this._renderResolves;
         this._renderResolves = [];
@@ -408,8 +429,10 @@ class View extends Model {
     });
   }
 
-  setup (d3el = this.d3el) {}
-  draw (d3el = this.d3el) {}
+  async setup (d3el = this.d3el) {}
+
+  async draw (d3el = this.d3el) {}
+
   updateContainerCharacteristics (d3el) {
     this.emSize = parseFloat(d3el.style('font-size'));
     this.scrollBarSize = this.computeScrollBarSize(d3el);
@@ -470,9 +493,9 @@ const createMixinAndDefault = function ({
     const MixedClass = classDefFunc(SuperClass);
     if (requireDefault &&
         SuperClass !== DefaultSuperClass &&
-        !(SuperClass.prototype instanceof DefaultSuperClass)) {
+        !(MixedClass.prototype instanceof DefaultSuperClass)) {
       // ... but in most cases, we require that it EVENTUALLY inherits from
-      // DefaultSuperClass. Can be overridden with requireDefault
+      // DefaultSuperClass. Can be overridden with requireDefault = false
       throw new Error(`${MixedClass.name} must inherit from ${DefaultSuperClass.name}`);
     }
     // Add a hidden property to the mixed class so we can handle instanceof
@@ -552,7 +575,7 @@ var description = "Minimal, d3-based Model-View library";
 var module = "dist/uki.esm.js";
 var scripts = {
 	example: "bash examples/run.sh",
-	build: "rollup -c && ls -d examples/*/ | xargs -n 1 cp -v dist/uki.esm.js",
+	build: "rollup -c",
 	lint: "eslint **/*.js --quiet",
 	dev: "rollup -c -w"
 };
@@ -576,6 +599,7 @@ var devDependencies = {
 	"eslint-plugin-promise": "^4.2.1",
 	"eslint-plugin-standard": "^4.0.1",
 	rollup: "^2.17.1",
+	"rollup-plugin-execute": "^1.1.1",
 	serve: "^11.3.2"
 };
 var peerDependencies = {

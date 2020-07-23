@@ -1,4 +1,4 @@
-.UkiButton.button {
+.ButtonView.button {
   position: relative;
 
   &.button-borderless {
@@ -37,7 +37,7 @@
     border-radius: var(--corner-radius);
     text-align: right;
     background-color: var(--accent-color);
-    color: var(--button-primary-color);
+    color: var(--inverted-shadow-color);
     padding: 0 0.5em 0 0.6em;
     z-index: 1;
     border: 1px solid var(--background-color);
@@ -50,7 +50,7 @@
   }
   &.button-primary {
     img {
-      filter: url(#recolorImageTo--button-primary-color);
+      filter: url(#recolorImageTo--inverted-shadow-color);
     }
   }
   &:disabled,

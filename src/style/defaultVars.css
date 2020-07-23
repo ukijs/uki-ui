@@ -28,7 +28,7 @@
   --shadow-color: black;
   --shadow-color-rgb: 0, 0, 0;
 
-	--button-primary-color: white;
+	--inverted-shadow-color: white;
 
 
   /* Note: Skeleton was based off a 10px font sizing for REM  */
@@ -78,6 +78,6 @@
     --shadow-color: black;
     --shadow-color-rgb: 0, 0, 0;
 
-		--button-primary-color: white;
+		--inverted-shadow-color: white;
   }
 }

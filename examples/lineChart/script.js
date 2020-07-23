@@ -1,5 +1,5 @@
 /* globals d3, uki */
-class LineView extends uki.ui.utils.LoadingViewMixin(uki.ui.vis.LineChartView) {
+class LineView extends uki.ui.vis.LineChartViewMixin(uki.ui.utils.InformativeView) {
   constructor (options) {
     options.resources = options.resources || [];
     options.resources.push({
@@ -41,7 +41,7 @@ const lineView = new LineView({
   d3el: d3.select('#histogram')
 });
 
-const button = new uki.ui.components.Button({ // eslint-disable-line no-unused-vars
+const button = new uki.ui.components.ButtonView({ // eslint-disable-line no-unused-vars
   d3el: d3.select('#updateButton'),
   label: 'Update w/Random Data',
   onclick: () => {

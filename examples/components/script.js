@@ -7,7 +7,7 @@ import { goldenlayout, components, utils, vis } from './uki-ui.esm.js';
  */
 
 /* eslint-disable indent */
-class BasicDemoView extends utils.LoadingViewMixin(goldenlayout.GLView) {
+class BasicDemoView extends utils.InformativeViewMixin(goldenlayout.GLView) {
   constructor (options) {
     options.resources = [{
       type: 'text',
@@ -57,7 +57,7 @@ class ModalLauncherView extends goldenlayout.GLView {
       .style('display', 'inline-block')
       .style('margin-bottom', '2em');
     let count = 0;
-    const button = new components.Button({
+    const button = new components.ButtonView({
       d3el: container.append('div').style('margin-right', '2em'),
       label,
       img,
@@ -78,7 +78,6 @@ class ModalLauncherView extends goldenlayout.GLView {
         buttons: [
           {
             label: 'Cancel',
-            className: 'cancel',
             onclick: () => {
               modalResult.text('Clicked Cancel');
               uki.hideModal();
@@ -88,7 +87,6 @@ class ModalLauncherView extends goldenlayout.GLView {
           },
           {
             label: 'OK',
-            className: 'ok',
             primary: true,
             onclick: () => {
               modalResult.text('Clicked OK');
@@ -105,7 +103,7 @@ class ModalLauncherView extends goldenlayout.GLView {
       const generateRandomEntries = length => {
         return Array.from({ length }, () => {
           const childLength = Math.floor(Math.random() * length / 2);
-          const result = { content: childLength };
+          const result = { label: childLength };
           if (childLength > 0) {
             result.subEntries = generateRandomEntries(childLength);
           }
@@ -116,31 +114,30 @@ class ModalLauncherView extends goldenlayout.GLView {
       uki.showContextMenu({
         targetBounds: this.getBoundingClientRect(),
         menuEntries: [
-          { content: { label, img, badge: count, disabled, primary }, onclick: showModalFunc },
-          { content: null },
+          { label, img, badge: count, disabled, primary, onclick: showModalFunc },
+          null,
           {
- content: 'Button properties',
+            label: 'Button properties',
             subEntries: [
-            { content: 'badge: ' + (count === 0 && !showBadge ? 'hidden' : count) },
-            { content: 'label: ' + (label || '(no label)') },
-            { content: 'img: ' + (img || '(no img)') },
-            { content: 'primary: ' + primary.toString() },
-            { content: 'disabled: ' + disabled.toString() }
-          ]
-},
-          { content: null },
+              { label: 'badge: ' + (count === 0 && !showBadge ? 'hidden' : count) },
+              { label: 'label: ' + (label || '(no label)') },
+              { label: 'img: ' + (img || '(no img)') },
+              { label: 'primary: ' + primary.toString() },
+              { label: 'disabled: ' + disabled.toString() }
+            ]
+          },
+          null,
           {
- content: 'Random Submenu Test',
+            label: 'Random Submenu Test',
             subEntries: generateRandomEntries(100)
-}
+          }
         ]
       });
     });
   }
 }
 
-class SvgDemoView extends utils.LoadingViewMixin(
-                          utils.EmptyStateViewMixin(goldenlayout.SvgGLView)) {
+class SvgDemoView extends utils.InformativeViewMixin(goldenlayout.SvgGLView) {
   get emptyMessage () {
     return 'This is an SVG view';
   }
@@ -162,9 +159,8 @@ class SvgDemoView extends utils.LoadingViewMixin(
   }
 }
 
-class IFrameView extends utils.LoadingViewMixin(
-                         utils.EmptyStateViewMixin(
-                         goldenlayout.IFrameGLViewMixin(goldenlayout.GLView))) {
+class IFrameView extends utils.InformativeViewMixin(
+                         goldenlayout.IFrameGLViewMixin(goldenlayout.GLView)) {
   constructor (options) {
     options.src = 'https://www.xkcd.com';
     super(options);
@@ -175,9 +171,8 @@ class IFrameView extends utils.LoadingViewMixin(
   }
 }
 
-class LineView extends utils.LoadingViewMixin(
-                       utils.EmptyStateViewMixin(
-                       vis.LineChartViewMixin(goldenlayout.SvgGLView))) {
+class LineView extends utils.InformativeViewMixin(
+                       vis.LineChartViewMixin(goldenlayout.SvgGLView)) {
   constructor (options) {
     options.resources = options.resources || [];
     options.resources.push({

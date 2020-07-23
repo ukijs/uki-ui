@@ -1,7 +1,7 @@
 /* globals d3, uki */
 import { BaseTableView } from '../BaseTableView/BaseTableView.js';
-import { Button } from '../../components/Button/Button.js';
-import gearIcon from './gear.svg';
+import { ButtonView } from '../../components/ButtonView/ButtonView.js';
+import gearIcon from './gear.img.svg';
 
 const { FlexTableView, FlexTableViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: BaseTableView,
@@ -75,9 +75,9 @@ const { FlexTableView, FlexTableViewMixin } = uki.utils.createMixinAndDefault({
       updateHeader (d3el, header) {
         if (this.cornerHeader && d3el.node() === this.cornerHeader.node()) {
           if (!this.attributeSelector) {
-            this.attributeSelector = new Button({
+            this.attributeSelector = new ButtonView({
               d3el: this.cornerHeader.append('div').classed('attributeSelector', true),
-              img: URL.createObjectURL(new window.Blob([gearIcon], { type: 'image/svg+xml' })),
+              img: gearIcon,
               size: 'small'
             });
           }

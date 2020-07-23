@@ -2,11 +2,11 @@
 import { ThemeableMixin, RecolorableImageViewMixin } from '../../utils/utils.js';
 import defaultStyle from './style.less';
 
-const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
+const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
   classDefFunc: SuperClass => {
-    class Button extends RecolorableImageViewMixin(ThemeableMixin({
-      SuperClass, defaultStyle, className: 'UkiButton'
+    class ButtonView extends RecolorableImageViewMixin(ThemeableMixin({
+      SuperClass, defaultStyle, className: 'ButtonView'
     })) {
       constructor (options) {
         super(options);
@@ -115,14 +115,14 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
           .classed('badge', true)
           .style('display', 'none');
 
-        this.d3el.on('click.UkiButton', () => {
+        this.d3el.on('click.ButtonView', () => {
           if (!this.disabled) {
             if (this.onclick) {
               this.onclick();
             }
             this.trigger('click');
           }
-        }).on('mouseenter.UkiButton', () => {
+        }).on('mouseenter.ButtonView', () => {
           if (this.tooltip) {
             const tooltipArgs = Object.assign({
               targetBounds: this.d3el.node().getBoundingClientRect()
@@ -156,7 +156,7 @@ const { Button, ButtonMixin } = uki.utils.createMixinAndDefault({
           .text(this.badge);
       }
     }
-    return Button;
+    return ButtonView;
   }
 });
-export { Button, ButtonMixin };
+export { ButtonView, ButtonViewMixin };

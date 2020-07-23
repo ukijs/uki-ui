@@ -1,7 +1,7 @@
 /* globals uki */
 import { CanvasViewMixin } from '../../components/CanvasView/CanvasView.js';
 import { GLView } from '../GLView/GLView.js';
-import download from './download.svg';
+import download from './download.text.svg';
 
 const { CanvasGLView, CanvasGLViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: GLView,

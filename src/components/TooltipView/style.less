@@ -12,10 +12,6 @@
   overflow-y: auto;
   overflow-x: hidden;
 
-  hr {
-    margin: 0;
-  }
-
   &.interactive {
     pointer-events: all;
   }
@@ -31,6 +27,12 @@
         position: absolute;
         right: -1em;
       }
+    }
+    &.separator {
+      margin: 0;
+      height: 0;
+      width: 100%;
+      border-top: 1px solid var(--border-color-softer);
     }
   }
 }

@@ -2,7 +2,7 @@
 import { ThemeableMixin } from '../../utils/utils.js';
 import { SvgView, SvgViewMixin } from '../../components/SvgView/SvgView.js';
 import defaultStyle from './style.less';
-import template from './template.html';
+import template from './template.text.svg';
 
 const { LineChartView, LineChartViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: SvgView,
