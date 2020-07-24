@@ -1,7 +1,7 @@
 /* globals d3, uki */
-import { ThemeableMixin } from './utils/utils.js';
-import { TooltipView } from './components/TooltipView/TooltipView.js';
-import { ModalView } from './components/ModalView/ModalView.js';
+import { ThemeableMixin } from './ThemeableMixin/ThemeableMixin.js';
+import { TooltipView } from './TooltipView/TooltipView.js';
+import { ModalView } from './ModalView/ModalView.js';
 import defaultVars from './style/defaultVars.css';
 import normalize from '../node_modules/normalize.css/normalize.css';
 import honegumi from './style/honegumi.css'; // TODO: npm install this one too

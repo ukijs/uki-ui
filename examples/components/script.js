@@ -1,5 +1,5 @@
 /* globals d3, uki */
-import { goldenlayout, components, utils, vis } from './uki-ui.esm.js';
+import * as ui from './uki-ui.esm.js';
 
 /*
  * WARNING: The capabilities in this example are still totally undocumented and
@@ -7,7 +7,8 @@ import { goldenlayout, components, utils, vis } from './uki-ui.esm.js';
  */
 
 /* eslint-disable indent */
-class BasicDemoView extends utils.InformativeViewMixin(goldenlayout.GLView) {
+class BasicDemoView extends ui.InformativeViewMixin(
+                            ui.GLView) {
   constructor (options) {
     options.resources = [{
       type: 'text',
@@ -23,7 +24,7 @@ class BasicDemoView extends utils.InformativeViewMixin(goldenlayout.GLView) {
   }
 }
 
-class ModalLauncherView extends goldenlayout.GLView {
+class ModalLauncherView extends ui.GLView {
   get title () {
     return 'Buttons, Tooltips, and Modals';
   }
@@ -57,7 +58,7 @@ class ModalLauncherView extends goldenlayout.GLView {
       .style('display', 'inline-block')
       .style('margin-bottom', '2em');
     let count = 0;
-    const button = new components.ButtonView({
+    const button = new ui.ButtonView({
       d3el: container.append('div').style('margin-right', '2em'),
       label,
       img,
@@ -137,20 +138,22 @@ class ModalLauncherView extends goldenlayout.GLView {
   }
 }
 
-class SvgDemoView extends utils.InformativeViewMixin(goldenlayout.SvgGLView) {
+class SvgDemoView extends ui.InformativeViewMixin(
+                          ui.SvgGLView) {
   get emptyMessage () {
     return 'This is an SVG view';
   }
 
   setup () {
     super.setup(...arguments);
-    const circle = this.d3el.append('circle').attr('r', 20);
+    const circle = this.d3el.append('circle')
+      .attr('r', 20)
+      .style('fill', 'var(--text-color-softer)');
     this.d3el.on('mousemove', function () {
       const coords = d3.mouse(this);
       circle
         .attr('cx', coords[0])
-        .attr('cy', coords[1])
-        .style('fill', 'var(--text-color-softer)');
+        .attr('cy', coords[1]);
     });
   }
 
@@ -159,8 +162,9 @@ class SvgDemoView extends utils.InformativeViewMixin(goldenlayout.SvgGLView) {
   }
 }
 
-class IFrameView extends utils.InformativeViewMixin(
-                         goldenlayout.IFrameGLViewMixin(goldenlayout.GLView)) {
+class IFrameView extends ui.InformativeViewMixin(
+                         ui.IFrameGLViewMixin(
+                         ui.GLView)) {
   constructor (options) {
     options.src = 'https://www.xkcd.com';
     super(options);
@@ -171,24 +175,22 @@ class IFrameView extends utils.InformativeViewMixin(
   }
 }
 
-class LineView extends utils.InformativeViewMixin(
-                       vis.LineChartViewMixin(goldenlayout.SvgGLView)) {
+class LineView extends ui.LineChartViewMixin(
+                       ui.InformativeViewMixin(
+                       ui.SvgGLView)) {
   constructor (options) {
-    options.resources = options.resources || [];
-    options.resources.push({
-      type: 'json',
-      url: 'lineData.json',
-      name: 'lineData',
-      then: rawData => {
-        return rawData.map(point => {
-          point.timestamp = new Date(point.timestamp);
-          return point;
-        });
-      }
-    });
     super(options);
-    this.ready.then(() => {
-      this.timeSeries = this.getNamedResource('lineData');
+    globalThis.setTimeout(() => {
+      // Simulate loading for a while so that we can demo the
+      // InformativeViewMixin spinner
+      this.generateRandomData();
+    }, 4000);
+  }
+
+  generateRandomData () {
+    const now = +(new Date());
+    this.timeSeries = Array.from({ length: Math.floor(Math.random() * 300) }, (d, i) => {
+      return { timestamp: new Date(now + i * 60 * 1000), count: Math.random() * 300 };
     });
   }
 
@@ -218,7 +220,9 @@ class LineView extends utils.InformativeViewMixin(
   }
 }
 
-class VegaView extends vis.VegaViewMixin(goldenlayout.GLView) {
+class VegaView extends ui.VegaViewMixin(
+                       ui.InformativeViewMixin(
+                       ui.GLView)) {
   constructor (options) {
     options.resources = options.resources || [];
     options.resources.push({
@@ -227,9 +231,15 @@ class VegaView extends vis.VegaViewMixin(goldenlayout.GLView) {
     options.liteSpec = 'liteSpec';
     super(options);
   }
+
+  async draw () {
+    await super.draw(...arguments);
+
+    throw new Error('Sorry, VegaView is not fully implemented just yet');
+  }
 }
 
-class RootView extends goldenlayout.GLRootView {
+class RootView extends ui.GLRootView {
   constructor (options) {
     options.viewClassLookup = {
       BasicDemoView,
@@ -244,11 +254,11 @@ class RootView extends goldenlayout.GLRootView {
         type: 'stack',
         isCloseable: false,
         content: [
+          { type: 'component', componentName: 'LineView', componentState: {} },
           { type: 'component', componentName: 'BasicDemoView', componentState: {} },
           { type: 'component', componentName: 'IFrameView', componentState: {} },
           { type: 'component', componentName: 'SvgDemoView', componentState: {} },
           { type: 'component', componentName: 'ModalLauncherView', componentState: {} },
-          { type: 'component', componentName: 'LineView', componentState: {} },
           { type: 'component', componentName: 'VegaView', componentState: {} }
         ]
       }]

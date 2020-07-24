@@ -1,5 +1,5 @@
 /* globals d3 */
-import { goldenlayout, tables } from './uki-ui.esm.js';
+import * as ui from './uki-ui.esm.js';
 
 /*
  * WARNING: The capabilities in this example are still totally undocumented and
@@ -18,19 +18,19 @@ const data = [
   { this: 7, is: 1, a: parseInt('NaN'), test: null, table: undefined }
 ];
 
-class BaseDemoView extends goldenlayout.GLViewMixin(tables.BaseTableView) {
+class BaseDemoView extends ui.GLViewMixin(ui.BaseTableView) {
   getRawRows () {
     return data;
   }
 }
 
-class FlexDemoView extends goldenlayout.GLViewMixin(tables.FlexTableView) {
+class FlexDemoView extends ui.GLViewMixin(ui.FlexTableView) {
   getRawRows () {
     return data;
   }
 }
 
-class RootView extends goldenlayout.GLRootView {
+class RootView extends ui.GLRootView {
   constructor (options) {
     options.viewClassLookup = {
       BaseDemoView,

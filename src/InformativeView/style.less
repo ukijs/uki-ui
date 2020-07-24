@@ -1,0 +1,43 @@
+.InformativeView {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  .informativeIconEl {
+    width: 2em;
+    height: 2em;
+    filter: url(#recolorImageTo--inverted-shadow-color);
+    &.spin {
+      animation-name: loadingSpinnerKeyframes;
+      animation-duration: 2000ms;
+      animation-iteration-count: infinite;
+      animation-timing-function: linear;
+    }
+  }
+  .informativeMessageEl {
+    margin-top: 1em;
+    font-weight: 600;
+  }
+  .informativeErrorEl {
+    margin-top: 2em;
+    align-self: flex-start;
+    pre {
+      max-height: 30em;
+      overflow: auto;
+    }
+  }
+
+  &.error {
+    .informativeIconEl {
+      filter: url(#recolorImageTo--error-color);
+    }
+    .informativeMessageEl {
+      color: var(--error-color);
+    }
+  }
+}
+
+@keyframes loadingSpinnerKeyframes {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
