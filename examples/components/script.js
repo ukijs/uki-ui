@@ -76,7 +76,7 @@ class ModalLauncherView extends ui.GLView {
           <div>This is an example modal</div>
           <div>It accepts arbitrary html</div>
         `,
-        buttons: [
+        buttonSpecs: [
           {
             label: 'Cancel',
             onclick: () => {
@@ -251,15 +251,25 @@ class RootView extends ui.GLRootView {
     };
     options.glSettings = {
       content: [{
-        type: 'stack',
+        type: 'row',
         isCloseable: false,
         content: [
-          { type: 'component', componentName: 'LineView', componentState: {} },
-          { type: 'component', componentName: 'BasicDemoView', componentState: {} },
-          { type: 'component', componentName: 'IFrameView', componentState: {} },
-          { type: 'component', componentName: 'SvgDemoView', componentState: {} },
-          { type: 'component', componentName: 'ModalLauncherView', componentState: {} },
-          { type: 'component', componentName: 'VegaView', componentState: {} }
+          {
+            type: 'stack',
+            content: [
+              { type: 'component', componentName: 'BasicDemoView', componentState: {} },
+              { type: 'component', componentName: 'IFrameView', componentState: {} },
+              { type: 'component', componentName: 'SvgDemoView', componentState: {} },
+              { type: 'component', componentName: 'ModalLauncherView', componentState: {} }
+            ]
+          },
+          {
+            type: 'stack',
+            content: [
+              { type: 'component', componentName: 'LineView', componentState: {} },
+              { type: 'component', componentName: 'VegaView', componentState: {} }
+            ]
+          }
         ]
       }]
     };

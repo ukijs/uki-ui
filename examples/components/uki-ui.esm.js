@@ -522,7 +522,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
 
       resetVisibility (value) {
         this._visible = value;
-        if (this.nestLevel === 0) {
+        if (this === this._rootTooltip) {
           if (this._visible) {
             this._showEvent = d3.event;
             d3.select('body').on('click.tooltip', () => {
@@ -781,7 +781,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
           }).on('click', d => {
             if (d && d.onclick) {
               d.onclick();
-              this.hide();
+              this._rootTooltip.hide();
             }
           }).on('mouseenter', function (d) {
             if (d && d.subEntries) {
@@ -843,7 +843,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-var defaultStyle$2 = ".ModalView {\n  position: absolute;\n  left: 0px;\n  top: 0px;\n  right: 0px;\n  bottom: 0px;\n  display: flex;\n  z-index: 1000;\n}\n.ModalView .underlay {\n  position: absolute;\n  left: 0px;\n  top: 0px;\n  right: 0px;\n  bottom: 0px;\n  background: var(--text-color-softer);\n  opacity: 0.75;\n}\n.ModalView .centerWrapper {\n  position: relative;\n  background-color: var(--background-color);\n  opacity: 1;\n  border: 1px solid var(--shadow-color);\n  border-radius: var(--corner-radius);\n  box-shadow: 0.5em 0.5em 2em rgba(var(--shadow-color-rgb), 0.75);\n  min-width: 20em;\n  max-width: calc(100% - 4em);\n  min-height: 20em;\n  max-height: calc(100% - 4em);\n  margin: auto;\n  padding: 1em;\n}\n.ModalView .centerWrapper .contents {\n  margin-bottom: 3.5em;\n  max-height: calc(100vh - 7.5em);\n}\n.ModalView .buttonWrapper {\n  position: absolute;\n  bottom: 1em;\n  right: 1em;\n  display: flex;\n  justify-content: flex-end;\n  align-items: center;\n}\n.ModalView .buttonWrapper .button {\n  margin-left: 1em;\n}\n";
+var defaultStyle$2 = ".ModalView {\n  position: absolute;\n  left: 0px;\n  top: 0px;\n  right: 0px;\n  bottom: 0px;\n  display: flex;\n  z-index: 1000;\n}\n.ModalView .modalShadowEl {\n  position: absolute;\n  left: 0px;\n  top: 0px;\n  right: 0px;\n  bottom: 0px;\n  background: var(--text-color-softer);\n  opacity: 0.75;\n}\n.ModalView .centerWrapper {\n  position: relative;\n  background-color: var(--background-color);\n  opacity: 1;\n  border: 1px solid var(--shadow-color);\n  border-radius: var(--corner-radius);\n  box-shadow: 0.5em 0.5em 2em rgba(var(--shadow-color-rgb), 0.75);\n  min-width: 20em;\n  max-width: calc(100% - 4em);\n  min-height: 20em;\n  max-height: calc(100% - 4em);\n  margin: auto;\n  padding: 1em;\n}\n.ModalView .centerWrapper .modalContentEl {\n  margin-bottom: 3.5em;\n  max-height: calc(100vh - 7.5em);\n}\n.ModalView .modalButtonEl {\n  position: absolute;\n  bottom: 1em;\n  right: 1em;\n  display: flex;\n  justify-content: flex-end;\n  align-items: center;\n}\n.ModalView .modalButtonEl .button {\n  margin-left: 1em;\n}\n";
 
 var template = "<div class=\"modalShadowEl\"></div>\n<div class=\"centerWrapper\">\n  <div class=\"modalContentEl\"></div>\n  <div class=\"modalButtonEl\"></div>\n</div>\n";
 
@@ -872,7 +872,6 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
             onclick: () => { this.hide(); }
           }
         ];
-        this.parseButtonViewSpecs();
       }
 
       get content () {
@@ -908,45 +907,26 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
 
       set buttonSpecs (specs) {
         this._buttonSpecs = specs;
-        this.parseButtonViewSpecs();
         this.render();
       }
 
       setButtonViewSpec (index, spec) {
         this._buttonSpecs[index] = spec;
-        this._buttons[index] = new ButtonView(spec);
         this.render();
-      }
-
-      get buttons () {
-        return this._buttons;
-      }
-
-      set buttons (buttons) {
-        this._buttons = buttons;
-        this.render();
-      }
-
-      parseButtonViewSpecs () {
-        this._buttons = this._buttonSpecs.map(spec => new ButtonView(spec));
       }
 
       async show ({
         content,
         hide,
         shadow,
-        buttonSpecs,
-        buttons
+        buttonSpecs
       } = {}) {
         this.visible = !hide;
         if (content !== undefined) {
           this._content = content;
         }
-        if (buttons !== undefined) {
-          this._buttons = buttons;
-        } else if (buttonSpecs !== undefined) {
+        if (buttonSpecs !== undefined) {
           this._buttonSpecs = buttonSpecs;
-          this.parseButtonViewSpecs();
         }
         if (shadow !== undefined) {
           this._shadow = shadow;
@@ -982,9 +962,25 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
             await this.content(this.modalContentEl);
           }
 
-          this.modalButtonEl.selectAll('.ButtonView')
-            .data(this.buttons).join('div')
-            .each(function (d) { d.render(d3.select(this)); });
+          let buttons = this.modalButtonEl.selectAll('.ButtonView')
+            .data(this.buttonSpecs, (d, i) => i);
+          buttons.exit().remove();
+          const buttonsEnter = buttons.enter().append('div');
+          buttons = buttons.merge(buttonsEnter);
+
+          const buttonPromises = [];
+          buttons.each(function (d) {
+            const buttonOptions = Object.assign({}, d);
+            buttonOptions.d3el = d3.select(this);
+            if (this.__modalButtonView) {
+              Object.assign(this.__modalButtonView, buttonOptions);
+            } else {
+              this.__modalButtonView = new ButtonView(buttonOptions);
+            }
+            buttonPromises.push(this.__modalButtonView.render());
+          });
+
+          await Promise.all(buttonPromises);
         }
 
         this.d3el.style('display', this.visible ? null : 'none');
@@ -2405,7 +2401,7 @@ const { VegaView, VegaViewMixin } = uki.utils.createMixinAndDefault({
 });
 
 var name = "@ukijs/uki-ui";
-var version = "0.1.7";
+var version = "0.2.0";
 var description = "A UI toolkit using the uki.js library";
 var module = "dist/uki-ui.esm.js";
 var scripts = {
@@ -2428,7 +2424,7 @@ var devDependencies = {
 	"@rollup/plugin-image": "^2.0.5",
 	"@rollup/plugin-json": "^4.1.0",
 	d3: "^5.16.0",
-	eslint: "^7.4.0",
+	eslint: "^7.5.0",
 	"eslint-config-semistandard": "^15.0.1",
 	"eslint-config-standard": "^14.1.1",
 	"eslint-plugin-import": "^2.22.0",
@@ -2436,22 +2432,22 @@ var devDependencies = {
 	"eslint-plugin-promise": "^4.2.1",
 	"eslint-plugin-standard": "^4.0.1",
 	"normalize.css": "^8.0.1",
-	rollup: "^2.22.0",
+	rollup: "^2.23.0",
 	"rollup-plugin-execute": "^1.1.1",
 	"rollup-plugin-less": "^1.1.2",
 	"rollup-plugin-string": "^3.0.0",
 	serve: "^11.3.2",
-	uki: "^0.6.9"
+	uki: "^0.7.0"
 };
 var peerDependencies = {
 	d3: "^5.16.0",
-	uki: "^0.6.9"
+	uki: "^0.7.0"
 };
 var optionalDependencies = {
 	"golden-layout": "^1.5.9",
 	less: "^3.12.2",
 	vega: "^5.13.0",
-	"vega-lite": "^4.13.1"
+	"vega-lite": "^4.14.0"
 };
 var pkg = {
 	name: name,

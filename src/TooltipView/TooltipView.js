@@ -162,7 +162,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
 
       resetVisibility (value) {
         this._visible = value;
-        if (this.nestLevel === 0) {
+        if (this === this._rootTooltip) {
           if (this._visible) {
             this._showEvent = d3.event;
             d3.select('body').on('click.tooltip', () => {
@@ -421,7 +421,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
           }).on('click', d => {
             if (d && d.onclick) {
               d.onclick();
-              this.hide();
+              this._rootTooltip.hide();
             }
           }).on('mouseenter', function (d) {
             if (d && d.subEntries) {

@@ -570,7 +570,7 @@ var utils = /*#__PURE__*/Object.freeze({
 });
 
 var name = "uki";
-var version = "0.6.9";
+var version = "0.7.0";
 var description = "Minimal, d3-based Model-View library";
 var module = "dist/uki.esm.js";
 var scripts = {
@@ -591,14 +591,14 @@ var bugs = {
 var homepage = "https://github.com/ukijs/uki#readme";
 var devDependencies = {
 	"@rollup/plugin-json": "^4.1.0",
-	eslint: "^7.4.0",
+	eslint: "^7.5.0",
 	"eslint-config-semistandard": "^15.0.1",
 	"eslint-config-standard": "^14.1.1",
 	"eslint-plugin-import": "^2.22.0",
 	"eslint-plugin-node": "^11.1.0",
 	"eslint-plugin-promise": "^4.2.1",
 	"eslint-plugin-standard": "^4.0.1",
-	rollup: "^2.17.1",
+	rollup: "^2.23.0",
 	"rollup-plugin-execute": "^1.1.1",
 	serve: "^11.3.2"
 };
@@ -606,7 +606,7 @@ var peerDependencies = {
 	d3: "^5.16.0"
 };
 var optionalDependencies = {
-	less: "^3.11.3"
+	less: "^3.12.2"
 };
 var pkg = {
 	name: name,

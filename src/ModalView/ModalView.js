@@ -27,7 +27,6 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
             onclick: () => { this.hide(); }
           }
         ];
-        this.parseButtonViewSpecs();
       }
 
       get content () {
@@ -63,45 +62,26 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
 
       set buttonSpecs (specs) {
         this._buttonSpecs = specs;
-        this.parseButtonViewSpecs();
         this.render();
       }
 
       setButtonViewSpec (index, spec) {
         this._buttonSpecs[index] = spec;
-        this._buttons[index] = new ButtonView(spec);
         this.render();
-      }
-
-      get buttons () {
-        return this._buttons;
-      }
-
-      set buttons (buttons) {
-        this._buttons = buttons;
-        this.render();
-      }
-
-      parseButtonViewSpecs () {
-        this._buttons = this._buttonSpecs.map(spec => new ButtonView(spec));
       }
 
       async show ({
         content,
         hide,
         shadow,
-        buttonSpecs,
-        buttons
+        buttonSpecs
       } = {}) {
         this.visible = !hide;
         if (content !== undefined) {
           this._content = content;
         }
-        if (buttons !== undefined) {
-          this._buttons = buttons;
-        } else if (buttonSpecs !== undefined) {
+        if (buttonSpecs !== undefined) {
           this._buttonSpecs = buttonSpecs;
-          this.parseButtonViewSpecs();
         }
         if (shadow !== undefined) {
           this._shadow = shadow;
@@ -137,9 +117,25 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
             await this.content(this.modalContentEl);
           }
 
-          this.modalButtonEl.selectAll('.ButtonView')
-            .data(this.buttons).join('div')
-            .each(function (d) { d.render(d3.select(this)); });
+          let buttons = this.modalButtonEl.selectAll('.ButtonView')
+            .data(this.buttonSpecs, (d, i) => i);
+          buttons.exit().remove();
+          const buttonsEnter = buttons.enter().append('div');
+          buttons = buttons.merge(buttonsEnter);
+
+          const buttonPromises = [];
+          buttons.each(function (d) {
+            const buttonOptions = Object.assign({}, d);
+            buttonOptions.d3el = d3.select(this);
+            if (this.__modalButtonView) {
+              Object.assign(this.__modalButtonView, buttonOptions);
+            } else {
+              this.__modalButtonView = new ButtonView(buttonOptions);
+            }
+            buttonPromises.push(this.__modalButtonView.render());
+          });
+
+          await Promise.all(buttonPromises);
         }
 
         this.d3el.style('display', this.visible ? null : 'none');
