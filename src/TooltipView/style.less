@@ -20,12 +20,19 @@
     display: block;
     margin: 0.5em 0;
     &.submenu {
-      margin-right: 1em;
       &:after {
         content: '\25b6';
         color: var(--text-color-softer);
         position: absolute;
-        right: -1em;
+        right: 0.5em;
+      }
+    }
+    &.checked {
+      &:before {
+        content: '\2713';
+        color: var(--text-color-softer);
+        position: absolute;
+        left: 0.5em;
       }
     }
     &.separator {

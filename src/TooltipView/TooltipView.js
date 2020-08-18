@@ -23,8 +23,8 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         this._nestLevel = options.nestLevel || 0;
         this._contextMenuEntries = options._contextMenuEntries || null;
         this._currentSubMenu = undefined;
-        this._hideVote = true;
         this._rootTooltip = options.rootTooltip || this;
+        this._hideVote = this._rootTooltip !== this;
       }
 
       get content () {
@@ -166,7 +166,6 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
       }
 
       resetHideTimer () {
-        this._hideVote = false;
         globalThis.clearTimeout(this._tooltipTimeout);
         if (this.d3el) {
           this.d3el
@@ -392,6 +391,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
 
         const self = this;
         menuEntries.classed('submenu', d => d && d.subEntries)
+          .classed('checked', d => d && d.checked)
           .classed('separator', d => d === undefined || d === null)
           .each(function (d) {
             if (d === undefined || d === null) {
@@ -426,8 +426,9 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
             if (d && d.subEntries) {
               // Use the menu item, including its margins, as targetBounds
               let targetBounds = this.getBoundingClientRect();
-              const targetMargins = d3.select(this).style('margin')
-                .split(' ').map(m => parseFloat(m));
+              const targetStyle = globalThis.getComputedStyle(this);
+              const targetMargins = ['marginTop', 'marginRight', 'marginBottom', 'marginLeft']
+                .map(m => parseFloat(targetStyle[m]));
               targetBounds = {
                 top: targetBounds.top - targetMargins[0],
                 right: targetBounds.right + targetMargins[1],

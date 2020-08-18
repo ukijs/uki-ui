@@ -104,6 +104,8 @@ class ModalLauncherView extends ui.GLView {
           const result = { label: childLength };
           if (childLength > 0) {
             result.subEntries = generateRandomEntries(childLength);
+          } else {
+            result.checked = true;
           }
           return result;
         });
@@ -252,11 +254,16 @@ class RootView extends ui.GLRootView {
         isCloseable: false,
         content: [
           {
-            type: 'stack',
+            type: 'column',
             content: [
-              { type: 'component', componentName: 'BasicDemoView', componentState: {} },
-              { type: 'component', componentName: 'IFrameView', componentState: {} },
-              { type: 'component', componentName: 'SvgDemoView', componentState: {} },
+              {
+                type: 'row',
+                content: [
+                  { type: 'component', componentName: 'BasicDemoView', componentState: {} },
+                  { type: 'component', componentName: 'IFrameView', componentState: {} },
+                  { type: 'component', componentName: 'SvgDemoView', componentState: {} }
+                ]
+              },
               { type: 'component', componentName: 'ModalLauncherView', componentState: {} }
             ]
           },

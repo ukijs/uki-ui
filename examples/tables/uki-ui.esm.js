@@ -373,7 +373,7 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-var defaultStyle$1 = ".TooltipView {\n  position: fixed;\n  z-index: 1001;\n  padding: 0.5em;\n  border-radius: 0.5em;\n  background: var(--background-color);\n  color: var(--text-color);\n  box-shadow: 2px 2px 5px rgba(var(--shadow-color-rgb), 0.75);\n  pointer-events: none;\n  max-height: 50%;\n  overflow-y: auto;\n  overflow-x: hidden;\n}\n.TooltipView.interactive {\n  pointer-events: all;\n}\n.TooltipView .menuItem {\n  display: block;\n  margin: 0.5em 0;\n}\n.TooltipView .menuItem.submenu {\n  margin-right: 1em;\n}\n.TooltipView .menuItem.submenu:after {\n  content: '\\25b6';\n  color: var(--text-color-softer);\n  position: absolute;\n  right: -1em;\n}\n.TooltipView .menuItem.separator {\n  margin: 0;\n  height: 0;\n  width: 100%;\n  border-top: 1px solid var(--border-color-softer);\n}\n";
+var defaultStyle$1 = ".TooltipView {\n  position: fixed;\n  z-index: 1001;\n  padding: 0.5em;\n  border-radius: 0.5em;\n  background: var(--background-color);\n  color: var(--text-color);\n  box-shadow: 2px 2px 5px rgba(var(--shadow-color-rgb), 0.75);\n  pointer-events: none;\n  max-height: 50%;\n  overflow-y: auto;\n  overflow-x: hidden;\n}\n.TooltipView.interactive {\n  pointer-events: all;\n}\n.TooltipView .menuItem {\n  display: block;\n  margin: 0.5em 0;\n}\n.TooltipView .menuItem.submenu:after {\n  content: '\\25b6';\n  color: var(--text-color-softer);\n  position: absolute;\n  right: 0.5em;\n}\n.TooltipView .menuItem.checked:before {\n  content: '\\2713';\n  color: var(--text-color-softer);\n  position: absolute;\n  left: 0.5em;\n}\n.TooltipView .menuItem.separator {\n  margin: 0;\n  height: 0;\n  width: 100%;\n  border-top: 1px solid var(--border-color-softer);\n}\n";
 
 /* globals d3, uki */
 
@@ -397,8 +397,8 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         this._nestLevel = options.nestLevel || 0;
         this._contextMenuEntries = options._contextMenuEntries || null;
         this._currentSubMenu = undefined;
-        this._hideVote = true;
         this._rootTooltip = options.rootTooltip || this;
+        this._hideVote = this._rootTooltip !== this;
       }
 
       get content () {
@@ -540,7 +540,6 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
       }
 
       resetHideTimer () {
-        this._hideVote = false;
         globalThis.clearTimeout(this._tooltipTimeout);
         if (this.d3el) {
           this.d3el
@@ -766,6 +765,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
 
         const self = this;
         menuEntries.classed('submenu', d => d && d.subEntries)
+          .classed('checked', d => d && d.checked)
           .classed('separator', d => d === undefined || d === null)
           .each(function (d) {
             if (d === undefined || d === null) {
@@ -800,8 +800,9 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
             if (d && d.subEntries) {
               // Use the menu item, including its margins, as targetBounds
               let targetBounds = this.getBoundingClientRect();
-              const targetMargins = d3.select(this).style('margin')
-                .split(' ').map(m => parseFloat(m));
+              const targetStyle = globalThis.getComputedStyle(this);
+              const targetMargins = ['marginTop', 'marginRight', 'marginBottom', 'marginLeft']
+                .map(m => parseFloat(targetStyle[m]));
               targetBounds = {
                 top: targetBounds.top - targetMargins[0],
                 right: targetBounds.right + targetMargins[1],
@@ -2446,7 +2447,7 @@ const { VegaView, VegaViewMixin } = uki.utils.createMixinAndDefault({
 });
 
 var name = "@ukijs/uki-ui";
-var version = "0.2.0";
+var version = "0.2.1";
 var description = "A UI toolkit using the uki.js library";
 var module = "dist/uki-ui.esm.js";
 var scripts = {
