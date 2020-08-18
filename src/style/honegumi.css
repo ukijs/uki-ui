@@ -64,7 +64,7 @@ body {
   line-height: 1.6;
   font-weight: 400;
   font-family: "Raleway", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  color: var(--text-color-normal);
+  color: var(--text-color);
   background-color: var(--background-color);;
 }
 
@@ -143,7 +143,7 @@ button:active,
 input[type="submit"]:active,
 input[type="reset"]:active,
 input[type="button"]:active {
-  color: var(--text-color-normal);
+  color: var(--text-color);
   border-color: var(--text-color-softer);
   outline: 0; }
 .button.button-primary,
@@ -190,6 +190,7 @@ input[type="button"].button-primary:disabled {
 
 /* Forms
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
+input:not([type]),
 input[type="email"],
 input[type="number"],
 input[type="search"],
@@ -202,11 +203,13 @@ select {
   height: var(--form-element-height);
   padding: 6px 10px; /* The 6px vertically centers text on FF, ignored by Webkit */
   background-color: var(--background-color);
+  color: var(--text-color);
   border: 1px solid var(--border-color-softer);
   border-radius: var(--corner-radius);
   box-shadow: none;
   box-sizing: border-box; }
 /* Removes awkward default styles on some inputs for iOS */
+input:not([type]),
 input[type="email"],
 input[type="number"],
 input[type="search"],
@@ -221,9 +224,10 @@ textarea {
      -moz-appearance: none;
           appearance: none; }
 textarea {
-  min-height: 65px;
+  min-height: 5em;
   padding-top: 6px;
   padding-bottom: 6px; }
+input:not([type]):focus,
 input[type="email"]:focus,
 input[type="number"]:focus,
 input[type="search"]:focus,
@@ -235,6 +239,32 @@ textarea:focus,
 select:focus {
   border: 1px solid var(--accent-color);
   outline: 0; }
+input:not([type]).error,
+input[type="email"].error,
+input[type="number"].error,
+input[type="search"].error,
+input[type="text"].error,
+input[type="tel"].error,
+input[type="url"].error,
+input[type="password"].error,
+textarea.error,
+select.error {
+  color: var(--error-color);
+  border: 1px solid var(--error-color);
+}
+input:not([type]):disabled,
+input[type="email"]:disabled,
+input[type="number"]:disabled,
+input[type="search"]:disabled,
+input[type="text"]:disabled,
+input[type="tel"]:disabled,
+input[type="url"]:disabled,
+input[type="password"]:disabled,
+textarea:disabled,
+select:disabled {
+  color: var(--disabled-color);
+  background-color: var(--background-color-softer);
+}
 label,
 legend {
   display: block;
@@ -250,7 +280,9 @@ label > .label-body {
   display: inline-block;
   margin-left: .5em;
   font-weight: normal; }
-
+::placeholder {
+  color: var(--disabled-color);
+}
 
 /* Lists
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
@@ -343,7 +375,6 @@ li {
   cursor: grabbing;
   background: var(--text-color-softer);
 }
-
 
 /* Code
 –––––––––––––––––––––––––––––––––––––––––––––––––– */

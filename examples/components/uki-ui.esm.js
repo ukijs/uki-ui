@@ -197,7 +197,7 @@ const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixi
   }
 });
 
-var defaultStyle = ".ButtonView.button {\n  position: relative;\n}\n.ButtonView.button.button-borderless {\n  border-color: transparent;\n}\n.ButtonView.button img {\n  display: inline-block;\n  position: relative;\n  top: 0.65em;\n  width: 2em;\n  height: 2em;\n  left: -1em;\n  filter: url(#recolorImageTo--text-color-softer);\n}\n.ButtonView.button.imgOnly {\n  padding: 0;\n}\n.ButtonView.button.imgOnly img {\n  left: 0;\n  padding: 0 0.5em;\n}\n.ButtonView.button .label {\n  display: inline-block;\n  white-space: nowrap;\n  vertical-align: top;\n}\n.ButtonView.button .badge {\n  position: absolute;\n  font-weight: bolder;\n  right: -1em;\n  top: -1em;\n  height: 2em;\n  line-height: 2em;\n  border-radius: var(--corner-radius);\n  text-align: right;\n  background-color: var(--accent-color);\n  color: var(--inverted-shadow-color);\n  padding: 0 0.5em 0 0.6em;\n  z-index: 1;\n  border: 1px solid var(--background-color);\n}\n.ButtonView.button:active img,\n.ButtonView.button:hover img {\n  filter: url(#recolorImageTo--text-color-normal);\n}\n.ButtonView.button.button-primary img {\n  filter: url(#recolorImageTo--inverted-shadow-color);\n}\n.ButtonView.button:disabled img,\n.ButtonView.button.button-disabled img {\n  filter: url(#recolorImageTo--disabled-color);\n}\n.ButtonView.button:disabled .badge,\n.ButtonView.button.button-disabled .badge {\n  color: var(--background-color);\n  background-color: var(--disabled-color);\n}\n.ButtonView.button:disabled.button-primary img,\n.ButtonView.button.button-disabled.button-primary img {\n  filter: url(#recolorImageTo--background-color);\n}\n.ButtonView.button:disabled.button-primary .badge,\n.ButtonView.button.button-disabled.button-primary .badge {\n  color: var(--background-color);\n  background-color: var(--disabled-color);\n}\n";
+var defaultStyle = ".ButtonView.button {\n  position: relative;\n}\n.ButtonView.button.button-borderless {\n  border-color: transparent;\n}\n.ButtonView.button img {\n  display: inline-block;\n  position: relative;\n  top: 0.65em;\n  width: 2em;\n  height: 2em;\n  left: -1em;\n  filter: url(#recolorImageTo--text-color-softer);\n}\n.ButtonView.button.imgOnly {\n  padding: 0;\n}\n.ButtonView.button.imgOnly img {\n  left: 0;\n  padding: 0 0.5em;\n}\n.ButtonView.button .label {\n  display: inline-block;\n  white-space: nowrap;\n  vertical-align: top;\n}\n.ButtonView.button .badge {\n  position: absolute;\n  font-weight: bolder;\n  right: -1em;\n  top: -1em;\n  height: 2em;\n  line-height: 2em;\n  border-radius: var(--corner-radius);\n  text-align: right;\n  background-color: var(--accent-color);\n  color: var(--inverted-shadow-color);\n  padding: 0 0.5em 0 0.6em;\n  z-index: 1;\n  border: 1px solid var(--background-color);\n}\n.ButtonView.button:active img,\n.ButtonView.button:hover img {\n  filter: url(#recolorImageTo--text-color);\n}\n.ButtonView.button.button-primary img {\n  filter: url(#recolorImageTo--inverted-shadow-color);\n}\n.ButtonView.button:disabled img,\n.ButtonView.button.button-disabled img {\n  filter: url(#recolorImageTo--disabled-color);\n}\n.ButtonView.button:disabled .badge,\n.ButtonView.button.button-disabled .badge {\n  color: var(--background-color);\n  background-color: var(--disabled-color);\n}\n.ButtonView.button:disabled.button-primary img,\n.ButtonView.button.button-disabled.button-primary img {\n  filter: url(#recolorImageTo--background-color);\n}\n.ButtonView.button:disabled.button-primary .badge,\n.ButtonView.button.button-disabled.button-primary .badge {\n  color: var(--background-color);\n  background-color: var(--disabled-color);\n}\n";
 
 /* globals uki */
 
@@ -219,6 +219,7 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
         this._borderless = options.borderless || false;
         this._tooltip = options.tooltip;
         this._onclick = options.onclick || null;
+        this._onDisabledClick = options.onDisabledClick || null;
       }
 
       set size (value) {
@@ -302,6 +303,15 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
         return this._onclick;
       }
 
+      set onDisabledClick (value) {
+        this._onDisabledClick = value;
+        this.render();
+      }
+
+      get onDisabledClick () {
+        return this._onDisabledClick;
+      }
+
       async setup () {
         await super.setup(...arguments);
         this.d3el.classed('button', true);
@@ -320,6 +330,10 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
               this.onclick();
             }
             this.trigger('click');
+          } else {
+            if (this.onDisabledClick) {
+              this.onDisabledClick();
+            }
           }
         }).on('mouseenter.ButtonView', () => {
           if (this.tooltip) {
@@ -359,7 +373,7 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-var defaultStyle$1 = ".TooltipView {\n  position: fixed;\n  z-index: 1001;\n  padding: 0.5em;\n  border-radius: 0.5em;\n  background: var(--background-color);\n  color: var(--text-color-normal);\n  box-shadow: 2px 2px 5px rgba(var(--shadow-color-rgb), 0.75);\n  pointer-events: none;\n  max-height: 50%;\n  overflow-y: auto;\n  overflow-x: hidden;\n}\n.TooltipView.interactive {\n  pointer-events: all;\n}\n.TooltipView .menuItem {\n  display: block;\n  margin: 0.5em 0;\n}\n.TooltipView .menuItem.submenu {\n  margin-right: 1em;\n}\n.TooltipView .menuItem.submenu:after {\n  content: '\\25b6';\n  color: var(--text-color-softer);\n  position: absolute;\n  right: -1em;\n}\n.TooltipView .menuItem.separator {\n  margin: 0;\n  height: 0;\n  width: 100%;\n  border-top: 1px solid var(--border-color-softer);\n}\n";
+var defaultStyle$1 = ".TooltipView {\n  position: fixed;\n  z-index: 1001;\n  padding: 0.5em;\n  border-radius: 0.5em;\n  background: var(--background-color);\n  color: var(--text-color);\n  box-shadow: 2px 2px 5px rgba(var(--shadow-color-rgb), 0.75);\n  pointer-events: none;\n  max-height: 50%;\n  overflow-y: auto;\n  overflow-x: hidden;\n}\n.TooltipView.interactive {\n  pointer-events: all;\n}\n.TooltipView .menuItem {\n  display: block;\n  margin: 0.5em 0;\n}\n.TooltipView .menuItem.submenu {\n  margin-right: 1em;\n}\n.TooltipView .menuItem.submenu:after {\n  content: '\\25b6';\n  color: var(--text-color-softer);\n  position: absolute;\n  right: -1em;\n}\n.TooltipView .menuItem.separator {\n  margin: 0;\n  height: 0;\n  width: 100%;\n  border-top: 1px solid var(--border-color-softer);\n}\n";
 
 /* globals d3, uki */
 
@@ -374,7 +388,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
 
         this._content = options.content === undefined ? '' : options.content;
         this._visible = options.visible || false;
-        this._showEvent = this._visible ? d3.event : null;
+        this._showEvent = options.showEvent || (this._visible && d3.event) || null;
         this._target = options.target || null;
         this._targetBounds = options.targetBounds || null;
         this._anchor = options.anchor || null;
@@ -404,7 +418,8 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
       }
 
       set visible (value) {
-        this.resetVisibility(value);
+        this._visible = value;
+        this.resetHideTimer();
         this.render();
       }
 
@@ -464,8 +479,10 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         anchor,
         hideAfterMs,
         interactive,
+        showEvent,
         isContextMenu = false
       } = {}) {
+        this._showEvent = showEvent || d3.event;
         if (content !== undefined) {
           this._content = content;
         }
@@ -490,7 +507,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
           this._contextMenuEntries = null;
         }
         delete this._currentSubMenu;
-        this.resetVisibility(!hide);
+        this._visible = !hide;
         this.resetHideTimer();
         await this.render();
       }
@@ -501,7 +518,8 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         targetBounds,
         anchor,
         hideAfterMs,
-        interactive
+        interactive,
+        showEvent
       } = {}) {
         this._contextMenuEntries = menuEntries;
         delete this._currentSubMenu;
@@ -512,7 +530,8 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
           anchor: anchor || { x: 1, y: 0 },
           hideAfterMs: hideAfterMs,
           interactive: true,
-          isContextMenu: true
+          isContextMenu: true,
+          showEvent
         });
       }
 
@@ -520,31 +539,8 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         await this.show({ hide: true });
       }
 
-      resetVisibility (value) {
-        this._visible = value;
-        if (this === this._rootTooltip) {
-          if (this._visible) {
-            this._showEvent = d3.event;
-            d3.select('body').on('click.tooltip', () => {
-              if (d3.event === this._showEvent) {
-                // This is the same event that opened the tooltip; absorb the event to
-                // prevent flicker
-                d3.event.stopPropagation();
-              } else if (!this.interactive || !this.d3el.node().contains(d3.event.target)) {
-                // Hide the tooltip if we click outside of it, or if this isn't an
-                // interactive tooltip
-                this.hide();
-              }
-            });
-          } else {
-            this._showEvent = null;
-            d3.select('body').on('click.tooltip', null);
-          }
-        }
-        this.render();
-      }
-
       resetHideTimer () {
+        this._hideVote = false;
         globalThis.clearTimeout(this._tooltipTimeout);
         if (this.d3el) {
           this.d3el
@@ -581,7 +577,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         this._allVoteTimeout = globalThis.setTimeout(() => {
           // All the submenus have to agree that the context menu tree should
           // be hidden, otherwise it stays visible
-          let contextMenu = this;
+          let contextMenu = this._rootTooltip;
           let hide = true;
           while (contextMenu) {
             hide = hide && contextMenu._hideVote;
@@ -710,6 +706,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
           this.d3el
             .style('left', '-1000em')
             .style('top', '-1000em');
+          d3.select('body').on(`click.tooltip${this._nestLevel}`, null);
         } else {
           if (this.content instanceof uki.View) {
             await this.content.render(this.d3el);
@@ -737,6 +734,21 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
 
           this.d3el.style('left', tooltipPosition.left + 'px')
             .style('top', tooltipPosition.top + 'px');
+
+          d3.select('body').on(`click.tooltip${this._nestLevel}`, () => {
+            if (
+              (!this.interactive ||
+               !this.d3el.node().contains(d3.event.target)) &&
+              d3.event !== this._showEvent
+            ) {
+              // Vote to hide the tooltip if this isn't an interactive tooltip,
+              // or if we click outside of an interactive tooltip, as long as
+              // the current mouse event isn't the one that is trying to open
+              // a tooltip
+              this._hideVote = true;
+              this._rootTooltip.hideIfAllVotesCast();
+            }
+          });
         }
 
         await this.drawSubMenu();
@@ -744,6 +756,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
 
       async drawContextMenu () {
         const contentFuncPromises = [];
+        this.d3el.selectAll(':scope > :not(.menuItem)').remove();
         let menuEntries = this.d3el.selectAll(':scope > .menuItem')
           .data(this._contextMenuEntries, (d, i) => i);
         menuEntries.exit().remove();
@@ -779,7 +792,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
               contentFuncPromises.push(this.__contextMenuButtonView.render());
             }
           }).on('click', d => {
-            if (d && d.onclick) {
+            if (d && d.onclick && !d.disabled) {
               d.onclick();
               this._rootTooltip.hide();
             }
@@ -826,6 +839,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
           let level = this._nestLevel + 1;
           while (d3el.node() !== null) {
             d3el.remove();
+            d3.select('body').on(`click.tooltip${level}`, null);
             level += 1;
             d3el = d3.select(`.nestedContextMenu[data-nest-level="${level}"]`);
           }
@@ -861,7 +875,7 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         this._content = options.content;
         this._visible = options.visible || false;
         this._shadow = options.shadow || true;
-        this._buttonSpecs = options.buttons || [
+        this._buttonSpecs = options.buttonSpecs || [
           {
             label: 'Cancel',
             onclick: () => { this.hide(); }
@@ -915,6 +929,12 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         this.render();
       }
 
+      get buttonViews () {
+        return this.modalButtonEl?.selectAll('.ButtonView').nodes().map(el => {
+          return el.__modalButtonView;
+        });
+      }
+
       async show ({
         content,
         hide,
@@ -939,6 +959,10 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
       }
 
       async setup () {
+        // As ModalView might be reusing a d3el from a different ModalView,
+        // reset its class first (its contents will be reset by the html() call
+        // below)
+        this.d3el.attr('class', null);
         await super.setup(...arguments);
         this.d3el.style('display', 'none')
           .html(template);
@@ -954,7 +978,7 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         if (this.visible) {
           this.modalShadowEl.style('display', this.shadow ? null : 'none');
 
-          if (this.content === null || typeof this.content === 'string') {
+          if (typeof this.content === 'string') {
             this.modalContentEl.html(this.content);
           } else if (this.content instanceof uki.View) {
             await this.content.render(this.modalContentEl);
@@ -990,11 +1014,11 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-var defaultVars = ":root {\n\n\t/* default theme: light background, dark text, blue accent */\n\t--theme-hue: 0;\t\t\t\t\t/* white */\n\t--accent-hue: 194;\t\t\t/* blue */\n  --error-hue: 14;         /* red-orange */\n\n\t--text-color-richer: hsl(var(--theme-hue), 0%, 5%);\t\t\t/* #0d0d0d\t\t*/\n\t--text-color-normal: hsl(var(--theme-hue), 0%, 13%);\t\t/* #222222 \t\ttext color; button:hover:active color */\n\t--text-color-softer: hsl(var(--theme-hue), 0%, 33%);\t\t/* #555555 \t\tbutton color; button:hover border */\n\n  --error-color: hsl(var(--error-hue), 86%, 57%);\n\n  --accent-color: hsl(var(--accent-hue), 86%, 57%);\t\t\t\t/* #33C3F0 \t\tlink; button-primary bg+border; textarea,select:focus border */\n  --accent-color-hover: hsl(var(--accent-hue), 76%, 49%);\t/* #1EAEDB \t\tlink hover; button-primary:hover:active bg+border */\n  --accent-color-disabled: hsl(var(--accent-hue), 90%, 80%);\n\n  --disabled-color: hsl(var(--theme-hue), 0%, 75%);  /* disabled button color */\n\n  --border-color-richer: hsl(var(--theme-hue), 0%, 57%);\t/* #888888\t\tbutton:hover border */\n  --border-color: hsl(var(--theme-hue), 0%, 73%);\t\t\t\t\t/* #bbbbbb\t\tbutton border */\n\t--border-color-softer: hsl(var(--theme-hue), 0%, 82%);\t/* #d1d1d1\t\ttextarea,select,code,td,hr border\t */\n\n\t--background-color: white;\t\t\t\t\t\t\t\t\t\t\t\t\t\t/* transparent body background; textarea,select background */\n\t--background-color-softer: hsl(var(--theme-hue), 0%, 95%);\n  --background-color-richer: hsl(var(--theme-hue), 0%, 95%);\t\t\t/* #f1f1f1 \t\tcode background*/\n\n  --shadow-color: black;\n  --shadow-color-rgb: 0, 0, 0;\n\n\t--inverted-shadow-color: white;\n\n\n  /* Note: Skeleton was based off a 10px font sizing for REM  */\n\t/* 62.5% of typical 16px browser default = 10px */\n\t--base-font-size: 62.5%;\n\n\t/* Grid Defaults - default to match orig skeleton settings */\n\t--grid-max-width: 960px;\n\n  /* Button and input field height */\n  --form-element-height: 38px;\n\n  --corner-radius: 4px;\n}\n\n/*  Dark Theme\n\tNote: prefers-color-scheme selector support is still limited, but\n\tincluded for future and an example of defining a different base 'theme'\n*/\n@media screen and (prefers-color-scheme: dark) {\n\t:root {\n\t\t/* dark theme: light background, dark text, blue accent */\n\t\t--theme-hue: 0;\t\t\t\t\t/* black */\n\t\t--accent-hue: 194;\t\t\t/* blue */\n    --error-hue: 14;         /* red-orange */\n\n\t\t--text-color-richer: hsl(var(--theme-hue), 0%, 95%);\t\t/* #f2f2f2 */\n\t\t--text-color-normal: hsl(var(--theme-hue), 0%, 80%);\t\t/* #cccccc text color; button:hover:active color */\n\t\t--text-color-softer: hsl(var(--theme-hue), 0%, 67%);\t\t/* #ababab button color; button:hover border */\n\n\t\t--error-color: hsl(var(--error-hue), 76%, 49%);\n\n\t\t--accent-color: hsl(var(--accent-hue), 76%, 49%);\t\t\t\t/* link; button-primary bg+border; textarea,select:focus border */\n\t\t--accent-color-hover: hsl(var(--accent-hue), 86%, 57%);\t/* link hover; button-primary:hover:active bg+border */\n\t\t--accent-color-disabled: hsl(var(--accent-hue), 90%, 80%);\n\n    --disabled-color: hsl(var(--theme-hue), 0%, 35%);  /* disabled button text color */\n\n\t\t--border-color-richer: hsl(var(--theme-hue), 0%, 67%);\t/* #ababab\t\tbutton:hover border */\n\t\t--border-color: hsl(var(--theme-hue), 0%, 27%);\t\t\t\t\t/* button border */\n\t\t--border-color-softer: hsl(var(--theme-hue), 0%, 20%);\t/* textarea,select,code,td,hr border\t */\n\n\t\t--background-color: hsl(var(--theme-hue), 0%, 12%);\t\t\t/* body background; textarea,select background */\n\t\t--background-color-softer: hsl(var(--theme-hue), 0%, 18%);\n\t\t--background-color-richer: hsl(var(--theme-hue), 0%, 5%);\t\t\t\t/* code background*/\n\n    --shadow-color: black;\n    --shadow-color-rgb: 0, 0, 0;\n\n\t\t--inverted-shadow-color: white;\n  }\n}\n";
+var defaultVars = ":root {\n\n\t/* default theme: light background, dark text, blue accent */\n\t--theme-hue: 0;\t\t\t\t\t/* white */\n\t--accent-hue: 194;\t\t\t/* blue */\n  --error-hue: 14;         /* red-orange */\n\n\t--text-color-richer: hsl(var(--theme-hue), 0%, 5%);\t\t\t/* #0d0d0d\t\t*/\n\t--text-color: hsl(var(--theme-hue), 0%, 13%);\t\t/* #222222 \t\ttext color; button:hover:active color */\n\t--text-color-softer: hsl(var(--theme-hue), 0%, 33%);\t\t/* #555555 \t\tbutton color; button:hover border */\n\n  --error-color: hsl(var(--error-hue), 86%, 57%);\n\n  --accent-color: hsl(var(--accent-hue), 86%, 57%);\t\t\t\t/* #33C3F0 \t\tlink; button-primary bg+border; textarea,select:focus border */\n  --accent-color-hover: hsl(var(--accent-hue), 76%, 49%);\t/* #1EAEDB \t\tlink hover; button-primary:hover:active bg+border */\n  --accent-color-disabled: hsl(var(--accent-hue), 90%, 80%);\n\n  --disabled-color: hsl(var(--theme-hue), 0%, 75%);  /* disabled button color */\n\n  --border-color-richer: hsl(var(--theme-hue), 0%, 57%);\t/* #888888\t\tbutton:hover border */\n  --border-color: hsl(var(--theme-hue), 0%, 73%);\t\t\t\t\t/* #bbbbbb\t\tbutton border */\n\t--border-color-softer: hsl(var(--theme-hue), 0%, 82%);\t/* #d1d1d1\t\ttextarea,select,code,td,hr border\t */\n\n\t--background-color: white;\t\t\t\t\t\t\t\t\t\t\t\t\t\t/* transparent body background; textarea,select background */\n\t--background-color-softer: hsl(var(--theme-hue), 0%, 95%);\n  --background-color-richer: hsl(var(--theme-hue), 0%, 95%);\t\t\t/* #f1f1f1 \t\tcode background*/\n\n  --shadow-color: black;\n  --shadow-color-rgb: 0, 0, 0;\n\n\t--inverted-shadow-color: white;\n\n\n  /* Note: Skeleton was based off a 10px font sizing for REM  */\n\t/* 62.5% of typical 16px browser default = 10px */\n\t--base-font-size: 62.5%;\n\n\t/* Grid Defaults - default to match orig skeleton settings */\n\t--grid-max-width: 960px;\n\n  /* Button and input field height */\n  --form-element-height: 38px;\n\n  --corner-radius: 4px;\n}\n\n/*  Dark Theme\n\tNote: prefers-color-scheme selector support is still limited, but\n\tincluded for future and an example of defining a different base 'theme'\n*/\n@media screen and (prefers-color-scheme: dark) {\n\t:root {\n\t\t/* dark theme: light background, dark text, blue accent */\n\t\t--theme-hue: 0;\t\t\t\t\t/* black */\n\t\t--accent-hue: 194;\t\t\t/* blue */\n    --error-hue: 14;         /* red-orange */\n\n\t\t--text-color-richer: hsl(var(--theme-hue), 0%, 95%);\t\t/* #f2f2f2 */\n\t\t--text-color: hsl(var(--theme-hue), 0%, 80%);\t\t/* #cccccc text color; button:hover:active color */\n\t\t--text-color-softer: hsl(var(--theme-hue), 0%, 67%);\t\t/* #ababab button color; button:hover border */\n\n\t\t--error-color: hsl(var(--error-hue), 76%, 49%);\n\n\t\t--accent-color: hsl(var(--accent-hue), 76%, 49%);\t\t\t\t/* link; button-primary bg+border; textarea,select:focus border */\n\t\t--accent-color-hover: hsl(var(--accent-hue), 86%, 57%);\t/* link hover; button-primary:hover:active bg+border */\n\t\t--accent-color-disabled: hsl(var(--accent-hue), 90%, 80%);\n\n    --disabled-color: hsl(var(--theme-hue), 0%, 35%);  /* disabled button text color */\n\n\t\t--border-color-richer: hsl(var(--theme-hue), 0%, 67%);\t/* #ababab\t\tbutton:hover border */\n\t\t--border-color: hsl(var(--theme-hue), 0%, 27%);\t\t\t\t\t/* button border */\n\t\t--border-color-softer: hsl(var(--theme-hue), 0%, 20%);\t/* textarea,select,code,td,hr border\t */\n\n\t\t--background-color: hsl(var(--theme-hue), 0%, 12%);\t\t\t/* body background; textarea,select background */\n\t\t--background-color-softer: hsl(var(--theme-hue), 0%, 18%);\n\t\t--background-color-richer: hsl(var(--theme-hue), 0%, 5%);\t\t\t\t/* code background*/\n\n    --shadow-color: black;\n    --shadow-color-rgb: 0, 0, 0;\n\n\t\t--inverted-shadow-color: white;\n  }\n}\n";
 
 var normalize = "/*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */\n\n/* Document\n   ========================================================================== */\n\n/**\n * 1. Correct the line height in all browsers.\n * 2. Prevent adjustments of font size after orientation changes in iOS.\n */\n\nhtml {\n  line-height: 1.15; /* 1 */\n  -webkit-text-size-adjust: 100%; /* 2 */\n}\n\n/* Sections\n   ========================================================================== */\n\n/**\n * Remove the margin in all browsers.\n */\n\nbody {\n  margin: 0;\n}\n\n/**\n * Render the `main` element consistently in IE.\n */\n\nmain {\n  display: block;\n}\n\n/**\n * Correct the font size and margin on `h1` elements within `section` and\n * `article` contexts in Chrome, Firefox, and Safari.\n */\n\nh1 {\n  font-size: 2em;\n  margin: 0.67em 0;\n}\n\n/* Grouping content\n   ========================================================================== */\n\n/**\n * 1. Add the correct box sizing in Firefox.\n * 2. Show the overflow in Edge and IE.\n */\n\nhr {\n  box-sizing: content-box; /* 1 */\n  height: 0; /* 1 */\n  overflow: visible; /* 2 */\n}\n\n/**\n * 1. Correct the inheritance and scaling of font size in all browsers.\n * 2. Correct the odd `em` font sizing in all browsers.\n */\n\npre {\n  font-family: monospace, monospace; /* 1 */\n  font-size: 1em; /* 2 */\n}\n\n/* Text-level semantics\n   ========================================================================== */\n\n/**\n * Remove the gray background on active links in IE 10.\n */\n\na {\n  background-color: transparent;\n}\n\n/**\n * 1. Remove the bottom border in Chrome 57-\n * 2. Add the correct text decoration in Chrome, Edge, IE, Opera, and Safari.\n */\n\nabbr[title] {\n  border-bottom: none; /* 1 */\n  text-decoration: underline; /* 2 */\n  text-decoration: underline dotted; /* 2 */\n}\n\n/**\n * Add the correct font weight in Chrome, Edge, and Safari.\n */\n\nb,\nstrong {\n  font-weight: bolder;\n}\n\n/**\n * 1. Correct the inheritance and scaling of font size in all browsers.\n * 2. Correct the odd `em` font sizing in all browsers.\n */\n\ncode,\nkbd,\nsamp {\n  font-family: monospace, monospace; /* 1 */\n  font-size: 1em; /* 2 */\n}\n\n/**\n * Add the correct font size in all browsers.\n */\n\nsmall {\n  font-size: 80%;\n}\n\n/**\n * Prevent `sub` and `sup` elements from affecting the line height in\n * all browsers.\n */\n\nsub,\nsup {\n  font-size: 75%;\n  line-height: 0;\n  position: relative;\n  vertical-align: baseline;\n}\n\nsub {\n  bottom: -0.25em;\n}\n\nsup {\n  top: -0.5em;\n}\n\n/* Embedded content\n   ========================================================================== */\n\n/**\n * Remove the border on images inside links in IE 10.\n */\n\nimg {\n  border-style: none;\n}\n\n/* Forms\n   ========================================================================== */\n\n/**\n * 1. Change the font styles in all browsers.\n * 2. Remove the margin in Firefox and Safari.\n */\n\nbutton,\ninput,\noptgroup,\nselect,\ntextarea {\n  font-family: inherit; /* 1 */\n  font-size: 100%; /* 1 */\n  line-height: 1.15; /* 1 */\n  margin: 0; /* 2 */\n}\n\n/**\n * Show the overflow in IE.\n * 1. Show the overflow in Edge.\n */\n\nbutton,\ninput { /* 1 */\n  overflow: visible;\n}\n\n/**\n * Remove the inheritance of text transform in Edge, Firefox, and IE.\n * 1. Remove the inheritance of text transform in Firefox.\n */\n\nbutton,\nselect { /* 1 */\n  text-transform: none;\n}\n\n/**\n * Correct the inability to style clickable types in iOS and Safari.\n */\n\nbutton,\n[type=\"button\"],\n[type=\"reset\"],\n[type=\"submit\"] {\n  -webkit-appearance: button;\n}\n\n/**\n * Remove the inner border and padding in Firefox.\n */\n\nbutton::-moz-focus-inner,\n[type=\"button\"]::-moz-focus-inner,\n[type=\"reset\"]::-moz-focus-inner,\n[type=\"submit\"]::-moz-focus-inner {\n  border-style: none;\n  padding: 0;\n}\n\n/**\n * Restore the focus styles unset by the previous rule.\n */\n\nbutton:-moz-focusring,\n[type=\"button\"]:-moz-focusring,\n[type=\"reset\"]:-moz-focusring,\n[type=\"submit\"]:-moz-focusring {\n  outline: 1px dotted ButtonText;\n}\n\n/**\n * Correct the padding in Firefox.\n */\n\nfieldset {\n  padding: 0.35em 0.75em 0.625em;\n}\n\n/**\n * 1. Correct the text wrapping in Edge and IE.\n * 2. Correct the color inheritance from `fieldset` elements in IE.\n * 3. Remove the padding so developers are not caught out when they zero out\n *    `fieldset` elements in all browsers.\n */\n\nlegend {\n  box-sizing: border-box; /* 1 */\n  color: inherit; /* 2 */\n  display: table; /* 1 */\n  max-width: 100%; /* 1 */\n  padding: 0; /* 3 */\n  white-space: normal; /* 1 */\n}\n\n/**\n * Add the correct vertical alignment in Chrome, Firefox, and Opera.\n */\n\nprogress {\n  vertical-align: baseline;\n}\n\n/**\n * Remove the default vertical scrollbar in IE 10+.\n */\n\ntextarea {\n  overflow: auto;\n}\n\n/**\n * 1. Add the correct box sizing in IE 10.\n * 2. Remove the padding in IE 10.\n */\n\n[type=\"checkbox\"],\n[type=\"radio\"] {\n  box-sizing: border-box; /* 1 */\n  padding: 0; /* 2 */\n}\n\n/**\n * Correct the cursor style of increment and decrement buttons in Chrome.\n */\n\n[type=\"number\"]::-webkit-inner-spin-button,\n[type=\"number\"]::-webkit-outer-spin-button {\n  height: auto;\n}\n\n/**\n * 1. Correct the odd appearance in Chrome and Safari.\n * 2. Correct the outline style in Safari.\n */\n\n[type=\"search\"] {\n  -webkit-appearance: textfield; /* 1 */\n  outline-offset: -2px; /* 2 */\n}\n\n/**\n * Remove the inner padding in Chrome and Safari on macOS.\n */\n\n[type=\"search\"]::-webkit-search-decoration {\n  -webkit-appearance: none;\n}\n\n/**\n * 1. Correct the inability to style clickable types in iOS and Safari.\n * 2. Change font properties to `inherit` in Safari.\n */\n\n::-webkit-file-upload-button {\n  -webkit-appearance: button; /* 1 */\n  font: inherit; /* 2 */\n}\n\n/* Interactive\n   ========================================================================== */\n\n/*\n * Add the correct display in Edge, IE 10+, and Firefox.\n */\n\ndetails {\n  display: block;\n}\n\n/*\n * Add the correct display in all browsers.\n */\n\nsummary {\n  display: list-item;\n}\n\n/* Misc\n   ========================================================================== */\n\n/**\n * Add the correct display in IE 10+.\n */\n\ntemplate {\n  display: none;\n}\n\n/**\n * Add the correct display in IE 10.\n */\n\n[hidden] {\n  display: none;\n}\n";
 
-var honegumi = "/*\n* Based on Barebones by Steve Cochran\n* Based on Skeleton by Dave Gamache\n*\n* Free to use under the MIT license.\n*/\n\n/* CSS Variable definitions omitted (defaultVars.css is always loaded by UkiSettings.js)\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* Grid\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/* CSS Grid depends much more on CSS than HTML, so there is less boilerplate\n\t than with skeleton. Only basic 1-4 column grids are included.\n\t Any additional needs should be made using custom CSS directives */\n\n.grid-container {\n\tposition: relative;\n\tmax-width: var(--grid-max-width);\n\tmargin: 0 auto;\n\tpadding: 20px;\n\ttext-align: center;\n\tdisplay: grid;\n\tgrid-gap: 20px;\n\tgap: 20px;\n\n\t/* by default use min 200px wide columns auto-fit into width */\n\tgrid-template-columns: minmax(200px, 1fr);\n}\n\n/* grids to 3 columns above mobile sizes */\n@media (min-width: 600px) {\n\t.grid-container {\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t\tpadding: 10px 0;\n\t}\n\n\t/* basic grids */\n\t.grid-container.fifths {\n\t\tgrid-template-columns: repeat(5, 1fr);\n\t}\n\t.grid-container.quarters {\n\t\tgrid-template-columns: repeat(4, 1fr);\n\t}\n\t.grid-container.thirds {\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t}\n\t.grid-container.halves {\n\t\tgrid-template-columns: repeat(2, 1fr);\n\t}\n\t.grid-container.full {\n\t\tgrid-template-columns: 1fr;\n\t}\n}\n\n/* Base Styles\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhtml {\n  font-size: var(--base-font-size);\n  scroll-behavior: smooth;\n}\nbody {\n  font-size: 1.6em;\t\t/* changed from 15px in orig skeleton */\n  line-height: 1.6;\n  font-weight: 400;\n  font-family: \"Raleway\", \"HelveticaNeue\", \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n  color: var(--text-color-normal);\n  background-color: var(--background-color);;\n}\n\n\n/* Typography\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nh1, h2, h3, h4, h5, h6 {\n  margin-top: 0;\n  margin-bottom: 2rem;\n  font-weight: 300; }\nh1 { font-size: 4.0rem; line-height: 1.2;  letter-spacing: -.1rem;}\nh2 { font-size: 3.6rem; line-height: 1.25; letter-spacing: -.1rem; }\nh3 { font-size: 3.0rem; line-height: 1.3;  letter-spacing: -.1rem; }\nh4 { font-size: 2.4rem; line-height: 1.35; letter-spacing: -.08rem; }\nh5 { font-size: 1.8rem; line-height: 1.5;  letter-spacing: -.05rem; }\nh6 { font-size: 1.5rem; line-height: 1.6;  letter-spacing: 0; }\n\n/* Larger than phablet */\n@media (min-width: 600px) {\n  h1 { font-size: 5.0rem; }\n  h2 { font-size: 4.2rem; }\n  h3 { font-size: 3.6rem; }\n  h4 { font-size: 3.0rem; }\n  h5 { font-size: 2.4rem; }\n  h6 { font-size: 1.5rem; }\n}\n\np {\n  margin-top: 0; }\n\nb, strong {\n  font-weight: 600;\n}\n\n/* Links\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\na {\n  color: var(--accent-color); }\na:hover {\n  color: var(--accent-color-hover); }\n\n\n/* Buttons\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.button,\nbutton,\ninput[type=\"submit\"],\ninput[type=\"reset\"],\ninput[type=\"button\"] {\n  display: inline-block;\n  height: var(--form-element-height);\n  padding: 0 30px;\n  color: var(--text-color-softer);\n  text-align: center;\n  font-size: 11px;\n  font-weight: 600;\n  line-height: var(--form-element-height);\n  letter-spacing: .1em;\n  text-transform: uppercase;\n  text-decoration: none;\n  white-space: nowrap;\n  background-color: transparent;\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--border-color);\n  cursor: pointer;\n  user-select: none;\n  vertical-align: bottom;\n  box-sizing: border-box; }\n.button:hover,\nbutton:hover,\ninput[type=\"submit\"]:hover,\ninput[type=\"reset\"]:hover,\ninput[type=\"button\"]:hover,\n.button:active,\nbutton:active,\ninput[type=\"submit\"]:active,\ninput[type=\"reset\"]:active,\ninput[type=\"button\"]:active {\n  color: var(--text-color-normal);\n  border-color: var(--text-color-softer);\n  outline: 0; }\n.button.button-primary,\nbutton.button-primary,\ninput[type=\"submit\"].button-primary,\ninput[type=\"reset\"].button-primary,\ninput[type=\"button\"].button-primary {\n  color: var(--inverted-shadow-color);\n  background-color: var(--accent-color);\n  border-color: var(--accent-color); }\n.button.button-primary:hover,\nbutton.button-primary:hover,\ninput[type=\"submit\"].button-primary:hover,\ninput[type=\"reset\"].button-primary:hover,\ninput[type=\"button\"].button-primary:hover,\n.button.button-primary:active,\nbutton.button-primary:active,\ninput[type=\"submit\"].button-primary:active,\ninput[type=\"reset\"].button-primary:active,\ninput[type=\"button\"].button-primary:active {\n  color: var(--inverted-shadow-color);\n  background-color: var(--accent-color-hover);\n  border-color: var(--accent-color-hover); }\n.button.button-disabled,\n.button:disabled,\nbutton:disabled,\ninput[type=\"submit\"]:disabled,\ninput[type=\"reset\"]:disabled,\ninput[type=\"button\"]:disabled {\n\tcolor: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n.button.button-primary.button-disabled,\n.button.button-primary:disabled,\nbutton.button-primary:disabled,\ninput[type=\"submit\"].button-primary:disabled,\ninput[type=\"reset\"].button-primary:disabled,\ninput[type=\"button\"].button-primary:disabled {\n\tcolor: var(--background-color);\n\tbackground-color: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n\n\n/* Forms\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ntextarea,\nselect {\n  height: var(--form-element-height);\n  padding: 6px 10px; /* The 6px vertically centers text on FF, ignored by Webkit */\n  background-color: var(--background-color);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius);\n  box-shadow: none;\n  box-sizing: border-box; }\n/* Removes awkward default styles on some inputs for iOS */\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ninput[type=\"button\"],\ninput[type=\"submit\"],\ntextarea {\n  -webkit-appearance: none;\n     -moz-appearance: none;\n          appearance: none; }\ntextarea {\n  min-height: 65px;\n  padding-top: 6px;\n  padding-bottom: 6px; }\ninput[type=\"email\"]:focus,\ninput[type=\"number\"]:focus,\ninput[type=\"search\"]:focus,\ninput[type=\"text\"]:focus,\ninput[type=\"tel\"]:focus,\ninput[type=\"url\"]:focus,\ninput[type=\"password\"]:focus,\ntextarea:focus,\nselect:focus {\n  border: 1px solid var(--accent-color);\n  outline: 0; }\nlabel,\nlegend {\n  display: block;\n  margin-bottom: .5em;\n  font-weight: 600; }\nfieldset {\n  padding: 0;\n  border-width: 0; }\ninput[type=\"checkbox\"],\ninput[type=\"radio\"] {\n  display: inline; }\nlabel > .label-body {\n  display: inline-block;\n  margin-left: .5em;\n  font-weight: normal; }\n\n\n/* Lists\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nul {\n  list-style: circle inside; }\nol {\n  list-style: decimal inside; }\nol, ul {\n  padding-left: 0;\n  margin-top: 0; }\nul ul, ul ol, ol ol, ol ul {\n\tfont-size: 100%;\n\tmargin: 1em 0 1em 3em;\n\tcolor: var(--text-color-softer);\n}\nli {\n  margin-bottom: 0.5em; }\n\n\n/* Scrollbars\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n::-webkit-scrollbar {\n  width: 1.25em;\n  height: 1.25em;\n}\n\n/* Track, Corner background color */\n::-webkit-scrollbar-track,\n::-webkit-scrollbar-corner,\n::-webkit-resizer {\n  background: transparent;\n}\n\n/* Buttons */\n::-webkit-scrollbar-button:single-button {\n  display: block;\n  width: 1.25em;\n  height: 1.25em;\n  border-radius: var(--corner-radius);\n  border-style: solid;\n}\n/* Up */\n::-webkit-scrollbar-button:vertical:decrement {\n  border-width: 0 0.625em 0.75em 0.625em;\n  border-color: transparent transparent var(--border-color-softer) transparent;\n}\n::-webkit-scrollbar-button:vertical:decrement:hover,\n::-webkit-scrollbar-button:vertical:decrement:active {\n  border-color: transparent transparent var(--text-color-softer) transparent;\n}\n/* Down */\n::-webkit-scrollbar-button:vertical:increment {\n  border-width: 0.75em 0.625em 0 0.625em;\n  border-color: var(--border-color-softer) transparent transparent transparent;\n}\n::-webkit-scrollbar-button:vertical:increment:hover,\n::-webkit-scrollbar-button:vertical:increment:active {\n  border-color: var(--text-color-softer) transparent transparent transparent;\n}\n/* Left */\n::-webkit-scrollbar-button:horizontal:decrement {\n  border-width: 0.625em 0.75em 0.625em 0;\n  border-color: transparent var(--border-color-softer) transparent transparent;\n}\n::-webkit-scrollbar-button:horizontal:decrement:hover,\n::-webkit-scrollbar-button:horizontal:decrement:active {\n  border-color: transparent var(--text-color-softer) transparent transparent;\n}\n/* Right */\n::-webkit-scrollbar-button:horizontal:increment {\n  border-width: 0.625em 0 0.625em 0.75em;\n  border-color: transparent transparent transparent var(--border-color-softer);\n}\n::-webkit-scrollbar-button:horizontal:increment:hover,\n::-webkit-scrollbar-button:horizontal:increment:active {\n  border-color: transparent transparent transparent var(--text-color-softer);\n}\n\n/* Handle */\n::-webkit-scrollbar-thumb {\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--background-color);\n  background: var(--border-color-softer);\n}\n::-webkit-scrollbar-thumb:hover {\n  cursor: grab;\n  background: var(--text-color-softer);\n}\n::-webkit-scrollbar-thumb:active {\n  cursor: grabbing;\n  background: var(--text-color-softer);\n}\n\n\n/* Code\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ncode {\n  padding: .2em .5em;\n  margin: 0 .2em;\n  font-size: 90%;\n  white-space: nowrap;\n  background: var(--background-color-richer);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius); }\npre > code {\n  display: block;\n  padding: 1em 1.5em;\n  white-space: pre;\n  overflow: auto; }\n\n\n/* Tables\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nth,\ntd {\n  padding: 12px 15px;\n  text-align: left;\n  border-bottom: 1px solid var(--border-color-softer); }\nth:first-child,\ntd:first-child {\n  padding-left: 0; }\nth:last-child,\ntd:last-child {\n  padding-right: 0; }\n\n\n/* Spacing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nbutton,\n.button {\n  margin-bottom: 1em; }\ninput,\ntextarea,\nselect,\nfieldset {\n  margin-bottom: 1.5em; }\npre,\nblockquote,\ndl,\nfigure,\ntable,\np,\nul,\nol,\nform {\n  margin-bottom: 2.5em; }\n\n\n/* Utilities\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.u-full-width {\n  width: 100%;\n  box-sizing: border-box; }\n.u-max-full-width {\n  max-width: 100%;\n  box-sizing: border-box; }\n.u-pull-right {\n  float: right; }\n.u-pull-left {\n  float: left; }\n.u-align-left {\n\ttext-align: left; }\n.u-align-right {\n\ttext-align: right; }\n\n\n/* Misc\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhr {\n  margin-top: 3em;\n  margin-bottom: 3.5em;\n  border-width: 0;\n  border-top: 1px solid var(--border-color-softer); }\n\n\n/* Clearing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* Self Clearing Goodness */\n/*.container:after,\n.row:after,\n.u-cf {\n  content: \"\";\n  display: table;\n  clear: both; }*/\n\n\n/* Media Queries\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/*\nNote: The best way to structure the use of media queries is to create the queries\nnear the relevant code. For example, if you wanted to change the styles for buttons\non small devices, paste the mobile query code up in the buttons section and style it\nthere.\n*/\n\n\n/* Larger than mobile (default point when grid becomes active) */\n@media (min-width: 600px) {}\n\n/* Larger than phablet */\n@media (min-width: 900px) {}\n\n/* Larger than tablet */\n@media (min-width: 1200px) {}\n";
+var honegumi = "/*\n* Based on Barebones by Steve Cochran\n* Based on Skeleton by Dave Gamache\n*\n* Free to use under the MIT license.\n*/\n\n/* CSS Variable definitions omitted (defaultVars.css is always loaded by UkiSettings.js)\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* Grid\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/* CSS Grid depends much more on CSS than HTML, so there is less boilerplate\n\t than with skeleton. Only basic 1-4 column grids are included.\n\t Any additional needs should be made using custom CSS directives */\n\n.grid-container {\n\tposition: relative;\n\tmax-width: var(--grid-max-width);\n\tmargin: 0 auto;\n\tpadding: 20px;\n\ttext-align: center;\n\tdisplay: grid;\n\tgrid-gap: 20px;\n\tgap: 20px;\n\n\t/* by default use min 200px wide columns auto-fit into width */\n\tgrid-template-columns: minmax(200px, 1fr);\n}\n\n/* grids to 3 columns above mobile sizes */\n@media (min-width: 600px) {\n\t.grid-container {\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t\tpadding: 10px 0;\n\t}\n\n\t/* basic grids */\n\t.grid-container.fifths {\n\t\tgrid-template-columns: repeat(5, 1fr);\n\t}\n\t.grid-container.quarters {\n\t\tgrid-template-columns: repeat(4, 1fr);\n\t}\n\t.grid-container.thirds {\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t}\n\t.grid-container.halves {\n\t\tgrid-template-columns: repeat(2, 1fr);\n\t}\n\t.grid-container.full {\n\t\tgrid-template-columns: 1fr;\n\t}\n}\n\n/* Base Styles\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhtml {\n  font-size: var(--base-font-size);\n  scroll-behavior: smooth;\n}\nbody {\n  font-size: 1.6em;\t\t/* changed from 15px in orig skeleton */\n  line-height: 1.6;\n  font-weight: 400;\n  font-family: \"Raleway\", \"HelveticaNeue\", \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n  color: var(--text-color);\n  background-color: var(--background-color);;\n}\n\n\n/* Typography\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nh1, h2, h3, h4, h5, h6 {\n  margin-top: 0;\n  margin-bottom: 2rem;\n  font-weight: 300; }\nh1 { font-size: 4.0rem; line-height: 1.2;  letter-spacing: -.1rem;}\nh2 { font-size: 3.6rem; line-height: 1.25; letter-spacing: -.1rem; }\nh3 { font-size: 3.0rem; line-height: 1.3;  letter-spacing: -.1rem; }\nh4 { font-size: 2.4rem; line-height: 1.35; letter-spacing: -.08rem; }\nh5 { font-size: 1.8rem; line-height: 1.5;  letter-spacing: -.05rem; }\nh6 { font-size: 1.5rem; line-height: 1.6;  letter-spacing: 0; }\n\n/* Larger than phablet */\n@media (min-width: 600px) {\n  h1 { font-size: 5.0rem; }\n  h2 { font-size: 4.2rem; }\n  h3 { font-size: 3.6rem; }\n  h4 { font-size: 3.0rem; }\n  h5 { font-size: 2.4rem; }\n  h6 { font-size: 1.5rem; }\n}\n\np {\n  margin-top: 0; }\n\nb, strong {\n  font-weight: 600;\n}\n\n/* Links\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\na {\n  color: var(--accent-color); }\na:hover {\n  color: var(--accent-color-hover); }\n\n\n/* Buttons\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.button,\nbutton,\ninput[type=\"submit\"],\ninput[type=\"reset\"],\ninput[type=\"button\"] {\n  display: inline-block;\n  height: var(--form-element-height);\n  padding: 0 30px;\n  color: var(--text-color-softer);\n  text-align: center;\n  font-size: 11px;\n  font-weight: 600;\n  line-height: var(--form-element-height);\n  letter-spacing: .1em;\n  text-transform: uppercase;\n  text-decoration: none;\n  white-space: nowrap;\n  background-color: transparent;\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--border-color);\n  cursor: pointer;\n  user-select: none;\n  vertical-align: bottom;\n  box-sizing: border-box; }\n.button:hover,\nbutton:hover,\ninput[type=\"submit\"]:hover,\ninput[type=\"reset\"]:hover,\ninput[type=\"button\"]:hover,\n.button:active,\nbutton:active,\ninput[type=\"submit\"]:active,\ninput[type=\"reset\"]:active,\ninput[type=\"button\"]:active {\n  color: var(--text-color);\n  border-color: var(--text-color-softer);\n  outline: 0; }\n.button.button-primary,\nbutton.button-primary,\ninput[type=\"submit\"].button-primary,\ninput[type=\"reset\"].button-primary,\ninput[type=\"button\"].button-primary {\n  color: var(--inverted-shadow-color);\n  background-color: var(--accent-color);\n  border-color: var(--accent-color); }\n.button.button-primary:hover,\nbutton.button-primary:hover,\ninput[type=\"submit\"].button-primary:hover,\ninput[type=\"reset\"].button-primary:hover,\ninput[type=\"button\"].button-primary:hover,\n.button.button-primary:active,\nbutton.button-primary:active,\ninput[type=\"submit\"].button-primary:active,\ninput[type=\"reset\"].button-primary:active,\ninput[type=\"button\"].button-primary:active {\n  color: var(--inverted-shadow-color);\n  background-color: var(--accent-color-hover);\n  border-color: var(--accent-color-hover); }\n.button.button-disabled,\n.button:disabled,\nbutton:disabled,\ninput[type=\"submit\"]:disabled,\ninput[type=\"reset\"]:disabled,\ninput[type=\"button\"]:disabled {\n\tcolor: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n.button.button-primary.button-disabled,\n.button.button-primary:disabled,\nbutton.button-primary:disabled,\ninput[type=\"submit\"].button-primary:disabled,\ninput[type=\"reset\"].button-primary:disabled,\ninput[type=\"button\"].button-primary:disabled {\n\tcolor: var(--background-color);\n\tbackground-color: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n\n\n/* Forms\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ninput:not([type]),\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ntextarea,\nselect {\n  height: var(--form-element-height);\n  padding: 6px 10px; /* The 6px vertically centers text on FF, ignored by Webkit */\n  background-color: var(--background-color);\n  color: var(--text-color);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius);\n  box-shadow: none;\n  box-sizing: border-box; }\n/* Removes awkward default styles on some inputs for iOS */\ninput:not([type]),\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ninput[type=\"button\"],\ninput[type=\"submit\"],\ntextarea {\n  -webkit-appearance: none;\n     -moz-appearance: none;\n          appearance: none; }\ntextarea {\n  min-height: 5em;\n  padding-top: 6px;\n  padding-bottom: 6px; }\ninput:not([type]):focus,\ninput[type=\"email\"]:focus,\ninput[type=\"number\"]:focus,\ninput[type=\"search\"]:focus,\ninput[type=\"text\"]:focus,\ninput[type=\"tel\"]:focus,\ninput[type=\"url\"]:focus,\ninput[type=\"password\"]:focus,\ntextarea:focus,\nselect:focus {\n  border: 1px solid var(--accent-color);\n  outline: 0; }\ninput:not([type]).error,\ninput[type=\"email\"].error,\ninput[type=\"number\"].error,\ninput[type=\"search\"].error,\ninput[type=\"text\"].error,\ninput[type=\"tel\"].error,\ninput[type=\"url\"].error,\ninput[type=\"password\"].error,\ntextarea.error,\nselect.error {\n  color: var(--error-color);\n  border: 1px solid var(--error-color);\n}\ninput:not([type]):disabled,\ninput[type=\"email\"]:disabled,\ninput[type=\"number\"]:disabled,\ninput[type=\"search\"]:disabled,\ninput[type=\"text\"]:disabled,\ninput[type=\"tel\"]:disabled,\ninput[type=\"url\"]:disabled,\ninput[type=\"password\"]:disabled,\ntextarea:disabled,\nselect:disabled {\n  color: var(--disabled-color);\n  background-color: var(--background-color-softer);\n}\nlabel,\nlegend {\n  display: block;\n  margin-bottom: .5em;\n  font-weight: 600; }\nfieldset {\n  padding: 0;\n  border-width: 0; }\ninput[type=\"checkbox\"],\ninput[type=\"radio\"] {\n  display: inline; }\nlabel > .label-body {\n  display: inline-block;\n  margin-left: .5em;\n  font-weight: normal; }\n::placeholder {\n  color: var(--disabled-color);\n}\n\n/* Lists\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nul {\n  list-style: circle inside; }\nol {\n  list-style: decimal inside; }\nol, ul {\n  padding-left: 0;\n  margin-top: 0; }\nul ul, ul ol, ol ol, ol ul {\n\tfont-size: 100%;\n\tmargin: 1em 0 1em 3em;\n\tcolor: var(--text-color-softer);\n}\nli {\n  margin-bottom: 0.5em; }\n\n\n/* Scrollbars\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n::-webkit-scrollbar {\n  width: 1.25em;\n  height: 1.25em;\n}\n\n/* Track, Corner background color */\n::-webkit-scrollbar-track,\n::-webkit-scrollbar-corner,\n::-webkit-resizer {\n  background: transparent;\n}\n\n/* Buttons */\n::-webkit-scrollbar-button:single-button {\n  display: block;\n  width: 1.25em;\n  height: 1.25em;\n  border-radius: var(--corner-radius);\n  border-style: solid;\n}\n/* Up */\n::-webkit-scrollbar-button:vertical:decrement {\n  border-width: 0 0.625em 0.75em 0.625em;\n  border-color: transparent transparent var(--border-color-softer) transparent;\n}\n::-webkit-scrollbar-button:vertical:decrement:hover,\n::-webkit-scrollbar-button:vertical:decrement:active {\n  border-color: transparent transparent var(--text-color-softer) transparent;\n}\n/* Down */\n::-webkit-scrollbar-button:vertical:increment {\n  border-width: 0.75em 0.625em 0 0.625em;\n  border-color: var(--border-color-softer) transparent transparent transparent;\n}\n::-webkit-scrollbar-button:vertical:increment:hover,\n::-webkit-scrollbar-button:vertical:increment:active {\n  border-color: var(--text-color-softer) transparent transparent transparent;\n}\n/* Left */\n::-webkit-scrollbar-button:horizontal:decrement {\n  border-width: 0.625em 0.75em 0.625em 0;\n  border-color: transparent var(--border-color-softer) transparent transparent;\n}\n::-webkit-scrollbar-button:horizontal:decrement:hover,\n::-webkit-scrollbar-button:horizontal:decrement:active {\n  border-color: transparent var(--text-color-softer) transparent transparent;\n}\n/* Right */\n::-webkit-scrollbar-button:horizontal:increment {\n  border-width: 0.625em 0 0.625em 0.75em;\n  border-color: transparent transparent transparent var(--border-color-softer);\n}\n::-webkit-scrollbar-button:horizontal:increment:hover,\n::-webkit-scrollbar-button:horizontal:increment:active {\n  border-color: transparent transparent transparent var(--text-color-softer);\n}\n\n/* Handle */\n::-webkit-scrollbar-thumb {\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--background-color);\n  background: var(--border-color-softer);\n}\n::-webkit-scrollbar-thumb:hover {\n  cursor: grab;\n  background: var(--text-color-softer);\n}\n::-webkit-scrollbar-thumb:active {\n  cursor: grabbing;\n  background: var(--text-color-softer);\n}\n\n/* Code\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ncode {\n  padding: .2em .5em;\n  margin: 0 .2em;\n  font-size: 90%;\n  white-space: nowrap;\n  background: var(--background-color-richer);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius); }\npre > code {\n  display: block;\n  padding: 1em 1.5em;\n  white-space: pre;\n  overflow: auto; }\n\n\n/* Tables\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nth,\ntd {\n  padding: 12px 15px;\n  text-align: left;\n  border-bottom: 1px solid var(--border-color-softer); }\nth:first-child,\ntd:first-child {\n  padding-left: 0; }\nth:last-child,\ntd:last-child {\n  padding-right: 0; }\n\n\n/* Spacing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nbutton,\n.button {\n  margin-bottom: 1em; }\ninput,\ntextarea,\nselect,\nfieldset {\n  margin-bottom: 1.5em; }\npre,\nblockquote,\ndl,\nfigure,\ntable,\np,\nul,\nol,\nform {\n  margin-bottom: 2.5em; }\n\n\n/* Utilities\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.u-full-width {\n  width: 100%;\n  box-sizing: border-box; }\n.u-max-full-width {\n  max-width: 100%;\n  box-sizing: border-box; }\n.u-pull-right {\n  float: right; }\n.u-pull-left {\n  float: left; }\n.u-align-left {\n\ttext-align: left; }\n.u-align-right {\n\ttext-align: right; }\n\n\n/* Misc\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhr {\n  margin-top: 3em;\n  margin-bottom: 3.5em;\n  border-width: 0;\n  border-top: 1px solid var(--border-color-softer); }\n\n\n/* Clearing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* Self Clearing Goodness */\n/*.container:after,\n.row:after,\n.u-cf {\n  content: \"\";\n  display: table;\n  clear: both; }*/\n\n\n/* Media Queries\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/*\nNote: The best way to structure the use of media queries is to create the queries\nnear the relevant code. For example, if you wanted to change the styles for buttons\non small devices, paste the mobile query code up in the buttons section and style it\nthere.\n*/\n\n\n/* Larger than mobile (default point when grid becomes active) */\n@media (min-width: 600px) {}\n\n/* Larger than phablet */\n@media (min-width: 900px) {}\n\n/* Larger than tablet */\n@media (min-width: 1200px) {}\n";
 
 /* globals d3, uki */
 
@@ -1019,12 +1043,12 @@ class GlobalUI extends ThemeableMixin({
     }
     super(options);
     this.tooltip = options.tooltip || null;
-    uki.showTooltip = tooltipArgs => { this.showTooltip(tooltipArgs); };
-    uki.hideTooltip = () => { this.hideTooltip(); };
-    uki.showContextMenu = menuArgs => { this.showContextMenu(menuArgs); };
+    uki.showTooltip = async tooltipArgs => { return await this.showTooltip(tooltipArgs); };
+    uki.hideTooltip = async () => { return await this.hideTooltip(); };
+    uki.showContextMenu = async menuArgs => { return await this.showContextMenu(menuArgs); };
     this.modal = options.modal || null;
-    uki.showModal = modalArgs => { this.showModal(modalArgs); };
-    uki.hideModal = () => { this.hideModal(); };
+    uki.showModal = async modalArgs => { return await this.showModal(modalArgs); };
+    uki.hideModal = async () => { return await this.hideModal(); };
   }
 
   async setTheme (value) {
@@ -1051,36 +1075,47 @@ class GlobalUI extends ThemeableMixin({
   }
 
   async showContextMenu (menuArgs) {
+    menuArgs.showEvent = menuArgs.showEvent || d3.event;
     await this.initTooltip();
-    this.tooltip.showContextMenu(menuArgs);
+    await this.tooltip.showContextMenu(menuArgs);
+    return this.tooltip;
   }
 
   async showTooltip (tooltipArgs) {
+    tooltipArgs.showEvent = tooltipArgs.showEvent || d3.event;
     await this.initTooltip();
-    this.tooltip.show(tooltipArgs);
+    await this.tooltip.show(tooltipArgs);
+    return this.tooltip;
   }
 
-  hideTooltip () {
+  async hideTooltip () {
     if (this.tooltip) {
-      this.tooltip.hide();
+      await this.tooltip.hide();
     }
+    return this.tooltip;
   }
 
   async showModal (modalArgs) {
-    if (!this.modal) {
-      // Create the modal layer, and make sure it's under the TooltipView if it exists
-      this.modal = new ModalView({
-        d3el: d3.select('body').insert('div', '.TooltipView')
-      });
-      await this.modal.render();
+    if (!this._modalEl) {
+      this._modalEl = (this.modal && this.modal.d3el) || d3.select('body').insert('div', '.TooltipView');
     }
-    this.modal.show(modalArgs);
+    if (modalArgs instanceof ModalView) {
+      this.modal = modalArgs;
+    } else if (!this.modal || this.modal.constructor.name !== 'ModalView') {
+      this.modal = new ModalView();
+    } else {
+      this.modal.dirty = true;
+    }
+    await this.modal.render(this._modalEl);
+    await this.modal.show(modalArgs instanceof ModalView ? {} : modalArgs);
+    return this.modal;
   }
 
-  hideModal () {
+  async hideModal () {
     if (this.modal) {
-      this.modal.hide();
+      await this.modal.hide();
     }
+    return this.modal;
   }
 }
 
@@ -1557,7 +1592,7 @@ const { IFrameView, IFrameViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-var defaultStyle$6 = ".GLRootView .lm_goldenlayout,\n.lm_dragging .lm_goldenlayout {\n  background: transparent;\n}\n.GLRootView .lm_content,\n.lm_dragging .lm_content {\n  background: var(--background-color);\n  border: 1px solid var(--border-color);\n}\n.GLRootView .lm_dragProxy .lm_content,\n.lm_dragging .lm_dragProxy .lm_content {\n  box-shadow: 2px 2px 4px rgba(var(--shadow-color-rgb), 0.2);\n}\n.GLRootView .lm_dropTargetIndicator,\n.lm_dragging .lm_dropTargetIndicator {\n  box-shadow: inset 0 0 30px rgba(var(--shadow-color-rgb), 40%);\n  outline: 1px dashed var(--border-color);\n}\n.GLRootView .lm_dropTargetIndicator .lm_inner,\n.lm_dragging .lm_dropTargetIndicator .lm_inner {\n  background: var(--shadow-color);\n  opacity: 0.1;\n}\n.GLRootView .lm_splitter,\n.lm_dragging .lm_splitter {\n  background: var(--background-color-richer);\n  opacity: 0.001;\n  transition: opacity 200ms ease;\n}\n.GLRootView .lm_splitter:hover,\n.lm_dragging .lm_splitter:hover,\n.GLRootView .lm_splitter.lm_dragging,\n.lm_dragging .lm_splitter.lm_dragging {\n  background: var(--background-color-richer);\n  opacity: 1;\n}\n.GLRootView .lm_header,\n.lm_dragging .lm_header {\n  height: var(--form-element-height) !important;\n}\n.GLRootView .lm_header .lm_tab,\n.lm_dragging .lm_header .lm_tab {\n  font-weight: 600;\n  font-size: 11px;\n  height: calc(var(--form-element-height) - 7.2px);\n  letter-spacing: 0.1em;\n  text-transform: uppercase;\n  color: var(--text-color-softer);\n  background: var(--background-color-softer);\n  display: flex;\n  align-items: center;\n  white-space: nowrap;\n  margin: 0;\n  padding: 2.4px 1.5em 4px 1.5em;\n  border: 1px solid var(--border-color);\n  border-bottom: none;\n  border-radius: var(--corner-radius) var(--corner-radius) 0 0;\n}\n.GLRootView .lm_header .lm_tab .lm_title,\n.lm_dragging .lm_header .lm_tab .lm_title {\n  padding-top: 1px;\n  margin: 0 0.5em;\n}\n.GLRootView .lm_header .lm_tab .icon,\n.lm_dragging .lm_header .lm_tab .icon {\n  margin: 0 0.5em;\n  filter: url(#recolorImageTo--disabled-color);\n}\n.GLRootView .lm_header .lm_tab .icon img,\n.lm_dragging .lm_header .lm_tab .icon img {\n  width: 11px;\n  height: 11px;\n  margin-top: 5px;\n}\n.GLRootView .lm_header .lm_tab .icon:hover,\n.lm_dragging .lm_header .lm_tab .icon:hover {\n  filter: url(#recolorImageTo--text-color-normal);\n}\n.GLRootView .lm_header .lm_tab .lm_close_tab,\n.lm_dragging .lm_header .lm_tab .lm_close_tab {\n  position: relative;\n  top: -0.3em;\n  margin: 0 -0.5em 0 0.5em;\n}\n.GLRootView .lm_header .lm_tab .lm_close_tab:after,\n.lm_dragging .lm_header .lm_tab .lm_close_tab:after {\n  content: '\\2a09';\n  color: var(--disabled-color);\n  font-size: 1.3em;\n}\n.GLRootView .lm_header .lm_tab .lm_close_tab:hover:after,\n.lm_dragging .lm_header .lm_tab .lm_close_tab:hover:after {\n  color: var(--text-color-normal);\n}\n.GLRootView .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_header .lm_tab.lm_active {\n  padding-bottom: 5px;\n}\n.GLRootView .lm_tabdropdown_list,\n.lm_dragging .lm_tabdropdown_list {\n  border-radius: var(--corner-radius);\n  box-shadow: 2px 2px 5px rgba(var(--shadow-color-rgb), 0.75);\n}\n.GLRootView .lm_tabdropdown_list .lm_tab,\n.lm_dragging .lm_tabdropdown_list .lm_tab {\n  border: none;\n  border-radius: 0;\n}\n.GLRootView .lm_tabdropdown_list .lm_tab .icon,\n.lm_dragging .lm_tabdropdown_list .lm_tab .icon {\n  display: none;\n}\n.GLRootView .lm_dragProxy.lm_right .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_dragProxy.lm_right .lm_header .lm_tab.lm_active,\n.GLRootView .lm_stack.lm_right .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_stack.lm_right .lm_header .lm_tab.lm_active {\n  box-shadow: 2px -2px 2px -2px rgba(var(--shadow-color-rgb), 0.2);\n}\n.GLRootView .lm_dragProxy.lm_bottom .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_dragProxy.lm_bottom .lm_header .lm_tab.lm_active,\n.GLRootView .lm_stack.lm_bottom .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_stack.lm_bottom .lm_header .lm_tab.lm_active {\n  box-shadow: 2px 2px 2px -2px rgba(var(--shadow-color-rgb), 0.2);\n}\n.GLRootView .lm_selected .lm_header,\n.lm_dragging .lm_selected .lm_header {\n  background-color: #452500;\n}\n.GLRootView .lm_tab:hover,\n.lm_dragging .lm_tab:hover,\n.GLRootView .lm_tab.lm_active,\n.lm_dragging .lm_tab.lm_active {\n  background: var(--background-color);\n  color: var(--text-color-normal);\n}\n.GLRootView .lm_controls > li,\n.lm_dragging .lm_controls > li {\n  position: relative;\n  margin: 0 0.25em;\n}\n.GLRootView .lm_controls > li.lm_tabdropdown:before,\n.lm_dragging .lm_controls > li.lm_tabdropdown:before,\n.GLRootView .lm_controls > li:after,\n.lm_dragging .lm_controls > li:after {\n  color: var(--disabled-color);\n}\n.GLRootView .lm_controls > li.lm_tabdropdown:hover:before,\n.lm_dragging .lm_controls > li.lm_tabdropdown:hover:before,\n.GLRootView .lm_controls > li:hover:after,\n.lm_dragging .lm_controls > li:hover:after {\n  color: var(--text-color-normal);\n}\n.GLRootView .lm_controls .lm_popout:after,\n.lm_dragging .lm_controls .lm_popout:after {\n  content: '\\1f5d7';\n}\n.GLRootView .lm_controls .lm_maximise:after,\n.lm_dragging .lm_controls .lm_maximise:after {\n  content: '\\1f5d6';\n}\n.GLRootView .lm_controls .lm_close,\n.lm_dragging .lm_controls .lm_close {\n  margin: 1px 0 0 0.25em;\n}\n.GLRootView .lm_controls .lm_close:after,\n.lm_dragging .lm_controls .lm_close:after {\n  content: '\\2a09';\n}\n.GLRootView .lm_maximised .lm_header,\n.lm_dragging .lm_maximised .lm_header {\n  background-color: var(--text-color-softer);\n}\n.GLRootView .lm_maximised .lm_controls .lm_maximise:after,\n.lm_dragging .lm_maximised .lm_controls .lm_maximise:after {\n  content: '\\1f5d5';\n}\n.GLRootView .lm_transition_indicator,\n.lm_dragging .lm_transition_indicator {\n  background-color: var(--shadow-color);\n  border: 1px dashed var(--border-color);\n}\n.lm_popin {\n  cursor: pointer;\n  top: 0;\n  left: 0;\n  bottom: unset;\n  right: unset;\n  background: var(--background-color);\n  border: 1px solid var(--border-color);\n  border-radius: 0 0 var(--corner-radius) 0;\n}\n.lm_popin:after {\n  content: '\\25f0';\n  color: var(--text-color-softer);\n  position: relative;\n  top: -3px;\n  right: -3px;\n}\n.lm_popin:hover {\n  border-color: var(--text-color-softer);\n}\n.lm_popin:hover:after {\n  color: var(--text-color-normal);\n}\n.lm_popin .lm_bg {\n  display: none;\n}\n.lm_popin .lm_icon {\n  display: none;\n}\n";
+var defaultStyle$6 = ".GLRootView,\n.lm_dragging {\n  overflow: hidden;\n}\n.GLRootView .lm_goldenlayout,\n.lm_dragging .lm_goldenlayout {\n  background: transparent;\n}\n.GLRootView .lm_content,\n.lm_dragging .lm_content {\n  background: var(--background-color);\n  border: 1px solid var(--border-color);\n}\n.GLRootView .lm_dragProxy .lm_content,\n.lm_dragging .lm_dragProxy .lm_content {\n  box-shadow: 2px 2px 4px rgba(var(--shadow-color-rgb), 0.2);\n}\n.GLRootView .lm_dropTargetIndicator,\n.lm_dragging .lm_dropTargetIndicator {\n  box-shadow: inset 0 0 30px rgba(var(--shadow-color-rgb), 40%);\n  outline: 1px dashed var(--border-color);\n}\n.GLRootView .lm_dropTargetIndicator .lm_inner,\n.lm_dragging .lm_dropTargetIndicator .lm_inner {\n  background: var(--shadow-color);\n  opacity: 0.1;\n}\n.GLRootView .lm_splitter,\n.lm_dragging .lm_splitter {\n  background: var(--background-color-richer);\n  opacity: 0.001;\n  transition: opacity 200ms ease;\n}\n.GLRootView .lm_splitter:hover,\n.lm_dragging .lm_splitter:hover,\n.GLRootView .lm_splitter.lm_dragging,\n.lm_dragging .lm_splitter.lm_dragging {\n  background: var(--background-color-richer);\n  opacity: 1;\n}\n.GLRootView .lm_header,\n.lm_dragging .lm_header {\n  height: var(--form-element-height) !important;\n}\n.GLRootView .lm_header .lm_tab,\n.lm_dragging .lm_header .lm_tab {\n  font-weight: 600;\n  font-size: 11px;\n  height: calc(var(--form-element-height) - 7.2px);\n  letter-spacing: 0.1em;\n  text-transform: uppercase;\n  color: var(--text-color-softer);\n  background: var(--background-color-softer);\n  display: flex;\n  align-items: center;\n  white-space: nowrap;\n  margin: 0;\n  padding: 2.4px 1.5em 4px 1.5em;\n  border: 1px solid var(--border-color);\n  border-bottom: none;\n  border-radius: var(--corner-radius) var(--corner-radius) 0 0;\n}\n.GLRootView .lm_header .lm_tab .lm_title,\n.lm_dragging .lm_header .lm_tab .lm_title {\n  padding-top: 1px;\n  margin: 0 0.5em;\n}\n.GLRootView .lm_header .lm_tab .icon,\n.lm_dragging .lm_header .lm_tab .icon {\n  margin: 0 0.5em;\n  filter: url(#recolorImageTo--disabled-color);\n}\n.GLRootView .lm_header .lm_tab .icon img,\n.lm_dragging .lm_header .lm_tab .icon img {\n  width: 11px;\n  height: 11px;\n  margin-top: 5px;\n}\n.GLRootView .lm_header .lm_tab .icon:hover,\n.lm_dragging .lm_header .lm_tab .icon:hover {\n  filter: url(#recolorImageTo--text-color);\n}\n.GLRootView .lm_header .lm_tab .lm_close_tab,\n.lm_dragging .lm_header .lm_tab .lm_close_tab {\n  position: relative;\n  top: -0.3em;\n  margin: 0 -0.5em 0 0.5em;\n}\n.GLRootView .lm_header .lm_tab .lm_close_tab:after,\n.lm_dragging .lm_header .lm_tab .lm_close_tab:after {\n  content: '\\2a09';\n  color: var(--disabled-color);\n  font-size: 1.3em;\n}\n.GLRootView .lm_header .lm_tab .lm_close_tab:hover:after,\n.lm_dragging .lm_header .lm_tab .lm_close_tab:hover:after {\n  color: var(--text-color);\n}\n.GLRootView .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_header .lm_tab.lm_active {\n  padding-bottom: 5px;\n}\n.GLRootView .lm_tabdropdown_list,\n.lm_dragging .lm_tabdropdown_list {\n  border-radius: var(--corner-radius);\n  box-shadow: 2px 2px 5px rgba(var(--shadow-color-rgb), 0.75);\n}\n.GLRootView .lm_tabdropdown_list .lm_tab,\n.lm_dragging .lm_tabdropdown_list .lm_tab {\n  border: none;\n  border-radius: 0;\n}\n.GLRootView .lm_tabdropdown_list .lm_tab .icon,\n.lm_dragging .lm_tabdropdown_list .lm_tab .icon {\n  display: none;\n}\n.GLRootView .lm_dragProxy.lm_right .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_dragProxy.lm_right .lm_header .lm_tab.lm_active,\n.GLRootView .lm_stack.lm_right .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_stack.lm_right .lm_header .lm_tab.lm_active {\n  box-shadow: 2px -2px 2px -2px rgba(var(--shadow-color-rgb), 0.2);\n}\n.GLRootView .lm_dragProxy.lm_bottom .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_dragProxy.lm_bottom .lm_header .lm_tab.lm_active,\n.GLRootView .lm_stack.lm_bottom .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_stack.lm_bottom .lm_header .lm_tab.lm_active {\n  box-shadow: 2px 2px 2px -2px rgba(var(--shadow-color-rgb), 0.2);\n}\n.GLRootView .lm_selected .lm_header,\n.lm_dragging .lm_selected .lm_header {\n  background-color: #452500;\n}\n.GLRootView .lm_tab:hover,\n.lm_dragging .lm_tab:hover,\n.GLRootView .lm_tab.lm_active,\n.lm_dragging .lm_tab.lm_active {\n  background: var(--background-color);\n  color: var(--text-color);\n}\n.GLRootView .lm_controls > li,\n.lm_dragging .lm_controls > li {\n  position: relative;\n  margin: 0 0.25em;\n}\n.GLRootView .lm_controls > li.lm_tabdropdown:before,\n.lm_dragging .lm_controls > li.lm_tabdropdown:before,\n.GLRootView .lm_controls > li:after,\n.lm_dragging .lm_controls > li:after {\n  color: var(--disabled-color);\n}\n.GLRootView .lm_controls > li.lm_tabdropdown:hover:before,\n.lm_dragging .lm_controls > li.lm_tabdropdown:hover:before,\n.GLRootView .lm_controls > li:hover:after,\n.lm_dragging .lm_controls > li:hover:after {\n  color: var(--text-color);\n}\n.GLRootView .lm_controls .lm_popout:after,\n.lm_dragging .lm_controls .lm_popout:after {\n  content: '\\1f5d7';\n}\n.GLRootView .lm_controls .lm_maximise:after,\n.lm_dragging .lm_controls .lm_maximise:after {\n  content: '\\1f5d6';\n}\n.GLRootView .lm_controls .lm_close,\n.lm_dragging .lm_controls .lm_close {\n  margin: 1px 0 0 0.25em;\n}\n.GLRootView .lm_controls .lm_close:after,\n.lm_dragging .lm_controls .lm_close:after {\n  content: '\\2a09';\n}\n.GLRootView .lm_maximised .lm_header,\n.lm_dragging .lm_maximised .lm_header {\n  background-color: var(--text-color-softer);\n}\n.GLRootView .lm_maximised .lm_controls .lm_maximise:after,\n.lm_dragging .lm_maximised .lm_controls .lm_maximise:after {\n  content: '\\1f5d5';\n}\n.GLRootView .lm_transition_indicator,\n.lm_dragging .lm_transition_indicator {\n  background-color: var(--shadow-color);\n  border: 1px dashed var(--border-color);\n}\n.lm_popin {\n  cursor: pointer;\n  top: 0;\n  left: 0;\n  bottom: unset;\n  right: unset;\n  background: var(--background-color);\n  border: 1px solid var(--border-color);\n  border-radius: 0 0 var(--corner-radius) 0;\n}\n.lm_popin:after {\n  content: '\\25f0';\n  color: var(--text-color-softer);\n  position: relative;\n  top: -3px;\n  right: -3px;\n}\n.lm_popin:hover {\n  border-color: var(--text-color-softer);\n}\n.lm_popin:hover:after {\n  color: var(--text-color);\n}\n.lm_popin .lm_bg {\n  display: none;\n}\n.lm_popin .lm_icon {\n  display: none;\n}\n";
 
 /* globals GoldenLayout, uki */
 
@@ -1601,7 +1636,12 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
         }
         super(options);
 
-        this.glSettings = options.glSettings;
+        this.glSettings = options.glSettings || {
+          content: [{
+            type: 'stack',
+            content: []
+          }]
+        };
         this.viewClassLookup = options.viewClassLookup;
       }
 
@@ -1684,6 +1724,11 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
       }
 
       async draw () {
+        const bounds = this.getBounds();
+        if (bounds.width !== this.goldenLayout.width ||
+            bounds.height !== this.goldenLayout.height) {
+          this.goldenLayout.updateSize();
+        }
         await super.draw(...arguments);
         this.renderAllViews();
       }
@@ -2196,7 +2241,7 @@ const { FlexTableView, FlexTableViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-var defaultStyle$8 = ".LineChartView path {\n  fill: none;\n  stroke-width: 1px;\n  stroke: var(--text-color-normal);\n}\n";
+var defaultStyle$8 = ".LineChartView path {\n  fill: none;\n  stroke-width: 1px;\n  stroke: var(--text-color);\n}\n";
 
 var template$2 = "<defs>\n  <clipPath>\n    <rect></rect>\n  </clipPath>\n</defs>\n<g class=\"chart\">\n  <path></path>\n</g>\n<g class=\"y axis\"></g>\n<g class=\"x axis\"></g>\n";
 
@@ -2470,9 +2515,20 @@ const version$1 = pkg.version;
 
 const globalUI = new GlobalUI(globalThis.uki.globalOptions || {});
 
+const showTooltip = globalUI.showTooltip;
+const showContextMenu = globalUI.showContextMenu;
+const hideTooltip = globalUI.hideTooltip;
+const showModal = globalUI.showModal;
+const hideModal = globalUI.hideModal;
+
 globalThis.uki.ui = {
   version: version$1,
   globalUI,
+  showTooltip,
+  showContextMenu,
+  hideTooltip,
+  showModal,
+  hideModal,
   ThemeableMixin,
   OverlaidView,
   OverlaidViewMixin,
@@ -2516,4 +2572,4 @@ globalThis.uki.ui = {
   VegaViewMixin
 };
 
-export { AnimatedView, AnimatedViewMixin, BaseTableView, BaseTableViewMixin, ButtonView, ButtonViewMixin, CanvasGLView, CanvasGLViewMixin, CanvasView, CanvasViewMixin, FlexTableView, FlexTableViewMixin, GLRootView, GLRootViewMixin, GLView, GLViewMixin, IFrameGLView, IFrameGLViewMixin, IFrameView, IFrameViewMixin, InformativeView, InformativeViewMixin, LineChartView, LineChartViewMixin, ModalView, ModalViewMixin, OverlaidView, OverlaidViewMixin, ParentSizeView, ParentSizeViewMixin, RecolorableImageView, RecolorableImageViewMixin, SvgGLView, SvgGLViewMixin, SvgView, SvgViewMixin, ThemeableMixin, TooltipView, TooltipViewMixin, VegaView, VegaViewMixin, globalUI, version$1 as version };
+export { AnimatedView, AnimatedViewMixin, BaseTableView, BaseTableViewMixin, ButtonView, ButtonViewMixin, CanvasGLView, CanvasGLViewMixin, CanvasView, CanvasViewMixin, FlexTableView, FlexTableViewMixin, GLRootView, GLRootViewMixin, GLView, GLViewMixin, IFrameGLView, IFrameGLViewMixin, IFrameView, IFrameViewMixin, InformativeView, InformativeViewMixin, LineChartView, LineChartViewMixin, ModalView, ModalViewMixin, OverlaidView, OverlaidViewMixin, ParentSizeView, ParentSizeViewMixin, RecolorableImageView, RecolorableImageViewMixin, SvgGLView, SvgGLViewMixin, SvgView, SvgViewMixin, ThemeableMixin, TooltipView, TooltipViewMixin, VegaView, VegaViewMixin, globalUI, hideModal, hideTooltip, showContextMenu, showModal, showTooltip, version$1 as version };

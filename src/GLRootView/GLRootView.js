@@ -43,7 +43,12 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
         }
         super(options);
 
-        this.glSettings = options.glSettings;
+        this.glSettings = options.glSettings || {
+          content: [{
+            type: 'stack',
+            content: []
+          }]
+        };
         this.viewClassLookup = options.viewClassLookup;
       }
 
@@ -126,6 +131,11 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
       }
 
       async draw () {
+        const bounds = this.getBounds();
+        if (bounds.width !== this.goldenLayout.width ||
+            bounds.height !== this.goldenLayout.height) {
+          this.goldenLayout.updateSize();
+        }
         await super.draw(...arguments);
         this.renderAllViews();
       }

@@ -16,7 +16,7 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         this._content = options.content;
         this._visible = options.visible || false;
         this._shadow = options.shadow || true;
-        this._buttonSpecs = options.buttons || [
+        this._buttonSpecs = options.buttonSpecs || [
           {
             label: 'Cancel',
             onclick: () => { this.hide(); }
@@ -70,6 +70,12 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         this.render();
       }
 
+      get buttonViews () {
+        return this.modalButtonEl?.selectAll('.ButtonView').nodes().map(el => {
+          return el.__modalButtonView;
+        });
+      }
+
       async show ({
         content,
         hide,
@@ -94,6 +100,10 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
       }
 
       async setup () {
+        // As ModalView might be reusing a d3el from a different ModalView,
+        // reset its class first (its contents will be reset by the html() call
+        // below)
+        this.d3el.attr('class', null);
         await super.setup(...arguments);
         this.d3el.style('display', 'none')
           .html(template);
@@ -109,7 +119,7 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         if (this.visible) {
           this.modalShadowEl.style('display', this.shadow ? null : 'none');
 
-          if (this.content === null || typeof this.content === 'string') {
+          if (typeof this.content === 'string') {
             this.modalContentEl.html(this.content);
           } else if (this.content instanceof uki.View) {
             await this.content.render(this.modalContentEl);

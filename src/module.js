@@ -27,9 +27,20 @@ const version = pkg.version;
 
 const globalUI = new GlobalUI(globalThis.uki.globalOptions || {});
 
+const showTooltip = globalUI.showTooltip;
+const showContextMenu = globalUI.showContextMenu;
+const hideTooltip = globalUI.hideTooltip;
+const showModal = globalUI.showModal;
+const hideModal = globalUI.hideModal;
+
 globalThis.uki.ui = {
   version,
   globalUI,
+  showTooltip,
+  showContextMenu,
+  hideTooltip,
+  showModal,
+  hideModal,
   ThemeableMixin,
   OverlaidView,
   OverlaidViewMixin,
@@ -76,6 +87,11 @@ globalThis.uki.ui = {
 export {
   version,
   globalUI,
+  showTooltip,
+  showContextMenu,
+  hideTooltip,
+  showModal,
+  hideModal,
   ThemeableMixin,
   OverlaidView,
   OverlaidViewMixin,

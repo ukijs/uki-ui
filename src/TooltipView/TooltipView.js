@@ -14,7 +14,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
 
         this._content = options.content === undefined ? '' : options.content;
         this._visible = options.visible || false;
-        this._showEvent = this._visible ? d3.event : null;
+        this._showEvent = options.showEvent || (this._visible && d3.event) || null;
         this._target = options.target || null;
         this._targetBounds = options.targetBounds || null;
         this._anchor = options.anchor || null;
@@ -44,7 +44,8 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
       }
 
       set visible (value) {
-        this.resetVisibility(value);
+        this._visible = value;
+        this.resetHideTimer();
         this.render();
       }
 
@@ -104,8 +105,10 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         anchor,
         hideAfterMs,
         interactive,
+        showEvent,
         isContextMenu = false
       } = {}) {
+        this._showEvent = showEvent || d3.event;
         if (content !== undefined) {
           this._content = content;
         }
@@ -130,7 +133,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
           this._contextMenuEntries = null;
         }
         delete this._currentSubMenu;
-        this.resetVisibility(!hide);
+        this._visible = !hide;
         this.resetHideTimer();
         await this.render();
       }
@@ -141,7 +144,8 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         targetBounds,
         anchor,
         hideAfterMs,
-        interactive
+        interactive,
+        showEvent
       } = {}) {
         this._contextMenuEntries = menuEntries;
         delete this._currentSubMenu;
@@ -152,7 +156,8 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
           anchor: anchor || { x: 1, y: 0 },
           hideAfterMs: hideAfterMs,
           interactive: true,
-          isContextMenu: true
+          isContextMenu: true,
+          showEvent
         });
       }
 
@@ -160,31 +165,8 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         await this.show({ hide: true });
       }
 
-      resetVisibility (value) {
-        this._visible = value;
-        if (this === this._rootTooltip) {
-          if (this._visible) {
-            this._showEvent = d3.event;
-            d3.select('body').on('click.tooltip', () => {
-              if (d3.event === this._showEvent) {
-                // This is the same event that opened the tooltip; absorb the event to
-                // prevent flicker
-                d3.event.stopPropagation();
-              } else if (!this.interactive || !this.d3el.node().contains(d3.event.target)) {
-                // Hide the tooltip if we click outside of it, or if this isn't an
-                // interactive tooltip
-                this.hide();
-              }
-            });
-          } else {
-            this._showEvent = null;
-            d3.select('body').on('click.tooltip', null);
-          }
-        }
-        this.render();
-      }
-
       resetHideTimer () {
+        this._hideVote = false;
         globalThis.clearTimeout(this._tooltipTimeout);
         if (this.d3el) {
           this.d3el
@@ -221,7 +203,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         this._allVoteTimeout = globalThis.setTimeout(() => {
           // All the submenus have to agree that the context menu tree should
           // be hidden, otherwise it stays visible
-          let contextMenu = this;
+          let contextMenu = this._rootTooltip;
           let hide = true;
           while (contextMenu) {
             hide = hide && contextMenu._hideVote;
@@ -350,6 +332,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
           this.d3el
             .style('left', '-1000em')
             .style('top', '-1000em');
+          d3.select('body').on(`click.tooltip${this._nestLevel}`, null);
         } else {
           if (this.content instanceof uki.View) {
             await this.content.render(this.d3el);
@@ -377,6 +360,21 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
 
           this.d3el.style('left', tooltipPosition.left + 'px')
             .style('top', tooltipPosition.top + 'px');
+
+          d3.select('body').on(`click.tooltip${this._nestLevel}`, () => {
+            if (
+              (!this.interactive ||
+               !this.d3el.node().contains(d3.event.target)) &&
+              d3.event !== this._showEvent
+            ) {
+              // Vote to hide the tooltip if this isn't an interactive tooltip,
+              // or if we click outside of an interactive tooltip, as long as
+              // the current mouse event isn't the one that is trying to open
+              // a tooltip
+              this._hideVote = true;
+              this._rootTooltip.hideIfAllVotesCast();
+            }
+          });
         }
 
         await this.drawSubMenu();
@@ -384,6 +382,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
 
       async drawContextMenu () {
         const contentFuncPromises = [];
+        this.d3el.selectAll(':scope > :not(.menuItem)').remove();
         let menuEntries = this.d3el.selectAll(':scope > .menuItem')
           .data(this._contextMenuEntries, (d, i) => i);
         menuEntries.exit().remove();
@@ -419,7 +418,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
               contentFuncPromises.push(this.__contextMenuButtonView.render());
             }
           }).on('click', d => {
-            if (d && d.onclick) {
+            if (d && d.onclick && !d.disabled) {
               d.onclick();
               this._rootTooltip.hide();
             }
@@ -466,6 +465,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
           let level = this._nestLevel + 1;
           while (d3el.node() !== null) {
             d3el.remove();
+            d3.select('body').on(`click.tooltip${level}`, null);
             level += 1;
             d3el = d3.select(`.nestedContextMenu[data-nest-level="${level}"]`);
           }

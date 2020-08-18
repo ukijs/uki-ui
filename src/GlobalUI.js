@@ -27,12 +27,12 @@ class GlobalUI extends ThemeableMixin({
     }
     super(options);
     this.tooltip = options.tooltip || null;
-    uki.showTooltip = tooltipArgs => { this.showTooltip(tooltipArgs); };
-    uki.hideTooltip = () => { this.hideTooltip(); };
-    uki.showContextMenu = menuArgs => { this.showContextMenu(menuArgs); };
+    uki.showTooltip = async tooltipArgs => { return await this.showTooltip(tooltipArgs); };
+    uki.hideTooltip = async () => { return await this.hideTooltip(); };
+    uki.showContextMenu = async menuArgs => { return await this.showContextMenu(menuArgs); };
     this.modal = options.modal || null;
-    uki.showModal = modalArgs => { this.showModal(modalArgs); };
-    uki.hideModal = () => { this.hideModal(); };
+    uki.showModal = async modalArgs => { return await this.showModal(modalArgs); };
+    uki.hideModal = async () => { return await this.hideModal(); };
   }
 
   async setTheme (value) {
@@ -59,36 +59,47 @@ class GlobalUI extends ThemeableMixin({
   }
 
   async showContextMenu (menuArgs) {
+    menuArgs.showEvent = menuArgs.showEvent || d3.event;
     await this.initTooltip();
-    this.tooltip.showContextMenu(menuArgs);
+    await this.tooltip.showContextMenu(menuArgs);
+    return this.tooltip;
   }
 
   async showTooltip (tooltipArgs) {
+    tooltipArgs.showEvent = tooltipArgs.showEvent || d3.event;
     await this.initTooltip();
-    this.tooltip.show(tooltipArgs);
+    await this.tooltip.show(tooltipArgs);
+    return this.tooltip;
   }
 
-  hideTooltip () {
+  async hideTooltip () {
     if (this.tooltip) {
-      this.tooltip.hide();
+      await this.tooltip.hide();
     }
+    return this.tooltip;
   }
 
   async showModal (modalArgs) {
-    if (!this.modal) {
-      // Create the modal layer, and make sure it's under the TooltipView if it exists
-      this.modal = new ModalView({
-        d3el: d3.select('body').insert('div', '.TooltipView')
-      });
-      await this.modal.render();
+    if (!this._modalEl) {
+      this._modalEl = (this.modal && this.modal.d3el) || d3.select('body').insert('div', '.TooltipView');
     }
-    this.modal.show(modalArgs);
+    if (modalArgs instanceof ModalView) {
+      this.modal = modalArgs;
+    } else if (!this.modal || this.modal.constructor.name !== 'ModalView') {
+      this.modal = new ModalView();
+    } else {
+      this.modal.dirty = true;
+    }
+    await this.modal.render(this._modalEl);
+    await this.modal.show(modalArgs instanceof ModalView ? {} : modalArgs);
+    return this.modal;
   }
 
-  hideModal () {
+  async hideModal () {
     if (this.modal) {
-      this.modal.hide();
+      await this.modal.hide();
     }
+    return this.modal;
   }
 }
 export default GlobalUI;

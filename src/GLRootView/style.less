@@ -1,7 +1,7 @@
 @color0: var(--background-color); // Panel background; appears 3 times
 @color1: var(--shadow-color); // Shadow color; appears 4 times
 @color2: var(--border-color); // Panel border color; appears 3 times
-@color3: var(--text-color-normal); // Active tab text color; appears 2 times
+@color3: var(--text-color); // Active tab text color; appears 2 times
 @color4: var(--text-color-softer); // Maximized header background; appears 1 time
 @color5: var(--border-color); // Color of dashed border while dragging; appears 1 time
 @color6: #452500; // Not sure exactly what this does; appears 1 time
@@ -13,6 +13,7 @@
 
 .GLRootView,
 .lm_dragging {
+  overflow: hidden;
   // ".lm_dragging" is applied to BODY tag during Drag and is also directly applied to the root of the object being dragged
 
   // Entire GoldenLayout Container, if a background is set, it is visible as color of "pane header" and "splitters" (if these latest has opacity very low)
@@ -95,7 +96,7 @@
         filter: url(#recolorImageTo--disabled-color);
 
         &:hover {
-          filter: url(#recolorImageTo--text-color-normal);
+          filter: url(#recolorImageTo--text-color);
         }
       }
 
@@ -110,7 +111,7 @@
           font-size: 1.3em;
         }
         &:hover:after {
-          color: var(--text-color-normal);
+          color: var(--text-color);
         }
       }
 
@@ -180,7 +181,7 @@
 
       &.lm_tabdropdown:hover:before,
       &:hover:after {
-        color: var(--text-color-normal);
+        color: var(--text-color);
       }
     }
 
@@ -246,7 +247,7 @@
   &:hover {
     border-color: var(--text-color-softer);
     &:after {
-      color: var(--text-color-normal);
+      color: var(--text-color);
     }
   }
 

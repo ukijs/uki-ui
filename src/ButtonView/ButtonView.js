@@ -21,6 +21,7 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
         this._borderless = options.borderless || false;
         this._tooltip = options.tooltip;
         this._onclick = options.onclick || null;
+        this._onDisabledClick = options.onDisabledClick || null;
       }
 
       set size (value) {
@@ -104,6 +105,15 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
         return this._onclick;
       }
 
+      set onDisabledClick (value) {
+        this._onDisabledClick = value;
+        this.render();
+      }
+
+      get onDisabledClick () {
+        return this._onDisabledClick;
+      }
+
       async setup () {
         await super.setup(...arguments);
         this.d3el.classed('button', true);
@@ -122,6 +132,10 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
               this.onclick();
             }
             this.trigger('click');
+          } else {
+            if (this.onDisabledClick) {
+              this.onDisabledClick();
+            }
           }
         }).on('mouseenter.ButtonView', () => {
           if (this.tooltip) {

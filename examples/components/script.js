@@ -31,12 +31,12 @@ class ModalLauncherView extends ui.GLView {
 
   setup () {
     super.setup({
- lessArgs: {
- modifyVars: {
-      '@contentPadding': '2em'
-    }
-}
-});
+      lessArgs: {
+        modifyVars: {
+          '@contentPadding': '2em'
+        }
+      }
+    });
     this.d3el.style('padding', '1em');
 
     for (const disabled of [false, true]) {
@@ -72,10 +72,7 @@ class ModalLauncherView extends ui.GLView {
       .style('margin-top', '-1em');
     const showModalFunc = () => {
       uki.showModal({
-        content: `
-          <div>This is an example modal</div>
-          <div>It accepts arbitrary html</div>
-        `,
+        content: 'This is an example modal',
         buttonSpecs: [
           {
             label: 'Cancel',
@@ -99,7 +96,7 @@ class ModalLauncherView extends ui.GLView {
         ]
       });
     };
-    button.on('click', showModalFunc);
+    button.onclick = showModalFunc;
     button.d3el.on('mouseenter', function () {
       const generateRandomEntries = length => {
         return Array.from({ length }, () => {
