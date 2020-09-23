@@ -17,6 +17,8 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
         super(options);
         this._error = options.error || null;
         this._loadingMessage = options.loadingMessage || 'Loading...';
+        this._informativeMessage = options.informativeMessage || null;
+        this._informativeImg = options.informativeImg || null;
         this._loading = options.loading || false;
         this._firstRenderCompleted = false;
         this._resourcesLoaded = false;
@@ -24,6 +26,23 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
           this._resourcesLoaded = true;
           this.render();
         });
+      }
+
+      get informativeMessage () {
+        return this._informativeMessage;
+      }
+
+      set informativeMessage (value) {
+        this._informativeMessage = value;
+        this.render();
+      }
+
+      get informativeImg () {
+        return this._informativeImg;
+      }
+
+      set informativeImg (value) {
+        this._informativeImg = value;
       }
 
       get error () {
@@ -104,11 +123,11 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
           await this.drawError(this.d3el, this._error);
         } else {
           this.overlayContentEl.classed('error', false);
-          this.informativeIconEl.attr('src', this.isLoading ? spinnerImg : null)
-            .style('display', this.isLoading ? null : 'none')
+          this.informativeIconEl.attr('src', this.isLoading ? spinnerImg : this.informativeImg)
+            .style('display', this.isLoading || this.informativeImg ? null : 'none')
             .classed('spin', this.isLoading);
-          this.informativeMessageEl.text(this.isLoading ? this.loadingMessage : '')
-            .style('display', this.isLoading ? null : 'none');
+          this.informativeMessageEl.text(this.isLoading ? this.loadingMessage : this.informativeMessage)
+            .style('display', this.isLoading || this.informativeMessage ? null : 'none');
           this.informativeErrorEl.style('display', 'none');
         }
       }
@@ -122,6 +141,7 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
 
         // Force the overlay to display; it may not have displayed
         // properly if there was an error
+        this.updateOverlaySize();
         this.overlayShadowEl.style('display', null);
         this.overlayContentEl.classed('error', true);
 
@@ -132,9 +152,10 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
           .style('display', null);
         this.informativeErrorEl.style('display', null)
           .select('pre')
-          .text(error.stack);
-
-        console.warn(error);
+          .text(error.stack)
+          .on('click', () => {
+            throw error;
+          });
       }
     }
     return InformativeView;

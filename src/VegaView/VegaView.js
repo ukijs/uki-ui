@@ -9,13 +9,13 @@ const { VegaView, VegaViewMixin } = uki.utils.createMixinAndDefault({
         if (!globalThis.vega) {
           // Ensure that vega-core is loaded (d3 already should be)
           options.resources.push({
-            type: 'js', url: 'https://cdn.jsdelivr.net/npm/vega@5/build/vega-core.min.js'
+            type: 'js', url: uki.ui.dynamicDependencies.vega
           });
         }
         if (options.liteSpec && !globalThis.vegaLite) {
           // Ensure that vega-lite is loaded if we know that we're going to need it
           options.resources.push({
-            type: 'js', url: 'https://cdn.jsdelivr.net/npm/vega-lite@4'
+            type: 'js', url: uki.ui.dynamicDependencies['vega-lite']
           });
         }
         super(options);

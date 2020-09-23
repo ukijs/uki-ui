@@ -46,8 +46,8 @@ const { FlexTableView, FlexTableViewMixin } = uki.utils.createMixinAndDefault({
         listItems
           .style('max-width', '15em')
           .style('list-style', 'none')
-          .on('click', () => {
-            d3.event.stopPropagation();
+          .on('click', event => {
+            event.stopPropagation();
           });
 
         listItemsEnter.append('input')
@@ -57,7 +57,7 @@ const { FlexTableView, FlexTableViewMixin } = uki.utils.createMixinAndDefault({
           .style('display', 'inline-block')
           .style('vertical-align', 'top')
           .style('margin', '0.35em 1em 0 0')
-          .on('change', d => {
+          .on('change', (event, d) => {
             this.toggleHeader(d);
           });
         listItemsEnter.append('label')

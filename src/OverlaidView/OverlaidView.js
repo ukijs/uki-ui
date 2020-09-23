@@ -56,16 +56,6 @@ const { OverlaidView, OverlaidViewMixin } = uki.utils.createMixinAndDefault({
       }
 
       async draw () {
-        // Match the position / size of this.d3el, relative to its parent
-        const bounds = this.getBounds();
-        const parentBounds = this.getBounds(d3.select(this.d3el.node().parentNode));
-        this.overlayShadowEl
-          .style('top', bounds.top - parentBounds.top)
-          .style('left', bounds.left - parentBounds.left)
-          .style('right', bounds.right - parentBounds.right)
-          .style('bottom', bounds.bottom - parentBounds.bottom)
-          .classed('shadowed', this.overlayShadow);
-
         if (this.overlayVisible) {
           if (typeof this.overlayContent === 'string') {
             this.overlayContentEl.html(this.overlayContent);
@@ -79,6 +69,20 @@ const { OverlaidView, OverlaidViewMixin } = uki.utils.createMixinAndDefault({
         this.overlayShadowEl.style('display', this.overlayVisible ? null : 'none');
 
         await super.draw(...arguments);
+
+        this.updateOverlaySize();
+      }
+
+      updateOverlaySize () {
+        // Match the position / size of this.d3el, relative to its parent
+        const bounds = this.getBounds();
+        const parentBounds = this.getBounds(d3.select(this.d3el.node().parentNode));
+        this.overlayShadowEl
+          .style('top', bounds.top - parentBounds.top)
+          .style('left', bounds.left - parentBounds.left)
+          .style('right', bounds.right - parentBounds.right)
+          .style('bottom', bounds.bottom - parentBounds.bottom)
+          .classed('shadowed', this.overlayShadow);
       }
 
       async showOverlay ({

@@ -14,7 +14,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
 
         this._content = options.content === undefined ? '' : options.content;
         this._visible = options.visible || false;
-        this._showEvent = options.showEvent || (this._visible && d3.event) || null;
+        this._showEvent = options.showEvent || null;
         this._target = options.target || null;
         this._targetBounds = options.targetBounds || null;
         this._anchor = options.anchor || null;
@@ -108,7 +108,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         showEvent,
         isContextMenu = false
       } = {}) {
-        this._showEvent = showEvent || d3.event;
+        this._showEvent = showEvent;
         if (content !== undefined) {
           this._content = content;
         }
@@ -360,11 +360,11 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
           this.d3el.style('left', tooltipPosition.left + 'px')
             .style('top', tooltipPosition.top + 'px');
 
-          d3.select('body').on(`click.tooltip${this._nestLevel}`, () => {
+          d3.select('body').on(`click.tooltip${this._nestLevel}`, event => {
             if (
               (!this.interactive ||
-               !this.d3el.node().contains(d3.event.target)) &&
-              d3.event !== this._showEvent
+               !this.d3el.node().contains(event.target)) &&
+              event !== this._showEvent
             ) {
               // Vote to hide the tooltip if this isn't an interactive tooltip,
               // or if we click outside of an interactive tooltip, as long as
@@ -417,12 +417,12 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
               }
               contentFuncPromises.push(this.__contextMenuButtonView.render());
             }
-          }).on('click', d => {
+          }).on('click', (event, d) => {
             if (d && d.onclick && !d.disabled) {
               d.onclick();
               this._rootTooltip.hide();
             }
-          }).on('mouseenter', function (d) {
+          }).on('mouseenter', function (event, d) {
             if (d && d.subEntries) {
               // Use the menu item, including its margins, as targetBounds
               let targetBounds = this.getBoundingClientRect();

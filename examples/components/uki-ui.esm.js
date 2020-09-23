@@ -388,7 +388,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
 
         this._content = options.content === undefined ? '' : options.content;
         this._visible = options.visible || false;
-        this._showEvent = options.showEvent || (this._visible && d3.event) || null;
+        this._showEvent = options.showEvent || null;
         this._target = options.target || null;
         this._targetBounds = options.targetBounds || null;
         this._anchor = options.anchor || null;
@@ -482,7 +482,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         showEvent,
         isContextMenu = false
       } = {}) {
-        this._showEvent = showEvent || d3.event;
+        this._showEvent = showEvent;
         if (content !== undefined) {
           this._content = content;
         }
@@ -734,11 +734,11 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
           this.d3el.style('left', tooltipPosition.left + 'px')
             .style('top', tooltipPosition.top + 'px');
 
-          d3.select('body').on(`click.tooltip${this._nestLevel}`, () => {
+          d3.select('body').on(`click.tooltip${this._nestLevel}`, event => {
             if (
               (!this.interactive ||
-               !this.d3el.node().contains(d3.event.target)) &&
-              d3.event !== this._showEvent
+               !this.d3el.node().contains(event.target)) &&
+              event !== this._showEvent
             ) {
               // Vote to hide the tooltip if this isn't an interactive tooltip,
               // or if we click outside of an interactive tooltip, as long as
@@ -791,12 +791,12 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
               }
               contentFuncPromises.push(this.__contextMenuButtonView.render());
             }
-          }).on('click', d => {
+          }).on('click', (event, d) => {
             if (d && d.onclick && !d.disabled) {
               d.onclick();
               this._rootTooltip.hide();
             }
-          }).on('mouseenter', function (d) {
+          }).on('mouseenter', function (event, d) {
             if (d && d.subEntries) {
               // Use the menu item, including its margins, as targetBounds
               let targetBounds = this.getBoundingClientRect();
@@ -1015,11 +1015,11 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-var defaultVars = ":root {\n\n\t/* default theme: light background, dark text, blue accent */\n\t--theme-hue: 0;\t\t\t\t\t/* white */\n\t--accent-hue: 194;\t\t\t/* blue */\n  --error-hue: 14;         /* red-orange */\n\n\t--text-color-richer: hsl(var(--theme-hue), 0%, 5%);\t\t\t/* #0d0d0d\t\t*/\n\t--text-color: hsl(var(--theme-hue), 0%, 13%);\t\t/* #222222 \t\ttext color; button:hover:active color */\n\t--text-color-softer: hsl(var(--theme-hue), 0%, 33%);\t\t/* #555555 \t\tbutton color; button:hover border */\n\n  --error-color: hsl(var(--error-hue), 86%, 57%);\n\n  --accent-color: hsl(var(--accent-hue), 86%, 57%);\t\t\t\t/* #33C3F0 \t\tlink; button-primary bg+border; textarea,select:focus border */\n  --accent-color-hover: hsl(var(--accent-hue), 76%, 49%);\t/* #1EAEDB \t\tlink hover; button-primary:hover:active bg+border */\n  --accent-color-disabled: hsl(var(--accent-hue), 90%, 80%);\n\n  --disabled-color: hsl(var(--theme-hue), 0%, 75%);  /* disabled button color */\n\n  --border-color-richer: hsl(var(--theme-hue), 0%, 57%);\t/* #888888\t\tbutton:hover border */\n  --border-color: hsl(var(--theme-hue), 0%, 73%);\t\t\t\t\t/* #bbbbbb\t\tbutton border */\n\t--border-color-softer: hsl(var(--theme-hue), 0%, 82%);\t/* #d1d1d1\t\ttextarea,select,code,td,hr border\t */\n\n\t--background-color: white;\t\t\t\t\t\t\t\t\t\t\t\t\t\t/* transparent body background; textarea,select background */\n\t--background-color-softer: hsl(var(--theme-hue), 0%, 95%);\n  --background-color-richer: hsl(var(--theme-hue), 0%, 95%);\t\t\t/* #f1f1f1 \t\tcode background*/\n\n  --shadow-color: black;\n  --shadow-color-rgb: 0, 0, 0;\n\n\t--inverted-shadow-color: white;\n\n\n  /* Note: Skeleton was based off a 10px font sizing for REM  */\n\t/* 62.5% of typical 16px browser default = 10px */\n\t--base-font-size: 62.5%;\n\n\t/* Grid Defaults - default to match orig skeleton settings */\n\t--grid-max-width: 960px;\n\n  /* Button and input field height */\n  --form-element-height: 38px;\n\n  --corner-radius: 4px;\n}\n\n/*  Dark Theme\n\tNote: prefers-color-scheme selector support is still limited, but\n\tincluded for future and an example of defining a different base 'theme'\n*/\n@media screen and (prefers-color-scheme: dark) {\n\t:root {\n\t\t/* dark theme: light background, dark text, blue accent */\n\t\t--theme-hue: 0;\t\t\t\t\t/* black */\n\t\t--accent-hue: 194;\t\t\t/* blue */\n    --error-hue: 14;         /* red-orange */\n\n\t\t--text-color-richer: hsl(var(--theme-hue), 0%, 95%);\t\t/* #f2f2f2 */\n\t\t--text-color: hsl(var(--theme-hue), 0%, 80%);\t\t/* #cccccc text color; button:hover:active color */\n\t\t--text-color-softer: hsl(var(--theme-hue), 0%, 67%);\t\t/* #ababab button color; button:hover border */\n\n\t\t--error-color: hsl(var(--error-hue), 76%, 49%);\n\n\t\t--accent-color: hsl(var(--accent-hue), 76%, 49%);\t\t\t\t/* link; button-primary bg+border; textarea,select:focus border */\n\t\t--accent-color-hover: hsl(var(--accent-hue), 86%, 57%);\t/* link hover; button-primary:hover:active bg+border */\n\t\t--accent-color-disabled: hsl(var(--accent-hue), 90%, 80%);\n\n    --disabled-color: hsl(var(--theme-hue), 0%, 35%);  /* disabled button text color */\n\n\t\t--border-color-richer: hsl(var(--theme-hue), 0%, 67%);\t/* #ababab\t\tbutton:hover border */\n\t\t--border-color: hsl(var(--theme-hue), 0%, 27%);\t\t\t\t\t/* button border */\n\t\t--border-color-softer: hsl(var(--theme-hue), 0%, 20%);\t/* textarea,select,code,td,hr border\t */\n\n\t\t--background-color: hsl(var(--theme-hue), 0%, 12%);\t\t\t/* body background; textarea,select background */\n\t\t--background-color-softer: hsl(var(--theme-hue), 0%, 18%);\n\t\t--background-color-richer: hsl(var(--theme-hue), 0%, 5%);\t\t\t\t/* code background*/\n\n    --shadow-color: black;\n    --shadow-color-rgb: 0, 0, 0;\n\n\t\t--inverted-shadow-color: white;\n  }\n}\n";
+var defaultVars = ":root {\n\n\t/* default theme: light background, dark text, blue accent */\n\t--theme-hue: 0;\t\t\t\t\t/* white */\n\t--accent-hue: 194;\t\t\t/* blue */\n  --error-hue: 14;         /* red-orange */\n\n\t--text-color-richer: hsl(var(--theme-hue), 0%, 5%);\t\t\t/* #0d0d0d\t\t*/\n\t--text-color: hsl(var(--theme-hue), 0%, 13%);\t\t/* #222222 \t\ttext color; button:hover:active color */\n\t--text-color-softer: hsl(var(--theme-hue), 0%, 33%);\t\t/* #555555 \t\tbutton color; button:hover border */\n\n  --error-color: hsl(var(--error-hue), 86%, 57%);\n\n  --accent-color: hsl(var(--accent-hue), 86%, 57%);\t\t\t\t/* #33C3F0 \t\tlink; button-primary bg+border; textarea,select:focus border */\n  --accent-color-hover: hsl(var(--accent-hue), 76%, 49%);\t/* #1EAEDB \t\tlink hover; button-primary:hover:active bg+border */\n  --accent-color-disabled: hsl(var(--accent-hue), 90%, 80%);\n\n  --disabled-color: hsl(var(--theme-hue), 0%, 75%);  /* disabled button color */\n\n  --border-color-richer: hsl(var(--theme-hue), 0%, 57%);\t/* #888888\t\tbutton:hover border */\n  --border-color: hsl(var(--theme-hue), 0%, 73%);\t\t\t\t\t/* #bbbbbb\t\tbutton border */\n\t--border-color-softer: hsl(var(--theme-hue), 0%, 82%);\t/* #d1d1d1\t\ttextarea,select,code,td,hr border\t */\n\n\t--background-color: white;\t\t\t\t\t\t\t\t\t\t\t\t\t\t/* transparent body background; textarea,select background */\n\t--background-color-softer: hsl(var(--theme-hue), 0%, 95%);\n  --background-color-richer: hsl(var(--theme-hue), 0%, 95%);\t\t\t/* #f1f1f1 \t\tcode background*/\n\n  --shadow-color: black;\n  --shadow-color-rgb: 0, 0, 0;\n\n\t--inverted-shadow-color: white;\n\n\n  /* Note: Skeleton was based off a 10px font sizing for REM  */\n\t/* 62.5% of typical 16px browser default = 10px */\n\t--base-font-size: 62.5%;\n\n\t/* Some more additions over Skeleton for configurable typography */\n\t--base-font-family: \"Raleway\", \"HelveticaNeue\", \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n\t--base-font-weight: 400;\n\t--heavy-font-weight: 600;\n\t--light-font-weight: 300;\n\n\t/* Grid Defaults - default to match orig skeleton settings */\n\t--grid-max-width: 960px;\n\n  /* Button and input field height */\n  --form-element-height: 38px;\n\n  --corner-radius: 4px;\n}\n\n/*  Dark Theme\n\tNote: prefers-color-scheme selector support is still limited, but\n\tincluded for future and an example of defining a different base 'theme'\n*/\n@media screen and (prefers-color-scheme: dark) {\n\t:root {\n\t\t/* dark theme: light background, dark text, blue accent */\n\t\t--theme-hue: 0;\t\t\t\t\t/* black */\n\t\t--accent-hue: 194;\t\t\t/* blue */\n    --error-hue: 14;         /* red-orange */\n\n\t\t--text-color-richer: hsl(var(--theme-hue), 0%, 95%);\t\t/* #f2f2f2 */\n\t\t--text-color: hsl(var(--theme-hue), 0%, 80%);\t\t/* #cccccc text color; button:hover:active color */\n\t\t--text-color-softer: hsl(var(--theme-hue), 0%, 67%);\t\t/* #ababab button color; button:hover border */\n\n\t\t--error-color: hsl(var(--error-hue), 76%, 49%);\n\n\t\t--accent-color: hsl(var(--accent-hue), 76%, 49%);\t\t\t\t/* link; button-primary bg+border; textarea,select:focus border */\n\t\t--accent-color-hover: hsl(var(--accent-hue), 86%, 57%);\t/* link hover; button-primary:hover:active bg+border */\n\t\t--accent-color-disabled: hsl(var(--accent-hue), 90%, 80%);\n\n    --disabled-color: hsl(var(--theme-hue), 0%, 35%);  /* disabled button text color */\n\n\t\t--border-color-richer: hsl(var(--theme-hue), 0%, 67%);\t/* #ababab\t\tbutton:hover border */\n\t\t--border-color: hsl(var(--theme-hue), 0%, 27%);\t\t\t\t\t/* button border */\n\t\t--border-color-softer: hsl(var(--theme-hue), 0%, 20%);\t/* textarea,select,code,td,hr border\t */\n\n\t\t--background-color: hsl(var(--theme-hue), 0%, 12%);\t\t\t/* body background; textarea,select background */\n\t\t--background-color-softer: hsl(var(--theme-hue), 0%, 18%);\n\t\t--background-color-richer: hsl(var(--theme-hue), 0%, 5%);\t\t\t\t/* code background*/\n\n    --shadow-color: black;\n    --shadow-color-rgb: 0, 0, 0;\n\n\t\t--inverted-shadow-color: white;\n  }\n}\n";
 
 var normalize = "/*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */\n\n/* Document\n   ========================================================================== */\n\n/**\n * 1. Correct the line height in all browsers.\n * 2. Prevent adjustments of font size after orientation changes in iOS.\n */\n\nhtml {\n  line-height: 1.15; /* 1 */\n  -webkit-text-size-adjust: 100%; /* 2 */\n}\n\n/* Sections\n   ========================================================================== */\n\n/**\n * Remove the margin in all browsers.\n */\n\nbody {\n  margin: 0;\n}\n\n/**\n * Render the `main` element consistently in IE.\n */\n\nmain {\n  display: block;\n}\n\n/**\n * Correct the font size and margin on `h1` elements within `section` and\n * `article` contexts in Chrome, Firefox, and Safari.\n */\n\nh1 {\n  font-size: 2em;\n  margin: 0.67em 0;\n}\n\n/* Grouping content\n   ========================================================================== */\n\n/**\n * 1. Add the correct box sizing in Firefox.\n * 2. Show the overflow in Edge and IE.\n */\n\nhr {\n  box-sizing: content-box; /* 1 */\n  height: 0; /* 1 */\n  overflow: visible; /* 2 */\n}\n\n/**\n * 1. Correct the inheritance and scaling of font size in all browsers.\n * 2. Correct the odd `em` font sizing in all browsers.\n */\n\npre {\n  font-family: monospace, monospace; /* 1 */\n  font-size: 1em; /* 2 */\n}\n\n/* Text-level semantics\n   ========================================================================== */\n\n/**\n * Remove the gray background on active links in IE 10.\n */\n\na {\n  background-color: transparent;\n}\n\n/**\n * 1. Remove the bottom border in Chrome 57-\n * 2. Add the correct text decoration in Chrome, Edge, IE, Opera, and Safari.\n */\n\nabbr[title] {\n  border-bottom: none; /* 1 */\n  text-decoration: underline; /* 2 */\n  text-decoration: underline dotted; /* 2 */\n}\n\n/**\n * Add the correct font weight in Chrome, Edge, and Safari.\n */\n\nb,\nstrong {\n  font-weight: bolder;\n}\n\n/**\n * 1. Correct the inheritance and scaling of font size in all browsers.\n * 2. Correct the odd `em` font sizing in all browsers.\n */\n\ncode,\nkbd,\nsamp {\n  font-family: monospace, monospace; /* 1 */\n  font-size: 1em; /* 2 */\n}\n\n/**\n * Add the correct font size in all browsers.\n */\n\nsmall {\n  font-size: 80%;\n}\n\n/**\n * Prevent `sub` and `sup` elements from affecting the line height in\n * all browsers.\n */\n\nsub,\nsup {\n  font-size: 75%;\n  line-height: 0;\n  position: relative;\n  vertical-align: baseline;\n}\n\nsub {\n  bottom: -0.25em;\n}\n\nsup {\n  top: -0.5em;\n}\n\n/* Embedded content\n   ========================================================================== */\n\n/**\n * Remove the border on images inside links in IE 10.\n */\n\nimg {\n  border-style: none;\n}\n\n/* Forms\n   ========================================================================== */\n\n/**\n * 1. Change the font styles in all browsers.\n * 2. Remove the margin in Firefox and Safari.\n */\n\nbutton,\ninput,\noptgroup,\nselect,\ntextarea {\n  font-family: inherit; /* 1 */\n  font-size: 100%; /* 1 */\n  line-height: 1.15; /* 1 */\n  margin: 0; /* 2 */\n}\n\n/**\n * Show the overflow in IE.\n * 1. Show the overflow in Edge.\n */\n\nbutton,\ninput { /* 1 */\n  overflow: visible;\n}\n\n/**\n * Remove the inheritance of text transform in Edge, Firefox, and IE.\n * 1. Remove the inheritance of text transform in Firefox.\n */\n\nbutton,\nselect { /* 1 */\n  text-transform: none;\n}\n\n/**\n * Correct the inability to style clickable types in iOS and Safari.\n */\n\nbutton,\n[type=\"button\"],\n[type=\"reset\"],\n[type=\"submit\"] {\n  -webkit-appearance: button;\n}\n\n/**\n * Remove the inner border and padding in Firefox.\n */\n\nbutton::-moz-focus-inner,\n[type=\"button\"]::-moz-focus-inner,\n[type=\"reset\"]::-moz-focus-inner,\n[type=\"submit\"]::-moz-focus-inner {\n  border-style: none;\n  padding: 0;\n}\n\n/**\n * Restore the focus styles unset by the previous rule.\n */\n\nbutton:-moz-focusring,\n[type=\"button\"]:-moz-focusring,\n[type=\"reset\"]:-moz-focusring,\n[type=\"submit\"]:-moz-focusring {\n  outline: 1px dotted ButtonText;\n}\n\n/**\n * Correct the padding in Firefox.\n */\n\nfieldset {\n  padding: 0.35em 0.75em 0.625em;\n}\n\n/**\n * 1. Correct the text wrapping in Edge and IE.\n * 2. Correct the color inheritance from `fieldset` elements in IE.\n * 3. Remove the padding so developers are not caught out when they zero out\n *    `fieldset` elements in all browsers.\n */\n\nlegend {\n  box-sizing: border-box; /* 1 */\n  color: inherit; /* 2 */\n  display: table; /* 1 */\n  max-width: 100%; /* 1 */\n  padding: 0; /* 3 */\n  white-space: normal; /* 1 */\n}\n\n/**\n * Add the correct vertical alignment in Chrome, Firefox, and Opera.\n */\n\nprogress {\n  vertical-align: baseline;\n}\n\n/**\n * Remove the default vertical scrollbar in IE 10+.\n */\n\ntextarea {\n  overflow: auto;\n}\n\n/**\n * 1. Add the correct box sizing in IE 10.\n * 2. Remove the padding in IE 10.\n */\n\n[type=\"checkbox\"],\n[type=\"radio\"] {\n  box-sizing: border-box; /* 1 */\n  padding: 0; /* 2 */\n}\n\n/**\n * Correct the cursor style of increment and decrement buttons in Chrome.\n */\n\n[type=\"number\"]::-webkit-inner-spin-button,\n[type=\"number\"]::-webkit-outer-spin-button {\n  height: auto;\n}\n\n/**\n * 1. Correct the odd appearance in Chrome and Safari.\n * 2. Correct the outline style in Safari.\n */\n\n[type=\"search\"] {\n  -webkit-appearance: textfield; /* 1 */\n  outline-offset: -2px; /* 2 */\n}\n\n/**\n * Remove the inner padding in Chrome and Safari on macOS.\n */\n\n[type=\"search\"]::-webkit-search-decoration {\n  -webkit-appearance: none;\n}\n\n/**\n * 1. Correct the inability to style clickable types in iOS and Safari.\n * 2. Change font properties to `inherit` in Safari.\n */\n\n::-webkit-file-upload-button {\n  -webkit-appearance: button; /* 1 */\n  font: inherit; /* 2 */\n}\n\n/* Interactive\n   ========================================================================== */\n\n/*\n * Add the correct display in Edge, IE 10+, and Firefox.\n */\n\ndetails {\n  display: block;\n}\n\n/*\n * Add the correct display in all browsers.\n */\n\nsummary {\n  display: list-item;\n}\n\n/* Misc\n   ========================================================================== */\n\n/**\n * Add the correct display in IE 10+.\n */\n\ntemplate {\n  display: none;\n}\n\n/**\n * Add the correct display in IE 10.\n */\n\n[hidden] {\n  display: none;\n}\n";
 
-var honegumi = "/*\n* Based on Barebones by Steve Cochran\n* Based on Skeleton by Dave Gamache\n*\n* Free to use under the MIT license.\n*/\n\n/* CSS Variable definitions omitted (defaultVars.css is always loaded by UkiSettings.js)\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* Grid\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/* CSS Grid depends much more on CSS than HTML, so there is less boilerplate\n\t than with skeleton. Only basic 1-4 column grids are included.\n\t Any additional needs should be made using custom CSS directives */\n\n.grid-container {\n\tposition: relative;\n\tmax-width: var(--grid-max-width);\n\tmargin: 0 auto;\n\tpadding: 20px;\n\ttext-align: center;\n\tdisplay: grid;\n\tgrid-gap: 20px;\n\tgap: 20px;\n\n\t/* by default use min 200px wide columns auto-fit into width */\n\tgrid-template-columns: minmax(200px, 1fr);\n}\n\n/* grids to 3 columns above mobile sizes */\n@media (min-width: 600px) {\n\t.grid-container {\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t\tpadding: 10px 0;\n\t}\n\n\t/* basic grids */\n\t.grid-container.fifths {\n\t\tgrid-template-columns: repeat(5, 1fr);\n\t}\n\t.grid-container.quarters {\n\t\tgrid-template-columns: repeat(4, 1fr);\n\t}\n\t.grid-container.thirds {\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t}\n\t.grid-container.halves {\n\t\tgrid-template-columns: repeat(2, 1fr);\n\t}\n\t.grid-container.full {\n\t\tgrid-template-columns: 1fr;\n\t}\n}\n\n/* Base Styles\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhtml {\n  font-size: var(--base-font-size);\n  scroll-behavior: smooth;\n}\nbody {\n  font-size: 1.6em;\t\t/* changed from 15px in orig skeleton */\n  line-height: 1.6;\n  font-weight: 400;\n  font-family: \"Raleway\", \"HelveticaNeue\", \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n  color: var(--text-color);\n  background-color: var(--background-color);;\n}\n\n\n/* Typography\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nh1, h2, h3, h4, h5, h6 {\n  margin-top: 0;\n  margin-bottom: 2rem;\n  font-weight: 300; }\nh1 { font-size: 4.0rem; line-height: 1.2;  letter-spacing: -.1rem;}\nh2 { font-size: 3.6rem; line-height: 1.25; letter-spacing: -.1rem; }\nh3 { font-size: 3.0rem; line-height: 1.3;  letter-spacing: -.1rem; }\nh4 { font-size: 2.4rem; line-height: 1.35; letter-spacing: -.08rem; }\nh5 { font-size: 1.8rem; line-height: 1.5;  letter-spacing: -.05rem; }\nh6 { font-size: 1.5rem; line-height: 1.6;  letter-spacing: 0; }\n\n/* Larger than phablet */\n@media (min-width: 600px) {\n  h1 { font-size: 5.0rem; }\n  h2 { font-size: 4.2rem; }\n  h3 { font-size: 3.6rem; }\n  h4 { font-size: 3.0rem; }\n  h5 { font-size: 2.4rem; }\n  h6 { font-size: 1.5rem; }\n}\n\np {\n  margin-top: 0; }\n\nb, strong {\n  font-weight: 600;\n}\n\n/* Links\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\na {\n  color: var(--accent-color); }\na:hover {\n  color: var(--accent-color-hover); }\n\n\n/* Buttons\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.button,\nbutton,\ninput[type=\"submit\"],\ninput[type=\"reset\"],\ninput[type=\"button\"] {\n  display: inline-block;\n  height: var(--form-element-height);\n  padding: 0 30px;\n  color: var(--text-color-softer);\n  text-align: center;\n  font-size: 11px;\n  font-weight: 600;\n  line-height: var(--form-element-height);\n  letter-spacing: .1em;\n  text-transform: uppercase;\n  text-decoration: none;\n  white-space: nowrap;\n  background-color: transparent;\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--border-color);\n  cursor: pointer;\n  user-select: none;\n  vertical-align: bottom;\n  box-sizing: border-box; }\n.button:hover,\nbutton:hover,\ninput[type=\"submit\"]:hover,\ninput[type=\"reset\"]:hover,\ninput[type=\"button\"]:hover,\n.button:active,\nbutton:active,\ninput[type=\"submit\"]:active,\ninput[type=\"reset\"]:active,\ninput[type=\"button\"]:active {\n  color: var(--text-color);\n  border-color: var(--text-color-softer);\n  outline: 0; }\n.button.button-primary,\nbutton.button-primary,\ninput[type=\"submit\"].button-primary,\ninput[type=\"reset\"].button-primary,\ninput[type=\"button\"].button-primary {\n  color: var(--inverted-shadow-color);\n  background-color: var(--accent-color);\n  border-color: var(--accent-color); }\n.button.button-primary:hover,\nbutton.button-primary:hover,\ninput[type=\"submit\"].button-primary:hover,\ninput[type=\"reset\"].button-primary:hover,\ninput[type=\"button\"].button-primary:hover,\n.button.button-primary:active,\nbutton.button-primary:active,\ninput[type=\"submit\"].button-primary:active,\ninput[type=\"reset\"].button-primary:active,\ninput[type=\"button\"].button-primary:active {\n  color: var(--inverted-shadow-color);\n  background-color: var(--accent-color-hover);\n  border-color: var(--accent-color-hover); }\n.button.button-disabled,\n.button:disabled,\nbutton:disabled,\ninput[type=\"submit\"]:disabled,\ninput[type=\"reset\"]:disabled,\ninput[type=\"button\"]:disabled {\n\tcolor: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n.button.button-primary.button-disabled,\n.button.button-primary:disabled,\nbutton.button-primary:disabled,\ninput[type=\"submit\"].button-primary:disabled,\ninput[type=\"reset\"].button-primary:disabled,\ninput[type=\"button\"].button-primary:disabled {\n\tcolor: var(--background-color);\n\tbackground-color: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n\n\n/* Forms\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ninput:not([type]),\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ntextarea,\nselect {\n  height: var(--form-element-height);\n  padding: 6px 10px; /* The 6px vertically centers text on FF, ignored by Webkit */\n  background-color: var(--background-color);\n  color: var(--text-color);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius);\n  box-shadow: none;\n  box-sizing: border-box; }\n/* Removes awkward default styles on some inputs for iOS */\ninput:not([type]),\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ninput[type=\"button\"],\ninput[type=\"submit\"],\ntextarea {\n  -webkit-appearance: none;\n     -moz-appearance: none;\n          appearance: none; }\ntextarea {\n  min-height: 5em;\n  padding-top: 6px;\n  padding-bottom: 6px; }\ninput:not([type]):focus,\ninput[type=\"email\"]:focus,\ninput[type=\"number\"]:focus,\ninput[type=\"search\"]:focus,\ninput[type=\"text\"]:focus,\ninput[type=\"tel\"]:focus,\ninput[type=\"url\"]:focus,\ninput[type=\"password\"]:focus,\ntextarea:focus,\nselect:focus {\n  border: 1px solid var(--accent-color);\n  outline: 0; }\ninput:not([type]).error,\ninput[type=\"email\"].error,\ninput[type=\"number\"].error,\ninput[type=\"search\"].error,\ninput[type=\"text\"].error,\ninput[type=\"tel\"].error,\ninput[type=\"url\"].error,\ninput[type=\"password\"].error,\ntextarea.error,\nselect.error {\n  color: var(--error-color);\n  border: 1px solid var(--error-color);\n}\ninput:not([type]):disabled,\ninput[type=\"email\"]:disabled,\ninput[type=\"number\"]:disabled,\ninput[type=\"search\"]:disabled,\ninput[type=\"text\"]:disabled,\ninput[type=\"tel\"]:disabled,\ninput[type=\"url\"]:disabled,\ninput[type=\"password\"]:disabled,\ntextarea:disabled,\nselect:disabled {\n  color: var(--disabled-color);\n  background-color: var(--background-color-softer);\n}\nlabel,\nlegend {\n  display: block;\n  margin-bottom: .5em;\n  font-weight: 600; }\nfieldset {\n  padding: 0;\n  border-width: 0; }\ninput[type=\"checkbox\"],\ninput[type=\"radio\"] {\n  display: inline; }\nlabel > .label-body {\n  display: inline-block;\n  margin-left: .5em;\n  font-weight: normal; }\n::placeholder {\n  color: var(--disabled-color);\n}\n\n/* Lists\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nul {\n  list-style: circle inside; }\nol {\n  list-style: decimal inside; }\nol, ul {\n  padding-left: 0;\n  margin-top: 0; }\nul ul, ul ol, ol ol, ol ul {\n\tfont-size: 100%;\n\tmargin: 1em 0 1em 3em;\n\tcolor: var(--text-color-softer);\n}\nli {\n  margin-bottom: 0.5em; }\n\n\n/* Scrollbars\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n::-webkit-scrollbar {\n  width: 1.25em;\n  height: 1.25em;\n}\n\n/* Track, Corner background color */\n::-webkit-scrollbar-track,\n::-webkit-scrollbar-corner,\n::-webkit-resizer {\n  background: transparent;\n}\n\n/* Buttons */\n::-webkit-scrollbar-button:single-button {\n  display: block;\n  width: 1.25em;\n  height: 1.25em;\n  border-radius: var(--corner-radius);\n  border-style: solid;\n}\n/* Up */\n::-webkit-scrollbar-button:vertical:decrement {\n  border-width: 0 0.625em 0.75em 0.625em;\n  border-color: transparent transparent var(--border-color-softer) transparent;\n}\n::-webkit-scrollbar-button:vertical:decrement:hover,\n::-webkit-scrollbar-button:vertical:decrement:active {\n  border-color: transparent transparent var(--text-color-softer) transparent;\n}\n/* Down */\n::-webkit-scrollbar-button:vertical:increment {\n  border-width: 0.75em 0.625em 0 0.625em;\n  border-color: var(--border-color-softer) transparent transparent transparent;\n}\n::-webkit-scrollbar-button:vertical:increment:hover,\n::-webkit-scrollbar-button:vertical:increment:active {\n  border-color: var(--text-color-softer) transparent transparent transparent;\n}\n/* Left */\n::-webkit-scrollbar-button:horizontal:decrement {\n  border-width: 0.625em 0.75em 0.625em 0;\n  border-color: transparent var(--border-color-softer) transparent transparent;\n}\n::-webkit-scrollbar-button:horizontal:decrement:hover,\n::-webkit-scrollbar-button:horizontal:decrement:active {\n  border-color: transparent var(--text-color-softer) transparent transparent;\n}\n/* Right */\n::-webkit-scrollbar-button:horizontal:increment {\n  border-width: 0.625em 0 0.625em 0.75em;\n  border-color: transparent transparent transparent var(--border-color-softer);\n}\n::-webkit-scrollbar-button:horizontal:increment:hover,\n::-webkit-scrollbar-button:horizontal:increment:active {\n  border-color: transparent transparent transparent var(--text-color-softer);\n}\n\n/* Handle */\n::-webkit-scrollbar-thumb {\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--background-color);\n  background: var(--border-color-softer);\n}\n::-webkit-scrollbar-thumb:hover {\n  cursor: grab;\n  background: var(--text-color-softer);\n}\n::-webkit-scrollbar-thumb:active {\n  cursor: grabbing;\n  background: var(--text-color-softer);\n}\n\n/* Code\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ncode {\n  padding: .2em .5em;\n  margin: 0 .2em;\n  font-size: 90%;\n  white-space: nowrap;\n  background: var(--background-color-richer);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius); }\npre > code {\n  display: block;\n  padding: 1em 1.5em;\n  white-space: pre;\n  overflow: auto; }\n\n\n/* Tables\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nth,\ntd {\n  padding: 12px 15px;\n  text-align: left;\n  border-bottom: 1px solid var(--border-color-softer); }\nth:first-child,\ntd:first-child {\n  padding-left: 0; }\nth:last-child,\ntd:last-child {\n  padding-right: 0; }\n\n\n/* Spacing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nbutton,\n.button {\n  margin-bottom: 1em; }\ninput,\ntextarea,\nselect,\nfieldset {\n  margin-bottom: 1.5em; }\npre,\nblockquote,\ndl,\nfigure,\ntable,\np,\nul,\nol,\nform {\n  margin-bottom: 2.5em; }\n\n\n/* Utilities\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.u-full-width {\n  width: 100%;\n  box-sizing: border-box; }\n.u-max-full-width {\n  max-width: 100%;\n  box-sizing: border-box; }\n.u-pull-right {\n  float: right; }\n.u-pull-left {\n  float: left; }\n.u-align-left {\n\ttext-align: left; }\n.u-align-right {\n\ttext-align: right; }\n\n\n/* Misc\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhr {\n  margin-top: 3em;\n  margin-bottom: 3.5em;\n  border-width: 0;\n  border-top: 1px solid var(--border-color-softer); }\n\n\n/* Clearing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* Self Clearing Goodness */\n/*.container:after,\n.row:after,\n.u-cf {\n  content: \"\";\n  display: table;\n  clear: both; }*/\n\n\n/* Media Queries\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/*\nNote: The best way to structure the use of media queries is to create the queries\nnear the relevant code. For example, if you wanted to change the styles for buttons\non small devices, paste the mobile query code up in the buttons section and style it\nthere.\n*/\n\n\n/* Larger than mobile (default point when grid becomes active) */\n@media (min-width: 600px) {}\n\n/* Larger than phablet */\n@media (min-width: 900px) {}\n\n/* Larger than tablet */\n@media (min-width: 1200px) {}\n";
+var honegumi = "/*\n* Based on Barebones by Steve Cochran\n* Based on Skeleton by Dave Gamache\n*\n* Free to use under the MIT license.\n*/\n\n/* CSS Variable definitions omitted (defaultVars.css is always loaded by UkiSettings.js)\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* Grid\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/* CSS Grid depends much more on CSS than HTML, so there is less boilerplate\n\t than with skeleton. Only basic 1-4 column grids are included.\n\t Any additional needs should be made using custom CSS directives */\n\n.grid-container {\n\tposition: relative;\n\tmax-width: var(--grid-max-width);\n\tmargin: 0 auto;\n\tpadding: 20px;\n\ttext-align: center;\n\tdisplay: grid;\n\tgrid-gap: 20px;\n\tgap: 20px;\n\n\t/* by default use min 200px wide columns auto-fit into width */\n\tgrid-template-columns: minmax(200px, 1fr);\n}\n\n/* grids to 3 columns above mobile sizes */\n@media (min-width: 600px) {\n\t.grid-container {\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t\tpadding: 10px 0;\n\t}\n\n\t/* basic grids */\n\t.grid-container.fifths {\n\t\tgrid-template-columns: repeat(5, 1fr);\n\t}\n\t.grid-container.quarters {\n\t\tgrid-template-columns: repeat(4, 1fr);\n\t}\n\t.grid-container.thirds {\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t}\n\t.grid-container.halves {\n\t\tgrid-template-columns: repeat(2, 1fr);\n\t}\n\t.grid-container.full {\n\t\tgrid-template-columns: 1fr;\n\t}\n}\n\n/* Base Styles\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhtml {\n  font-size: var(--base-font-size);\n  scroll-behavior: smooth;\n}\nbody {\n  font-size: 1.6em;\t\t/* changed from 15px in orig skeleton */\n  line-height: 1.6;\n  font-weight: var(--base-font-weight);\n  font-family: var(--base-font-family);\n  color: var(--text-color);\n  background-color: var(--background-color);;\n}\n\n\n/* Typography\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nh1, h2, h3, h4, h5, h6 {\n  margin-top: 0;\n  margin-bottom: 2rem;\n  font-weight: var(--light-font-weight); }\nh1 { font-size: 4.0rem; line-height: 1.2;  letter-spacing: -.1rem;}\nh2 { font-size: 3.6rem; line-height: 1.25; letter-spacing: -.1rem; }\nh3 { font-size: 3.0rem; line-height: 1.3;  letter-spacing: -.1rem; }\nh4 { font-size: 2.4rem; line-height: 1.35; letter-spacing: -.08rem; }\nh5 { font-size: 1.8rem; line-height: 1.5;  letter-spacing: -.05rem; }\nh6 { font-size: 1.5rem; line-height: 1.6;  letter-spacing: 0; }\n\n/* Larger than phablet */\n@media (min-width: 600px) {\n  h1 { font-size: 5.0rem; }\n  h2 { font-size: 4.2rem; }\n  h3 { font-size: 3.6rem; }\n  h4 { font-size: 3.0rem; }\n  h5 { font-size: 2.4rem; }\n  h6 { font-size: 1.5rem; }\n}\n\np {\n  margin-top: 0; }\n\nb, strong {\n  font-weight: var(--heavy-font-weight);\n}\n\n/* Links\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\na {\n  color: var(--accent-color); }\na:hover {\n  color: var(--accent-color-hover); }\n\n\n/* Buttons\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.button,\nbutton,\ninput[type=\"submit\"],\ninput[type=\"reset\"],\ninput[type=\"button\"] {\n  display: inline-block;\n  height: var(--form-element-height);\n  padding: 0 30px;\n  color: var(--text-color-softer);\n  text-align: center;\n  font-size: 11px;\n  font-weight: var(--heavy-font-weight);\n  line-height: var(--form-element-height);\n  letter-spacing: .1em;\n  text-transform: uppercase;\n  text-decoration: none;\n  white-space: nowrap;\n  background-color: transparent;\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--border-color);\n  cursor: pointer;\n  user-select: none;\n  vertical-align: bottom;\n  box-sizing: border-box; }\n.button:hover,\nbutton:hover,\ninput[type=\"submit\"]:hover,\ninput[type=\"reset\"]:hover,\ninput[type=\"button\"]:hover,\n.button:active,\nbutton:active,\ninput[type=\"submit\"]:active,\ninput[type=\"reset\"]:active,\ninput[type=\"button\"]:active {\n  color: var(--text-color);\n  border-color: var(--text-color-softer);\n  outline: 0; }\n.button.button-primary,\nbutton.button-primary,\ninput[type=\"submit\"].button-primary,\ninput[type=\"reset\"].button-primary,\ninput[type=\"button\"].button-primary {\n  color: var(--inverted-shadow-color);\n  background-color: var(--accent-color);\n  border-color: var(--accent-color); }\n.button.button-primary:hover,\nbutton.button-primary:hover,\ninput[type=\"submit\"].button-primary:hover,\ninput[type=\"reset\"].button-primary:hover,\ninput[type=\"button\"].button-primary:hover,\n.button.button-primary:active,\nbutton.button-primary:active,\ninput[type=\"submit\"].button-primary:active,\ninput[type=\"reset\"].button-primary:active,\ninput[type=\"button\"].button-primary:active {\n  color: var(--inverted-shadow-color);\n  background-color: var(--accent-color-hover);\n  border-color: var(--accent-color-hover); }\n.button.button-disabled,\n.button:disabled,\nbutton:disabled,\ninput[type=\"submit\"]:disabled,\ninput[type=\"reset\"]:disabled,\ninput[type=\"button\"]:disabled {\n\tcolor: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n.button.button-primary.button-disabled,\n.button.button-primary:disabled,\nbutton.button-primary:disabled,\ninput[type=\"submit\"].button-primary:disabled,\ninput[type=\"reset\"].button-primary:disabled,\ninput[type=\"button\"].button-primary:disabled {\n\tcolor: var(--background-color);\n\tbackground-color: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n\n\n/* Forms\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ninput:not([type]),\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ntextarea,\nselect {\n  height: var(--form-element-height);\n  padding: 6px 10px; /* The 6px vertically centers text on FF, ignored by Webkit */\n  background-color: var(--background-color);\n  color: var(--text-color);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius);\n  box-shadow: none;\n  box-sizing: border-box; }\n/* Removes awkward default styles on some inputs for iOS */\ninput:not([type]),\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ninput[type=\"button\"],\ninput[type=\"submit\"],\ntextarea {\n  -webkit-appearance: none;\n     -moz-appearance: none;\n          appearance: none; }\ntextarea {\n  min-height: 5em;\n  padding-top: 6px;\n  padding-bottom: 6px; }\ninput:not([type]):focus,\ninput[type=\"email\"]:focus,\ninput[type=\"number\"]:focus,\ninput[type=\"search\"]:focus,\ninput[type=\"text\"]:focus,\ninput[type=\"tel\"]:focus,\ninput[type=\"url\"]:focus,\ninput[type=\"password\"]:focus,\ntextarea:focus,\nselect:focus {\n  border: 1px solid var(--accent-color);\n  outline: 0; }\ninput:not([type]).error,\ninput[type=\"email\"].error,\ninput[type=\"number\"].error,\ninput[type=\"search\"].error,\ninput[type=\"text\"].error,\ninput[type=\"tel\"].error,\ninput[type=\"url\"].error,\ninput[type=\"password\"].error,\ntextarea.error,\nselect.error {\n  color: var(--error-color);\n  border: 1px solid var(--error-color);\n}\ninput:not([type]):disabled,\ninput[type=\"email\"]:disabled,\ninput[type=\"number\"]:disabled,\ninput[type=\"search\"]:disabled,\ninput[type=\"text\"]:disabled,\ninput[type=\"tel\"]:disabled,\ninput[type=\"url\"]:disabled,\ninput[type=\"password\"]:disabled,\ntextarea:disabled,\nselect:disabled {\n  color: var(--disabled-color);\n  background-color: var(--background-color-softer);\n}\nlabel,\nlegend {\n  display: block;\n  margin-bottom: .5em;\n  font-weight: var(--heavy-font-weight); }\nfieldset {\n  padding: 0;\n  border-width: 0; }\ninput[type=\"checkbox\"],\ninput[type=\"radio\"] {\n  display: inline; }\nlabel > .label-body {\n  display: inline-block;\n  margin-left: .5em;\n  font-weight: normal; }\n::placeholder {\n  color: var(--disabled-color);\n}\n\n/* Lists\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nul {\n  list-style: circle inside; }\nol {\n  list-style: decimal inside; }\nol, ul {\n  padding-left: 0;\n  margin-top: 0; }\nul ul, ul ol, ol ol, ol ul {\n\tfont-size: 100%;\n\tmargin: 1em 0 1em 3em;\n\tcolor: var(--text-color-softer);\n}\nli {\n  margin-bottom: 0.5em; }\n\n\n/* Scrollbars\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n::-webkit-scrollbar {\n  width: 1.25em;\n  height: 1.25em;\n}\n\n/* Track, Corner background color */\n::-webkit-scrollbar-track,\n::-webkit-scrollbar-corner,\n::-webkit-resizer {\n  background: transparent;\n}\n\n/* Buttons */\n::-webkit-scrollbar-button:single-button {\n  display: block;\n  width: 1.25em;\n  height: 1.25em;\n  border-radius: var(--corner-radius);\n  border-style: solid;\n}\n/* Up */\n::-webkit-scrollbar-button:vertical:decrement {\n  border-width: 0 0.625em 0.75em 0.625em;\n  border-color: transparent transparent var(--border-color-softer) transparent;\n}\n::-webkit-scrollbar-button:vertical:decrement:hover,\n::-webkit-scrollbar-button:vertical:decrement:active {\n  border-color: transparent transparent var(--text-color-softer) transparent;\n}\n/* Down */\n::-webkit-scrollbar-button:vertical:increment {\n  border-width: 0.75em 0.625em 0 0.625em;\n  border-color: var(--border-color-softer) transparent transparent transparent;\n}\n::-webkit-scrollbar-button:vertical:increment:hover,\n::-webkit-scrollbar-button:vertical:increment:active {\n  border-color: var(--text-color-softer) transparent transparent transparent;\n}\n/* Left */\n::-webkit-scrollbar-button:horizontal:decrement {\n  border-width: 0.625em 0.75em 0.625em 0;\n  border-color: transparent var(--border-color-softer) transparent transparent;\n}\n::-webkit-scrollbar-button:horizontal:decrement:hover,\n::-webkit-scrollbar-button:horizontal:decrement:active {\n  border-color: transparent var(--text-color-softer) transparent transparent;\n}\n/* Right */\n::-webkit-scrollbar-button:horizontal:increment {\n  border-width: 0.625em 0 0.625em 0.75em;\n  border-color: transparent transparent transparent var(--border-color-softer);\n}\n::-webkit-scrollbar-button:horizontal:increment:hover,\n::-webkit-scrollbar-button:horizontal:increment:active {\n  border-color: transparent transparent transparent var(--text-color-softer);\n}\n\n/* Handle */\n::-webkit-scrollbar-thumb {\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--background-color);\n  background: var(--border-color-softer);\n}\n::-webkit-scrollbar-thumb:hover {\n  cursor: grab;\n  background: var(--text-color-softer);\n}\n::-webkit-scrollbar-thumb:active {\n  cursor: grabbing;\n  background: var(--text-color-softer);\n}\n\n/* Code\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ncode {\n  padding: .2em .5em;\n  margin: 0 .2em;\n  font-size: 90%;\n  white-space: nowrap;\n  background: var(--background-color-richer);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius); }\npre > code {\n  display: block;\n  padding: 1em 1.5em;\n  white-space: pre;\n  overflow: auto; }\n\n\n/* Tables\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nth,\ntd {\n  padding: 12px 15px;\n  text-align: left;\n  border-bottom: 1px solid var(--border-color-softer); }\nth:first-child,\ntd:first-child {\n  padding-left: 0; }\nth:last-child,\ntd:last-child {\n  padding-right: 0; }\n\n\n/* Spacing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nbutton,\n.button {\n  margin-bottom: 1em; }\ninput,\ntextarea,\nselect,\nfieldset {\n  margin-bottom: 1.5em; }\npre,\nblockquote,\ndl,\nfigure,\ntable,\np,\nul,\nol,\nform {\n  margin-bottom: 2.5em; }\n\n\n/* Utilities\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.u-full-width {\n  width: 100%;\n  box-sizing: border-box; }\n.u-max-full-width {\n  max-width: 100%;\n  box-sizing: border-box; }\n.u-pull-right {\n  float: right; }\n.u-pull-left {\n  float: left; }\n.u-align-left {\n\ttext-align: left; }\n.u-align-right {\n\ttext-align: right; }\n\n\n/* Misc\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhr {\n  margin-top: 3em;\n  margin-bottom: 3.5em;\n  border-width: 0;\n  border-top: 1px solid var(--border-color-softer); }\n\n\n/* Clearing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* Self Clearing Goodness */\n/*.container:after,\n.row:after,\n.u-cf {\n  content: \"\";\n  display: table;\n  clear: both; }*/\n\n\n/* Media Queries\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/*\nNote: The best way to structure the use of media queries is to create the queries\nnear the relevant code. For example, if you wanted to change the styles for buttons\non small devices, paste the mobile query code up in the buttons section and style it\nthere.\n*/\n\n\n/* Larger than mobile (default point when grid becomes active) */\n@media (min-width: 600px) {}\n\n/* Larger than phablet */\n@media (min-width: 900px) {}\n\n/* Larger than tablet */\n@media (min-width: 1200px) {}\n";
 
 /* globals d3, uki */
 
@@ -1036,7 +1036,7 @@ class GlobalUI extends ThemeableMixin({
     // defaultVars is required, but only contains variables that can be ignored
     // / overridden
     options.resources.unshift({
-      type: 'css', raw: defaultVars, name: 'defaultVars'
+      type: 'css', raw: defaultVars, name: 'defaultVars', unshift: true
     });
     // Users can manipulate the global theme via globalThis.uki
     if (uki.theme !== undefined) {
@@ -1076,14 +1076,12 @@ class GlobalUI extends ThemeableMixin({
   }
 
   async showContextMenu (menuArgs) {
-    menuArgs.showEvent = menuArgs.showEvent || d3.event;
     await this.initTooltip();
     await this.tooltip.showContextMenu(menuArgs);
     return this.tooltip;
   }
 
   async showTooltip (tooltipArgs) {
-    tooltipArgs.showEvent = tooltipArgs.showEvent || d3.event;
     await this.initTooltip();
     await this.tooltip.show(tooltipArgs);
     return this.tooltip;
@@ -1177,16 +1175,6 @@ const { OverlaidView, OverlaidViewMixin } = uki.utils.createMixinAndDefault({
       }
 
       async draw () {
-        // Match the position / size of this.d3el, relative to its parent
-        const bounds = this.getBounds();
-        const parentBounds = this.getBounds(d3.select(this.d3el.node().parentNode));
-        this.overlayShadowEl
-          .style('top', bounds.top - parentBounds.top)
-          .style('left', bounds.left - parentBounds.left)
-          .style('right', bounds.right - parentBounds.right)
-          .style('bottom', bounds.bottom - parentBounds.bottom)
-          .classed('shadowed', this.overlayShadow);
-
         if (this.overlayVisible) {
           if (typeof this.overlayContent === 'string') {
             this.overlayContentEl.html(this.overlayContent);
@@ -1200,6 +1188,20 @@ const { OverlaidView, OverlaidViewMixin } = uki.utils.createMixinAndDefault({
         this.overlayShadowEl.style('display', this.overlayVisible ? null : 'none');
 
         await super.draw(...arguments);
+
+        this.updateOverlaySize();
+      }
+
+      updateOverlaySize () {
+        // Match the position / size of this.d3el, relative to its parent
+        const bounds = this.getBounds();
+        const parentBounds = this.getBounds(d3.select(this.d3el.node().parentNode));
+        this.overlayShadowEl
+          .style('top', bounds.top - parentBounds.top)
+          .style('left', bounds.left - parentBounds.left)
+          .style('right', bounds.right - parentBounds.right)
+          .style('bottom', bounds.bottom - parentBounds.bottom)
+          .classed('shadowed', this.overlayShadow);
       }
 
       async showOverlay ({
@@ -1243,6 +1245,8 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
         super(options);
         this._error = options.error || null;
         this._loadingMessage = options.loadingMessage || 'Loading...';
+        this._informativeMessage = options.informativeMessage || null;
+        this._informativeImg = options.informativeImg || null;
         this._loading = options.loading || false;
         this._firstRenderCompleted = false;
         this._resourcesLoaded = false;
@@ -1250,6 +1254,23 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
           this._resourcesLoaded = true;
           this.render();
         });
+      }
+
+      get informativeMessage () {
+        return this._informativeMessage;
+      }
+
+      set informativeMessage (value) {
+        this._informativeMessage = value;
+        this.render();
+      }
+
+      get informativeImg () {
+        return this._informativeImg;
+      }
+
+      set informativeImg (value) {
+        this._informativeImg = value;
       }
 
       get error () {
@@ -1330,11 +1351,11 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
           await this.drawError(this.d3el, this._error);
         } else {
           this.overlayContentEl.classed('error', false);
-          this.informativeIconEl.attr('src', this.isLoading ? img : null)
-            .style('display', this.isLoading ? null : 'none')
+          this.informativeIconEl.attr('src', this.isLoading ? img : this.informativeImg)
+            .style('display', this.isLoading || this.informativeImg ? null : 'none')
             .classed('spin', this.isLoading);
-          this.informativeMessageEl.text(this.isLoading ? this.loadingMessage : '')
-            .style('display', this.isLoading ? null : 'none');
+          this.informativeMessageEl.text(this.isLoading ? this.loadingMessage : this.informativeMessage)
+            .style('display', this.isLoading || this.informativeMessage ? null : 'none');
           this.informativeErrorEl.style('display', 'none');
         }
       }
@@ -1348,6 +1369,7 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
 
         // Force the overlay to display; it may not have displayed
         // properly if there was an error
+        this.updateOverlaySize();
         this.overlayShadowEl.style('display', null);
         this.overlayContentEl.classed('error', true);
 
@@ -1358,9 +1380,10 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
           .style('display', null);
         this.informativeErrorEl.style('display', null)
           .select('pre')
-          .text(error.stack);
-
-        console.warn(error);
+          .text(error.stack)
+          .on('click', () => {
+            throw error;
+          });
       }
     }
     return InformativeView;
@@ -1612,7 +1635,7 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
         } else {
           options.resources.unshift({
             type: 'css',
-            url: 'https://golden-layout.com/files/latest/css/goldenlayout-base.css'
+            url: uki.ui.dynamicDependencies.glCSS
           });
         }
 
@@ -1620,19 +1643,19 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
         if (!window.jQuery) {
           options.resources.push({
             type: 'js',
-            url: 'https://code.jquery.com/jquery-3.4.1.min.js',
+            url: uki.ui.dynamicDependencies.jquery,
             extraAttributes: {
-              integrity: 'sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=',
+              integrity: uki.ui.dynamicDependencies.jqueryIntegrity,
               crossorigin: 'anonymous'
             },
-            name: 'jQuery'
+            name: 'jquery'
           });
         }
         if (!window.GoldenLayout) {
           options.resources.push({
             type: 'js',
-            url: 'https://golden-layout.com/files/latest/js/goldenlayout.min.js',
-            loadAfter: ['jQuery']
+            url: uki.ui.dynamicDependencies['golden-layout'],
+            loadAfter: ['jquery']
           });
         }
         super(options);
@@ -1708,6 +1731,10 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
         if (parent.setActiveContentItem) {
           parent.setActiveContentItem(child);
         }
+      }
+
+      getLayout () {
+        return this.goldenLayout.toConfig().content[0];
       }
 
       setLayout (layout) {
@@ -1835,9 +1862,9 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
         iconsEnter.append('img');
         icons.select('img').attr('src', d => d.src);
 
-        icons.on('mousedown', () => {
-          d3.event.stopPropagation();
-        }).on('mouseup', d => { d.onclick(); });
+        icons.on('mousedown', event => {
+          event.stopPropagation();
+        }).on('mouseup', (event, d) => { d.onclick(); });
 
         this.trigger('tabDrawn');
       }
@@ -2176,8 +2203,8 @@ const { FlexTableView, FlexTableViewMixin } = uki.utils.createMixinAndDefault({
         listItems
           .style('max-width', '15em')
           .style('list-style', 'none')
-          .on('click', () => {
-            d3.event.stopPropagation();
+          .on('click', event => {
+            event.stopPropagation();
           });
 
         listItemsEnter.append('input')
@@ -2187,7 +2214,7 @@ const { FlexTableView, FlexTableViewMixin } = uki.utils.createMixinAndDefault({
           .style('display', 'inline-block')
           .style('vertical-align', 'top')
           .style('margin', '0.35em 1em 0 0')
-          .on('change', d => {
+          .on('change', (event, d) => {
             this.toggleHeader(d);
           });
         listItemsEnter.append('label')
@@ -2367,13 +2394,13 @@ const { VegaView, VegaViewMixin } = uki.utils.createMixinAndDefault({
         if (!globalThis.vega) {
           // Ensure that vega-core is loaded (d3 already should be)
           options.resources.push({
-            type: 'js', url: 'https://cdn.jsdelivr.net/npm/vega@5/build/vega-core.min.js'
+            type: 'js', url: uki.ui.dynamicDependencies.vega
           });
         }
         if (options.liteSpec && !globalThis.vegaLite) {
           // Ensure that vega-lite is loaded if we know that we're going to need it
           options.resources.push({
-            type: 'js', url: 'https://cdn.jsdelivr.net/npm/vega-lite@4'
+            type: 'js', url: uki.ui.dynamicDependencies['vega-lite']
           });
         }
         super(options);
@@ -2446,14 +2473,14 @@ const { VegaView, VegaViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-var name = "@ukijs/uki-ui";
+var name = "@ukijs/ui";
 var version = "0.2.1";
 var description = "A UI toolkit using the uki.js library";
 var module = "dist/uki-ui.esm.js";
 var scripts = {
 	example: "bash examples/run.sh",
 	build: "rollup -c",
-	lint: "eslint **/*.js --quiet",
+	lint: "eslint .",
 	dev: "rollup -c -w"
 };
 var repository = {
@@ -2466,11 +2493,31 @@ var bugs = {
 	url: "https://github.com/ukijs/uki-ui/issues"
 };
 var homepage = "https://github.com/ukijs/uki-ui#readme";
+var eslintConfig = {
+	"extends": "standard",
+	rules: {
+		semi: [
+			2,
+			"always"
+		],
+		"no-extra-semi": 2,
+		"semi-spacing": [
+			2,
+			{
+				before: false,
+				after: true
+			}
+		]
+	},
+	globals: {
+		globalThis: false
+	}
+};
 var devDependencies = {
 	"@rollup/plugin-image": "^2.0.5",
 	"@rollup/plugin-json": "^4.1.0",
-	d3: "^5.16.0",
-	eslint: "^7.5.0",
+	d3: "^6.1.1",
+	eslint: "^7.9.0",
 	"eslint-config-semistandard": "^15.0.1",
 	"eslint-config-standard": "^14.1.1",
 	"eslint-plugin-import": "^2.22.0",
@@ -2478,22 +2525,23 @@ var devDependencies = {
 	"eslint-plugin-promise": "^4.2.1",
 	"eslint-plugin-standard": "^4.0.1",
 	"normalize.css": "^8.0.1",
-	rollup: "^2.23.0",
+	rollup: "^2.28.1",
 	"rollup-plugin-execute": "^1.1.1",
 	"rollup-plugin-less": "^1.1.2",
 	"rollup-plugin-string": "^3.0.0",
 	serve: "^11.3.2",
-	uki: "^0.7.0"
+	uki: "^0.7.2"
 };
 var peerDependencies = {
-	d3: "^5.16.0",
-	uki: "^0.7.0"
+	d3: "^6.1.1",
+	uki: "^0.7.3"
 };
 var optionalDependencies = {
 	"golden-layout": "^1.5.9",
+	jquery: "^3.5.1",
 	less: "^3.12.2",
-	vega: "^5.13.0",
-	"vega-lite": "^4.14.0"
+	vega: "^5.16.0",
+	"vega-lite": "^4.15.0"
 };
 var pkg = {
 	name: name,
@@ -2507,6 +2555,7 @@ var pkg = {
 	license: license,
 	bugs: bugs,
 	homepage: homepage,
+	eslintConfig: eslintConfig,
 	devDependencies: devDependencies,
 	peerDependencies: peerDependencies,
 	optionalDependencies: optionalDependencies
@@ -2514,16 +2563,31 @@ var pkg = {
 
 const version$1 = pkg.version;
 
+const jqueryVersion = pkg.optionalDependencies.jquery.match(/[\d.]+/)[0];
+const glVersion = pkg.optionalDependencies['golden-layout'].match(/[\d.]+/)[0];
+const vegaVersion = pkg.optionalDependencies.vega.match(/[\d.]+/)[0];
+const vegaLiteVersion = pkg.optionalDependencies['vega-lite'].match(/[\d.]+/)[0];
+
+const dynamicDependencies = {
+  jquery: `https://code.jquery.com/jquery-${jqueryVersion}.min.js`,
+  jqueryIntegrity: 'sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=', // TODO: find a way to automate this after running ncu -u?
+  'golden-layout': `https://cdnjs.cloudflare.com/ajax/libs/golden-layout/${glVersion}/goldenlayout.min.js`,
+  glCSS: `https://cdnjs.cloudflare.com/ajax/libs/golden-layout/${glVersion}/css/goldenlayout-base.css`,
+  vega: `https://cdnjs.cloudflare.com/ajax/libs/vega/${vegaVersion}/vega.min.js`,
+  'vega-lite': `https://cdnjs.cloudflare.com/ajax/libs/vega-lite/${vegaLiteVersion}/vega-lite.min.js`
+};
+
 const globalUI = new GlobalUI(globalThis.uki.globalOptions || {});
 
-const showTooltip = globalUI.showTooltip;
-const showContextMenu = globalUI.showContextMenu;
-const hideTooltip = globalUI.hideTooltip;
-const showModal = globalUI.showModal;
-const hideModal = globalUI.hideModal;
+const showTooltip = options => globalUI.showTooltip(options);
+const showContextMenu = options => globalUI.showContextMenu(options);
+const hideTooltip = options => globalUI.hideTooltip(options);
+const showModal = options => globalUI.showModal(options);
+const hideModal = options => globalUI.hideModal(options);
 
 globalThis.uki.ui = {
   version: version$1,
+  dynamicDependencies,
   globalUI,
   showTooltip,
   showContextMenu,
@@ -2573,4 +2637,4 @@ globalThis.uki.ui = {
   VegaViewMixin
 };
 
-export { AnimatedView, AnimatedViewMixin, BaseTableView, BaseTableViewMixin, ButtonView, ButtonViewMixin, CanvasGLView, CanvasGLViewMixin, CanvasView, CanvasViewMixin, FlexTableView, FlexTableViewMixin, GLRootView, GLRootViewMixin, GLView, GLViewMixin, IFrameGLView, IFrameGLViewMixin, IFrameView, IFrameViewMixin, InformativeView, InformativeViewMixin, LineChartView, LineChartViewMixin, ModalView, ModalViewMixin, OverlaidView, OverlaidViewMixin, ParentSizeView, ParentSizeViewMixin, RecolorableImageView, RecolorableImageViewMixin, SvgGLView, SvgGLViewMixin, SvgView, SvgViewMixin, ThemeableMixin, TooltipView, TooltipViewMixin, VegaView, VegaViewMixin, globalUI, hideModal, hideTooltip, showContextMenu, showModal, showTooltip, version$1 as version };
+export { AnimatedView, AnimatedViewMixin, BaseTableView, BaseTableViewMixin, ButtonView, ButtonViewMixin, CanvasGLView, CanvasGLViewMixin, CanvasView, CanvasViewMixin, FlexTableView, FlexTableViewMixin, GLRootView, GLRootViewMixin, GLView, GLViewMixin, IFrameGLView, IFrameGLViewMixin, IFrameView, IFrameViewMixin, InformativeView, InformativeViewMixin, LineChartView, LineChartViewMixin, ModalView, ModalViewMixin, OverlaidView, OverlaidViewMixin, ParentSizeView, ParentSizeViewMixin, RecolorableImageView, RecolorableImageViewMixin, SvgGLView, SvgGLViewMixin, SvgView, SvgViewMixin, ThemeableMixin, TooltipView, TooltipViewMixin, VegaView, VegaViewMixin, dynamicDependencies, globalUI, hideModal, hideTooltip, showContextMenu, showModal, showTooltip, version$1 as version };

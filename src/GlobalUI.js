@@ -19,7 +19,7 @@ class GlobalUI extends ThemeableMixin({
     // defaultVars is required, but only contains variables that can be ignored
     // / overridden
     options.resources.unshift({
-      type: 'css', raw: defaultVars, name: 'defaultVars'
+      type: 'css', raw: defaultVars, name: 'defaultVars', unshift: true
     });
     // Users can manipulate the global theme via globalThis.uki
     if (uki.theme !== undefined) {
@@ -59,14 +59,12 @@ class GlobalUI extends ThemeableMixin({
   }
 
   async showContextMenu (menuArgs) {
-    menuArgs.showEvent = menuArgs.showEvent || d3.event;
     await this.initTooltip();
     await this.tooltip.showContextMenu(menuArgs);
     return this.tooltip;
   }
 
   async showTooltip (tooltipArgs) {
-    tooltipArgs.showEvent = tooltipArgs.showEvent || d3.event;
     await this.initTooltip();
     await this.tooltip.show(tooltipArgs);
     return this.tooltip;

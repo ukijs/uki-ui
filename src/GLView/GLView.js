@@ -82,9 +82,9 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
         iconsEnter.append('img');
         icons.select('img').attr('src', d => d.src);
 
-        icons.on('mousedown', () => {
-          d3.event.stopPropagation();
-        }).on('mouseup', d => { d.onclick(); });
+        icons.on('mousedown', event => {
+          event.stopPropagation();
+        }).on('mouseup', (event, d) => { d.onclick(); });
 
         this.trigger('tabDrawn');
       }

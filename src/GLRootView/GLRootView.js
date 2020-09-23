@@ -18,7 +18,7 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
         } else {
           options.resources.unshift({
             type: 'css',
-            url: 'https://golden-layout.com/files/latest/css/goldenlayout-base.css'
+            url: uki.ui.dynamicDependencies.glCSS
           });
         }
 
@@ -26,19 +26,19 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
         if (!window.jQuery) {
           options.resources.push({
             type: 'js',
-            url: 'https://code.jquery.com/jquery-3.4.1.min.js',
+            url: uki.ui.dynamicDependencies.jquery,
             extraAttributes: {
-              integrity: 'sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=',
+              integrity: uki.ui.dynamicDependencies.jqueryIntegrity,
               crossorigin: 'anonymous'
             },
-            name: 'jQuery'
+            name: 'jquery'
           });
         }
         if (!window.GoldenLayout) {
           options.resources.push({
             type: 'js',
-            url: 'https://golden-layout.com/files/latest/js/goldenlayout.min.js',
-            loadAfter: ['jQuery']
+            url: uki.ui.dynamicDependencies['golden-layout'],
+            loadAfter: ['jquery']
           });
         }
         super(options);
@@ -114,6 +114,10 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
         if (parent.setActiveContentItem) {
           parent.setActiveContentItem(child);
         }
+      }
+
+      getLayout () {
+        return this.goldenLayout.toConfig().content[0];
       }
 
       setLayout (layout) {

@@ -23,7 +23,7 @@ const commonPlugins = [
   image({
     include: ['**/*.gif', '**/*.png', '**/*.img.svg']
   }),
-  execute('ls -d examples/*/ | xargs -n 1 cp -v dist/uki-ui.esm.js && ls -d examples/*/ | xargs -n 1 cp -v node_modules/uki/dist/uki.esm.js')
+  execute('sleep 1 && ls -d examples/*/ | xargs -n 1 cp -v dist/uki-ui.esm.js && ls -d examples/*/ | xargs -n 1 cp -v node_modules/uki/dist/uki.esm.js')
 ];
 
 // Basic build formats, without minification

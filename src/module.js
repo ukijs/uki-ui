@@ -25,16 +25,31 @@ import { VegaView, VegaViewMixin } from './VegaView/VegaView.js';
 import pkg from '../package.json';
 const version = pkg.version;
 
+const jqueryVersion = pkg.optionalDependencies.jquery.match(/[\d.]+/)[0];
+const glVersion = pkg.optionalDependencies['golden-layout'].match(/[\d.]+/)[0];
+const vegaVersion = pkg.optionalDependencies.vega.match(/[\d.]+/)[0];
+const vegaLiteVersion = pkg.optionalDependencies['vega-lite'].match(/[\d.]+/)[0];
+
+const dynamicDependencies = {
+  jquery: `https://code.jquery.com/jquery-${jqueryVersion}.min.js`,
+  jqueryIntegrity: 'sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=', // TODO: find a way to automate this after running ncu -u?
+  'golden-layout': `https://cdnjs.cloudflare.com/ajax/libs/golden-layout/${glVersion}/goldenlayout.min.js`,
+  glCSS: `https://cdnjs.cloudflare.com/ajax/libs/golden-layout/${glVersion}/css/goldenlayout-base.css`,
+  vega: `https://cdnjs.cloudflare.com/ajax/libs/vega/${vegaVersion}/vega.min.js`,
+  'vega-lite': `https://cdnjs.cloudflare.com/ajax/libs/vega-lite/${vegaLiteVersion}/vega-lite.min.js`
+};
+
 const globalUI = new GlobalUI(globalThis.uki.globalOptions || {});
 
-const showTooltip = globalUI.showTooltip;
-const showContextMenu = globalUI.showContextMenu;
-const hideTooltip = globalUI.hideTooltip;
-const showModal = globalUI.showModal;
-const hideModal = globalUI.hideModal;
+const showTooltip = options => globalUI.showTooltip(options);
+const showContextMenu = options => globalUI.showContextMenu(options);
+const hideTooltip = options => globalUI.hideTooltip(options);
+const showModal = options => globalUI.showModal(options);
+const hideModal = options => globalUI.hideModal(options);
 
 globalThis.uki.ui = {
   version,
+  dynamicDependencies,
   globalUI,
   showTooltip,
   showContextMenu,
@@ -86,6 +101,7 @@ globalThis.uki.ui = {
 
 export {
   version,
+  dynamicDependencies,
   globalUI,
   showTooltip,
   showContextMenu,

@@ -148,8 +148,8 @@ class SvgDemoView extends ui.InformativeViewMixin(
     const circle = this.d3el.append('circle')
       .attr('r', 20)
       .style('fill', 'var(--text-color-softer)');
-    this.d3el.on('mousemove', function () {
-      const coords = d3.mouse(this);
+    this.d3el.on('mousemove', event => {
+      const coords = d3.pointer(event);
       circle
         .attr('cx', coords[0])
         .attr('cy', coords[1]);
@@ -165,7 +165,7 @@ class IFrameView extends ui.InformativeViewMixin(
                          ui.IFrameGLViewMixin(
                          ui.GLView)) {
   constructor (options) {
-    options.src = 'https://www.xkcd.com';
+    options.src = 'https://github.com/ukijs/uki';
     super(options);
   }
 

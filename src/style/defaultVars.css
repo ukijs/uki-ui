@@ -35,6 +35,12 @@
 	/* 62.5% of typical 16px browser default = 10px */
 	--base-font-size: 62.5%;
 
+	/* Some more additions over Skeleton for configurable typography */
+	--base-font-family: "Raleway", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	--base-font-weight: 400;
+	--heavy-font-weight: 600;
+	--light-font-weight: 300;
+
 	/* Grid Defaults - default to match orig skeleton settings */
 	--grid-max-width: 960px;
 
