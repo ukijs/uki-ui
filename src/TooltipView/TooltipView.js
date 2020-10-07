@@ -108,7 +108,6 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         showEvent,
         isContextMenu = false
       } = {}) {
-        this._showEvent = showEvent;
         if (content !== undefined) {
           this._content = content;
         }
@@ -129,6 +128,9 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         if (interactive !== undefined) {
           this._interactive = interactive;
         }
+        if (showEvent !== undefined) {
+          this._showEvent = showEvent;
+        }
         if (!isContextMenu) {
           this._contextMenuEntries = null;
         }
@@ -147,6 +149,9 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         interactive,
         showEvent
       } = {}) {
+        if (this._contextMenuEntries === null) {
+          this._clearForContextMenu = true;
+        }
         this._contextMenuEntries = menuEntries;
         delete this._currentSubMenu;
         await this.show({
@@ -224,20 +229,76 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
 
       computeTooltipPosition (tooltipBounds, targetBounds) {
         const anchor = Object.assign({}, this.anchor || {});
+        let left, top, right, bottom;
 
-        // First deal with the case that there isn't a preference
+        // *** Lots of helper functions for this
+        function computeX () {
+          left = (targetBounds.left + targetBounds.right) / 2 +
+                 anchor.x * targetBounds.width / 2 -
+                 tooltipBounds.width / 2 +
+                 anchor.x * tooltipBounds.width / 2;
+          right = left + tooltipBounds.width;
+        }
+        function computeY () {
+          top = (targetBounds.top + targetBounds.bottom) / 2 +
+                anchor.y * targetBounds.height / 2 -
+                tooltipBounds.height / 2 +
+                anchor.y * tooltipBounds.height / 2;
+          bottom = top + tooltipBounds.height;
+        }
+        function clampX () {
+          if (right > window.innerWidth) {
+            right = window.innerWidth;
+            left = right - tooltipBounds.width;
+          }
+          if (left < 0) {
+            left = 0;
+            right = tooltipBounds.width;
+          }
+        }
+        function clampY () {
+          if (bottom > window.innerHeight) {
+            bottom = window.innerHeight;
+            top = bottom - tooltipBounds.height;
+          }
+          if (top < 0) {
+            top = 0;
+            bottom = tooltipBounds.height;
+          }
+        }
+        function overrideXAnchor () {
+          if (targetBounds.left > window.innerWidth - targetBounds.right) {
+            // there's more space on the left; try to put it there
+            anchor.x = -1;
+          } else {
+            // more space on the right; try to put it there
+            anchor.x = 1;
+          }
+        }
+        function overrideYAnchor () {
+          if (targetBounds.top > window.innerHeight - targetBounds.bottom) {
+            // more space above; try to put it there
+            anchor.y = -1;
+          } else {
+            // more space below; try to put it there
+            anchor.y = 1;
+          }
+        }
+        function xOverlaps () {
+          return left < targetBounds.right && right > targetBounds.left;
+        }
+        function yOverlaps () {
+          return top < targetBounds.top && bottom > targetBounds.bottom;
+        }
+        // *** End helper functions
+
+        // First deal with the case that there isn't an anchor preference
         if (anchor.x === undefined) {
           if (anchor.y !== undefined) {
             // with y defined, default is to center x
             anchor.x = 0;
           } else {
-            if (targetBounds.left > window.innerWidth - targetBounds.right) {
-              // there's more space on the left; try to put it there
-              anchor.x = -1;
-            } else {
-              // more space on the right; try to put it there
-              anchor.x = 1;
-            }
+            overrideXAnchor();
           }
         }
         if (anchor.y === undefined) {
@@ -245,81 +306,48 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
             // with x defined, default is to center y
             anchor.y = 0;
           } else {
-            if (targetBounds.top > window.innerHeight - targetBounds.bottom) {
-              // more space above; try to put it there
-              anchor.y = -1;
-            } else {
-              // more space below; try to put it there
-              anchor.y = 1;
-            }
+            overrideYAnchor();
           }
         }
 
         // Compute where the tooltip would end up
-        let left = (targetBounds.left + targetBounds.right) / 2 +
-               anchor.x * targetBounds.width / 2 -
-               tooltipBounds.width / 2 +
-               anchor.x * tooltipBounds.width / 2;
-        const right = left + tooltipBounds.width;
-        let top = (targetBounds.top + targetBounds.bottom) / 2 +
-              anchor.y * targetBounds.height / 2 -
-              tooltipBounds.height / 2 +
-              anchor.y * tooltipBounds.height / 2;
-        const bottom = top + tooltipBounds.height;
+        computeX();
+        computeY();
 
-        // Now adjust the anchor if there isn't space (and switching would make
-        // a difference)
-        let recomputeX = false;
-        let recomputeY = false;
-        if (left < 0 && window.innerWidth - targetBounds.right >= tooltipBounds.width) {
-          anchor.x = 1;
-          recomputeX = true;
-        } else if (right > window.innerWidth && targetBounds.left - tooltipBounds.width >= 0) {
-          anchor.x = -1;
-          recomputeX = true;
-        }
-        if (top < 0 && window.innerHeight - targetBounds.bottom >= tooltipBounds.height) {
-          anchor.y = 1;
-          recomputeY = true;
-        } else if (bottom > window.innerHeight && targetBounds.top - tooltipBounds.height >= 0) {
-          anchor.y = -1;
-          recomputeY = true;
+        // Clamp if offscreen
+        clampX();
+        clampY();
+
+        // If we're overlapping the target, override the anchor and try again
+        if (xOverlaps() && yOverlaps()) {
+          // First try overriding X...
+          const tempLeft = left;
+          const tempRight = right;
+          overrideXAnchor();
+          computeX();
+          clampX();
+          if (xOverlaps()) {
+            // Okay, X is impossible, restore what we had before and
+            // try overriding Y...
+            left = tempLeft;
+            right = tempRight;
+            overrideYAnchor();
+            computeY();
+            clampY();
+          }
         }
 
-        // Recompute if we need to
-        if (recomputeX) {
-          left = (targetBounds.left + targetBounds.right) / 2 +
-                 anchor.x * targetBounds.width / 2 -
-                 tooltipBounds.width / 2 +
-                 anchor.x * tooltipBounds.width / 2;
-        }
-        if (recomputeY) {
-          top = (targetBounds.top + targetBounds.bottom) / 2 +
-                anchor.y * targetBounds.height / 2 -
-                tooltipBounds.height / 2 +
-                anchor.y * tooltipBounds.height / 2;
-        }
-
-        // Finally, clamp the tooltip so that it stays on screen, if our earlier
-        // shuffling wasn't successful
-        if (left + tooltipBounds.width > window.innerWidth) {
-          left = window.innerWidth - tooltipBounds.width;
-        }
-        if (left < 0) {
-          left = 0;
-        }
-        if (top + tooltipBounds.height > window.innerHeight) {
-          top = window.innerHeight - tooltipBounds.height;
-        }
-        if (top < 0) {
-          top = 0;
-        }
-
+        // At this point, we've done all we can to put it somewhere sensible
         return { left, top };
       }
 
       async draw () {
         await super.draw(...arguments);
+
+        if (this._clearForContextMenu) {
+          this.d3el.html('');
+          delete this._clearForContextMenu;
+        }
 
         this.d3el
           .classed('interactive', this.interactive)
@@ -417,12 +445,18 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
               }
               contentFuncPromises.push(this.__contextMenuButtonView.render());
             }
-          }).on('click', (event, d) => {
+          }).on('click.TooltipView, keypress.TooltipView1', (event, d) => {
+            if (event.type === 'keypress' && event.keyCode !== 32) {
+              return;
+            }
             if (d && d.onclick && !d.disabled) {
               d.onclick();
               this._rootTooltip.hide();
             }
-          }).on('mouseenter', function (event, d) {
+          }).on('mouseenter.TooltipView, keypress.TooltipView2', function (event, d) {
+            if (event.type === 'keypress' && event.keyCode !== 32) {
+              return;
+            }
             if (d && d.subEntries) {
               // Use the menu item, including its margins, as targetBounds
               let targetBounds = this.getBoundingClientRect();

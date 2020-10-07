@@ -21,6 +21,7 @@ import { BaseTableView, BaseTableViewMixin } from './BaseTableView/BaseTableView
 import { FlexTableView, FlexTableViewMixin } from './FlexTableView/FlexTableView.js';
 import { LineChartView, LineChartViewMixin } from './LineChartView/LineChartView.js';
 import { VegaView, VegaViewMixin } from './VegaView/VegaView.js';
+import { PromptModalView, PromptModalViewMixin } from './PromptModalView/PromptModalView.js';
 
 import pkg from '../package.json';
 const version = pkg.version;
@@ -46,6 +47,9 @@ const showContextMenu = options => globalUI.showContextMenu(options);
 const hideTooltip = options => globalUI.hideTooltip(options);
 const showModal = options => globalUI.showModal(options);
 const hideModal = options => globalUI.hideModal(options);
+const alert = message => globalUI.alert(message);
+const confirm = message => globalUI.confirm(message);
+const prompt = (message, defaultValue, validate) => globalUI.prompt(message, defaultValue, validate);
 
 globalThis.uki.ui = {
   version,
@@ -56,6 +60,9 @@ globalThis.uki.ui = {
   hideTooltip,
   showModal,
   hideModal,
+  alert,
+  confirm,
+  prompt,
   ThemeableMixin,
   OverlaidView,
   OverlaidViewMixin,
@@ -96,7 +103,9 @@ globalThis.uki.ui = {
   LineChartView,
   LineChartViewMixin,
   VegaView,
-  VegaViewMixin
+  VegaViewMixin,
+  PromptModalView,
+  PromptModalViewMixin
 };
 
 export {
@@ -108,6 +117,9 @@ export {
   hideTooltip,
   showModal,
   hideModal,
+  alert,
+  confirm,
+  prompt,
   ThemeableMixin,
   OverlaidView,
   OverlaidViewMixin,
@@ -148,5 +160,7 @@ export {
   LineChartView,
   LineChartViewMixin,
   VegaView,
-  VegaViewMixin
+  VegaViewMixin,
+  PromptModalView,
+  PromptModalViewMixin
 };

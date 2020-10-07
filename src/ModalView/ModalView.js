@@ -1,8 +1,9 @@
-/* globals d3, uki */
+/* globals uki */
 import { ThemeableMixin } from '../ThemeableMixin/ThemeableMixin.js';
 import { ButtonView } from '../ButtonView/ButtonView.js';
 import defaultStyle from './style.less';
 import template from './template.html';
+import spinnerImg from '../InformativeView/spinner.png';
 
 const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
@@ -16,15 +17,35 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         this._content = options.content;
         this._visible = options.visible || false;
         this._shadow = options.shadow || true;
+        this._confirmAction = options.confirmAction || (async () => {});
+        this._cancelAction = options.cancelAction || (async () => {});
+        this._validateForm = options.validateForm || (async () => null);
+        this.drawValidationErrors = false;
+        this.drawWaitingState = false;
+        this._usesDefaultSpecs = options._buttonSpecs === undefined;
         this._buttonSpecs = options.buttonSpecs || [
           {
             label: 'Cancel',
-            onclick: () => { this.hide(); }
+            onclick: async () => {
+              this.drawWaitingState = true;
+              await this.render();
+              await this.cancelAction();
+              this.hide();
+            }
           },
           {
             label: 'OK',
             primary: true,
-            onclick: () => { this.hide(); }
+            onclick: async () => {
+              this.drawWaitingState = true;
+              await this.render();
+              await this.confirmAction();
+              this.hide();
+            },
+            onDisabledClick: () => {
+              this.drawValidationErrors = true;
+              this.render();
+            }
           }
         ];
       }
@@ -62,6 +83,7 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
 
       set buttonSpecs (specs) {
         this._buttonSpecs = specs;
+        this._usesDefaultSpecs = false;
         this.render();
       }
 
@@ -74,6 +96,30 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         return this.modalButtonEl?.selectAll('.ButtonView').nodes().map(el => {
           return el.__modalButtonView;
         });
+      }
+
+      get confirmAction () {
+        return this._confirmAction;
+      }
+
+      set confirmAction (value) {
+        this._confirmAction = value;
+      }
+
+      get cancelAction () {
+        return this._cancelAction;
+      }
+
+      set cancelAction (value) {
+        this._cancelAction = value;
+      }
+
+      get validateForm () {
+        return this._validateForm;
+      }
+
+      set validateForm (value) {
+        this._validateForm = value;
       }
 
       async show ({
@@ -111,6 +157,35 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         this.modalShadowEl = this.d3el.select('.modalShadowEl');
         this.modalContentEl = this.d3el.select('.modalContentEl');
         this.modalButtonEl = this.d3el.select('.modalButtonEl');
+
+        await this.applyContent();
+        await this.updateButtons();
+      }
+
+      async applyContent (skipString = false) {
+        if (typeof this.content === 'string' && !skipString) {
+          this.modalContentEl.html(this.content);
+        } else if (this.content instanceof uki.View) {
+          await this.content.render(this.modalContentEl);
+        } else if (typeof this.content === 'function') {
+          await this.content(this.modalContentEl);
+        }
+      }
+
+      async updateButtons () {
+        let buttons = this.modalButtonEl.selectAll('.ButtonView')
+          .data(this.buttonSpecs, (d, i) => i);
+        buttons.exit().remove();
+        const buttonsEnter = buttons.enter().append('div');
+        buttons = buttons.merge(buttonsEnter);
+
+        await ButtonView.initForD3Selection(buttonsEnter, d => Object.assign({}, d));
+        await ButtonView.iterD3Selection(buttons, async (buttonView, d) => {
+          Object.assign(buttonView, d);
+          if (this._usesDefaultSpecs && buttonView.label === 'OK') {
+            buttonView.disabled = !!this.validationErrors;
+          }
+        });
       }
 
       async draw () {
@@ -119,33 +194,29 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         if (this.visible) {
           this.modalShadowEl.style('display', this.shadow ? null : 'none');
 
-          if (typeof this.content === 'string') {
-            this.modalContentEl.html(this.content);
-          } else if (this.content instanceof uki.View) {
-            await this.content.render(this.modalContentEl);
-          } else if (typeof content === 'function') {
-            await this.content(this.modalContentEl);
+          const priorErrors = this.validationErrors;
+          this.validationErrors = await this.validateForm();
+          await this.applyContent();
+          await this.updateButtons();
+
+          if (this.drawValidationErrors && this.validationErrors) {
+            for (const selection of this.validationErrors) {
+              this.d3el.select(selection).classed('error', true);
+            }
+          } else if (priorErrors) {
+            for (const selection of priorErrors) {
+              this.d3el.select(selection).classed('error', false);
+            }
           }
 
-          let buttons = this.modalButtonEl.selectAll('.ButtonView')
-            .data(this.buttonSpecs, (d, i) => i);
-          buttons.exit().remove();
-          const buttonsEnter = buttons.enter().append('div');
-          buttons = buttons.merge(buttonsEnter);
-
-          const buttonPromises = [];
-          buttons.each(function (d) {
-            const buttonOptions = Object.assign({}, d);
-            buttonOptions.d3el = d3.select(this);
-            if (this.__modalButtonView) {
-              Object.assign(this.__modalButtonView, buttonOptions);
-            } else {
-              this.__modalButtonView = new ButtonView(buttonOptions);
-            }
-            buttonPromises.push(this.__modalButtonView.render());
-          });
-
-          await Promise.all(buttonPromises);
+          if (this.drawWaitingState) {
+            this.modalButtonEl.insert('img', ':first-child')
+              .attr('src', spinnerImg)
+              .classed('waitingSpinner', true);
+            ButtonView.iterD3Selection(this.modalButtonEl.selectAll('.ButtonView'), buttonView => {
+              buttonView.disabled = true;
+            });
+          }
         }
 
         this.d3el.style('display', this.visible ? null : 'none');

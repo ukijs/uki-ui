@@ -1,35 +1,34 @@
 :root {
 
-	/* default theme: light background, dark text, blue accent */
+	/* Default light theme: light background, dark text, blue accent */
 	--theme-hue: 0;					/* white */
 	--accent-hue: 194;			/* blue */
-  --error-hue: 14;         /* red-orange */
+  --error-hue: 14;        /* red-orange */
 
-	--text-color-richer: hsl(var(--theme-hue), 0%, 5%);			/* #0d0d0d		*/
-	--text-color: hsl(var(--theme-hue), 0%, 13%);		/* #222222 		text color; button:hover:active color */
-	--text-color-softer: hsl(var(--theme-hue), 0%, 33%);		/* #555555 		button color; button:hover border */
+	--text-color-richer: hsl(var(--theme-hue), 0%, 5%);
+	--text-color: hsl(var(--theme-hue), 0%, 13%);
+	--text-color-softer: hsl(var(--theme-hue), 0%, 33%);
 
   --error-color: hsl(var(--error-hue), 86%, 57%);
 
-  --accent-color: hsl(var(--accent-hue), 86%, 57%);				/* #33C3F0 		link; button-primary bg+border; textarea,select:focus border */
-  --accent-color-hover: hsl(var(--accent-hue), 76%, 49%);	/* #1EAEDB 		link hover; button-primary:hover:active bg+border */
+  --accent-color: hsl(var(--accent-hue), 86%, 57%);
+  --accent-color-hover: hsl(var(--accent-hue), 76%, 49%);
   --accent-color-disabled: hsl(var(--accent-hue), 90%, 80%);
 
-  --disabled-color: hsl(var(--theme-hue), 0%, 75%);  /* disabled button color */
+  --disabled-color: hsl(var(--theme-hue), 0%, 75%);
 
-  --border-color-richer: hsl(var(--theme-hue), 0%, 57%);	/* #888888		button:hover border */
-  --border-color: hsl(var(--theme-hue), 0%, 73%);					/* #bbbbbb		button border */
-	--border-color-softer: hsl(var(--theme-hue), 0%, 82%);	/* #d1d1d1		textarea,select,code,td,hr border	 */
+  --border-color-richer: hsl(var(--theme-hue), 0%, 57%);
+  --border-color: hsl(var(--theme-hue), 0%, 73%);
+	--border-color-softer: hsl(var(--theme-hue), 0%, 82%);
 
-	--background-color: white;														/* transparent body background; textarea,select background */
+	--background-color: hsl(var(--theme-hue), 0%, 98%);
 	--background-color-softer: hsl(var(--theme-hue), 0%, 95%);
-  --background-color-richer: hsl(var(--theme-hue), 0%, 95%);			/* #f1f1f1 		code background*/
+  --background-color-richer: white;
 
   --shadow-color: black;
   --shadow-color-rgb: 0, 0, 0;
 
 	--inverted-shadow-color: white;
-
 
   /* Note: Skeleton was based off a 10px font sizing for REM  */
 	/* 62.5% of typical 16px browser default = 10px */
@@ -41,45 +40,39 @@
 	--heavy-font-weight: 600;
 	--light-font-weight: 300;
 
-	/* Grid Defaults - default to match orig skeleton settings */
-	--grid-max-width: 960px;
-
   /* Button and input field height */
   --form-element-height: 38px;
 
   --corner-radius: 4px;
 }
 
-/*  Dark Theme
-	Note: prefers-color-scheme selector support is still limited, but
-	included for future and an example of defining a different base 'theme'
-*/
+/* Dark Theme */
 @media screen and (prefers-color-scheme: dark) {
 	:root {
 		/* dark theme: light background, dark text, blue accent */
 		--theme-hue: 0;					/* black */
 		--accent-hue: 194;			/* blue */
-    --error-hue: 14;         /* red-orange */
+    --error-hue: 14;        /* red-orange */
 
-		--text-color-richer: hsl(var(--theme-hue), 0%, 95%);		/* #f2f2f2 */
-		--text-color: hsl(var(--theme-hue), 0%, 80%);		/* #cccccc text color; button:hover:active color */
-		--text-color-softer: hsl(var(--theme-hue), 0%, 67%);		/* #ababab button color; button:hover border */
+		--text-color-richer: hsl(var(--theme-hue), 0%, 95%);
+		--text-color: hsl(var(--theme-hue), 0%, 80%);
+		--text-color-softer: hsl(var(--theme-hue), 0%, 67%);
 
 		--error-color: hsl(var(--error-hue), 76%, 49%);
 
-		--accent-color: hsl(var(--accent-hue), 76%, 49%);				/* link; button-primary bg+border; textarea,select:focus border */
-		--accent-color-hover: hsl(var(--accent-hue), 86%, 57%);	/* link hover; button-primary:hover:active bg+border */
+		--accent-color: hsl(var(--accent-hue), 76%, 49%);
+		--accent-color-hover: hsl(var(--accent-hue), 86%, 57%);
 		--accent-color-disabled: hsl(var(--accent-hue), 90%, 80%);
 
-    --disabled-color: hsl(var(--theme-hue), 0%, 35%);  /* disabled button text color */
+    --disabled-color: hsl(var(--theme-hue), 0%, 35%);
 
-		--border-color-richer: hsl(var(--theme-hue), 0%, 67%);	/* #ababab		button:hover border */
-		--border-color: hsl(var(--theme-hue), 0%, 27%);					/* button border */
-		--border-color-softer: hsl(var(--theme-hue), 0%, 20%);	/* textarea,select,code,td,hr border	 */
+		--border-color-richer: hsl(var(--theme-hue), 0%, 67%);
+		--border-color: hsl(var(--theme-hue), 0%, 27%);
+		--border-color-softer: hsl(var(--theme-hue), 0%, 20%);
 
-		--background-color: hsl(var(--theme-hue), 0%, 12%);			/* body background; textarea,select background */
+		--background-color: hsl(var(--theme-hue), 0%, 12%);
 		--background-color-softer: hsl(var(--theme-hue), 0%, 18%);
-		--background-color-richer: hsl(var(--theme-hue), 0%, 5%);				/* code background*/
+		--background-color-richer: hsl(var(--theme-hue), 0%, 5%);
 
     --shadow-color: black;
     --shadow-color-rgb: 0, 0, 0;

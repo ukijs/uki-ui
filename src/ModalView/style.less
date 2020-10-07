@@ -1,5 +1,5 @@
 .ModalView {
-  position: absolute;
+  position: fixed;
   left: 0px;
   top: 0px;
   right: 0px;
@@ -43,5 +43,19 @@
     .button {
       margin-left: 1em;
     }
+    .waitingSpinner {
+      width: 2em;
+      height: 2em;
+      margin-bottom: 0.7em;
+      filter: url(#recolorImageTo--inverted-shadow-color);
+      animation-name: modalWaitingSpinnerKeyframes;
+      animation-duration: 2000ms;
+      animation-iteration-count: infinite;
+      animation-timing-function: linear;
+    }
   }
+}
+@keyframes modalWaitingSpinnerKeyframes {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

@@ -220,6 +220,7 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
         this._tooltip = options.tooltip;
         this._onclick = options.onclick || null;
         this._onDisabledClick = options.onDisabledClick || null;
+        this._tabindex = options.tabindex || 0;
       }
 
       set size (value) {
@@ -303,6 +304,15 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
         return this._onclick;
       }
 
+      get tabindex () {
+        return this._tabindex;
+      }
+
+      set tabindex (value) {
+        this._tabindex = value;
+        this.render();
+      }
+
       set onDisabledClick (value) {
         this._onDisabledClick = value;
         this.render();
@@ -314,7 +324,9 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
 
       async setup () {
         await super.setup(...arguments);
-        this.d3el.classed('button', true);
+        this.d3el.classed('button', true)
+          .attr('tabindex', this.disabled ? null : this.tabindex)
+          .attr('role', 'button');
         this.d3el.append('img')
           .style('display', 'none');
         this.d3el.append('div')
@@ -324,20 +336,25 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
           .classed('badge', true)
           .style('display', 'none');
 
-        this.d3el.on('click.ButtonView', () => {
-          if (!this.disabled) {
-            if (this.onclick) {
-              this.onclick();
+        const self = this;
+        this.d3el.on('click.ButtonView, keypress.ButtonView', function (event) {
+          if (event.type === 'keypress' && event.keyCode !== 32) {
+            return;
+          }
+          if (!self.disabled) {
+            if (self.onclick) {
+              self.onclick(...arguments);
             }
-            this.trigger('click');
+            self.trigger('click');
           } else {
-            if (this.onDisabledClick) {
-              this.onDisabledClick();
+            if (self.onDisabledClick) {
+              self.onDisabledClick(...arguments);
             }
           }
-        }).on('mouseenter.ButtonView', () => {
+        }).on('mouseenter.ButtonView', event => {
           if (this.tooltip) {
             const tooltipArgs = Object.assign({
+              showEvent: event,
               targetBounds: this.d3el.node().getBoundingClientRect()
             }, this.tooltip);
             globalThis.uki.showTooltip(tooltipArgs);
@@ -482,7 +499,6 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         showEvent,
         isContextMenu = false
       } = {}) {
-        this._showEvent = showEvent;
         if (content !== undefined) {
           this._content = content;
         }
@@ -503,6 +519,9 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         if (interactive !== undefined) {
           this._interactive = interactive;
         }
+        if (showEvent !== undefined) {
+          this._showEvent = showEvent;
+        }
         if (!isContextMenu) {
           this._contextMenuEntries = null;
         }
@@ -521,6 +540,9 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
         interactive,
         showEvent
       } = {}) {
+        if (this._contextMenuEntries === null) {
+          this._clearForContextMenu = true;
+        }
         this._contextMenuEntries = menuEntries;
         delete this._currentSubMenu;
         await this.show({
@@ -598,20 +620,76 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
 
       computeTooltipPosition (tooltipBounds, targetBounds) {
         const anchor = Object.assign({}, this.anchor || {});
+        let left, top, right, bottom;
 
-        // First deal with the case that there isn't a preference
+        // *** Lots of helper functions for this
+        function computeX () {
+          left = (targetBounds.left + targetBounds.right) / 2 +
+                 anchor.x * targetBounds.width / 2 -
+                 tooltipBounds.width / 2 +
+                 anchor.x * tooltipBounds.width / 2;
+          right = left + tooltipBounds.width;
+        }
+        function computeY () {
+          top = (targetBounds.top + targetBounds.bottom) / 2 +
+                anchor.y * targetBounds.height / 2 -
+                tooltipBounds.height / 2 +
+                anchor.y * tooltipBounds.height / 2;
+          bottom = top + tooltipBounds.height;
+        }
+        function clampX () {
+          if (right > window.innerWidth) {
+            right = window.innerWidth;
+            left = right - tooltipBounds.width;
+          }
+          if (left < 0) {
+            left = 0;
+            right = tooltipBounds.width;
+          }
+        }
+        function clampY () {
+          if (bottom > window.innerHeight) {
+            bottom = window.innerHeight;
+            top = bottom - tooltipBounds.height;
+          }
+          if (top < 0) {
+            top = 0;
+            bottom = tooltipBounds.height;
+          }
+        }
+        function overrideXAnchor () {
+          if (targetBounds.left > window.innerWidth - targetBounds.right) {
+            // there's more space on the left; try to put it there
+            anchor.x = -1;
+          } else {
+            // more space on the right; try to put it there
+            anchor.x = 1;
+          }
+        }
+        function overrideYAnchor () {
+          if (targetBounds.top > window.innerHeight - targetBounds.bottom) {
+            // more space above; try to put it there
+            anchor.y = -1;
+          } else {
+            // more space below; try to put it there
+            anchor.y = 1;
+          }
+        }
+        function xOverlaps () {
+          return left < targetBounds.right && right > targetBounds.left;
+        }
+        function yOverlaps () {
+          return top < targetBounds.top && bottom > targetBounds.bottom;
+        }
+        // *** End helper functions
+
+        // First deal with the case that there isn't an anchor preference
         if (anchor.x === undefined) {
           if (anchor.y !== undefined) {
             // with y defined, default is to center x
             anchor.x = 0;
           } else {
-            if (targetBounds.left > window.innerWidth - targetBounds.right) {
-              // there's more space on the left; try to put it there
-              anchor.x = -1;
-            } else {
-              // more space on the right; try to put it there
-              anchor.x = 1;
-            }
+            overrideXAnchor();
           }
         }
         if (anchor.y === undefined) {
@@ -619,81 +697,48 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
             // with x defined, default is to center y
             anchor.y = 0;
           } else {
-            if (targetBounds.top > window.innerHeight - targetBounds.bottom) {
-              // more space above; try to put it there
-              anchor.y = -1;
-            } else {
-              // more space below; try to put it there
-              anchor.y = 1;
-            }
+            overrideYAnchor();
           }
         }
 
         // Compute where the tooltip would end up
-        let left = (targetBounds.left + targetBounds.right) / 2 +
-               anchor.x * targetBounds.width / 2 -
-               tooltipBounds.width / 2 +
-               anchor.x * tooltipBounds.width / 2;
-        const right = left + tooltipBounds.width;
-        let top = (targetBounds.top + targetBounds.bottom) / 2 +
-              anchor.y * targetBounds.height / 2 -
-              tooltipBounds.height / 2 +
-              anchor.y * tooltipBounds.height / 2;
-        const bottom = top + tooltipBounds.height;
+        computeX();
+        computeY();
 
-        // Now adjust the anchor if there isn't space (and switching would make
-        // a difference)
-        let recomputeX = false;
-        let recomputeY = false;
-        if (left < 0 && window.innerWidth - targetBounds.right >= tooltipBounds.width) {
-          anchor.x = 1;
-          recomputeX = true;
-        } else if (right > window.innerWidth && targetBounds.left - tooltipBounds.width >= 0) {
-          anchor.x = -1;
-          recomputeX = true;
-        }
-        if (top < 0 && window.innerHeight - targetBounds.bottom >= tooltipBounds.height) {
-          anchor.y = 1;
-          recomputeY = true;
-        } else if (bottom > window.innerHeight && targetBounds.top - tooltipBounds.height >= 0) {
-          anchor.y = -1;
-          recomputeY = true;
+        // Clamp if offscreen
+        clampX();
+        clampY();
+
+        // If we're overlapping the target, override the anchor and try again
+        if (xOverlaps() && yOverlaps()) {
+          // First try overriding X...
+          const tempLeft = left;
+          const tempRight = right;
+          overrideXAnchor();
+          computeX();
+          clampX();
+          if (xOverlaps()) {
+            // Okay, X is impossible, restore what we had before and
+            // try overriding Y...
+            left = tempLeft;
+            right = tempRight;
+            overrideYAnchor();
+            computeY();
+            clampY();
+          }
         }
 
-        // Recompute if we need to
-        if (recomputeX) {
-          left = (targetBounds.left + targetBounds.right) / 2 +
-                 anchor.x * targetBounds.width / 2 -
-                 tooltipBounds.width / 2 +
-                 anchor.x * tooltipBounds.width / 2;
-        }
-        if (recomputeY) {
-          top = (targetBounds.top + targetBounds.bottom) / 2 +
-                anchor.y * targetBounds.height / 2 -
-                tooltipBounds.height / 2 +
-                anchor.y * tooltipBounds.height / 2;
-        }
-
-        // Finally, clamp the tooltip so that it stays on screen, if our earlier
-        // shuffling wasn't successful
-        if (left + tooltipBounds.width > window.innerWidth) {
-          left = window.innerWidth - tooltipBounds.width;
-        }
-        if (left < 0) {
-          left = 0;
-        }
-        if (top + tooltipBounds.height > window.innerHeight) {
-          top = window.innerHeight - tooltipBounds.height;
-        }
-        if (top < 0) {
-          top = 0;
-        }
-
+        // At this point, we've done all we can to put it somewhere sensible
         return { left, top };
       }
 
       async draw () {
         await super.draw(...arguments);
+
+        if (this._clearForContextMenu) {
+          this.d3el.html('');
+          delete this._clearForContextMenu;
+        }
 
         this.d3el
           .classed('interactive', this.interactive)
@@ -791,12 +836,18 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
               }
               contentFuncPromises.push(this.__contextMenuButtonView.render());
             }
-          }).on('click', (event, d) => {
+          }).on('click.TooltipView, keypress.TooltipView1', (event, d) => {
+            if (event.type === 'keypress' && event.keyCode !== 32) {
+              return;
+            }
             if (d && d.onclick && !d.disabled) {
               d.onclick();
               this._rootTooltip.hide();
             }
-          }).on('mouseenter', function (event, d) {
+          }).on('mouseenter.TooltipView, keypress.TooltipView2', function (event, d) {
+            if (event.type === 'keypress' && event.keyCode !== 32) {
+              return;
+            }
             if (d && d.subEntries) {
               // Use the menu item, including its margins, as targetBounds
               let targetBounds = this.getBoundingClientRect();
@@ -858,11 +909,13 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-var defaultStyle$2 = ".ModalView {\n  position: absolute;\n  left: 0px;\n  top: 0px;\n  right: 0px;\n  bottom: 0px;\n  display: flex;\n  z-index: 1000;\n}\n.ModalView .modalShadowEl {\n  position: absolute;\n  left: 0px;\n  top: 0px;\n  right: 0px;\n  bottom: 0px;\n  background: var(--text-color-softer);\n  opacity: 0.75;\n}\n.ModalView .centerWrapper {\n  position: relative;\n  background-color: var(--background-color);\n  opacity: 1;\n  border: 1px solid var(--shadow-color);\n  border-radius: var(--corner-radius);\n  box-shadow: 0.5em 0.5em 2em rgba(var(--shadow-color-rgb), 0.75);\n  min-width: 20em;\n  max-width: calc(100% - 4em);\n  min-height: 20em;\n  max-height: calc(100% - 4em);\n  margin: auto;\n  padding: 1em;\n}\n.ModalView .centerWrapper .modalContentEl {\n  margin-bottom: 3.5em;\n  max-height: calc(100vh - 7.5em);\n}\n.ModalView .modalButtonEl {\n  position: absolute;\n  bottom: 1em;\n  right: 1em;\n  display: flex;\n  justify-content: flex-end;\n  align-items: center;\n}\n.ModalView .modalButtonEl .button {\n  margin-left: 1em;\n}\n";
+var defaultStyle$2 = ".ModalView {\n  position: fixed;\n  left: 0px;\n  top: 0px;\n  right: 0px;\n  bottom: 0px;\n  display: flex;\n  z-index: 1000;\n}\n.ModalView .modalShadowEl {\n  position: absolute;\n  left: 0px;\n  top: 0px;\n  right: 0px;\n  bottom: 0px;\n  background: var(--text-color-softer);\n  opacity: 0.75;\n}\n.ModalView .centerWrapper {\n  position: relative;\n  background-color: var(--background-color);\n  opacity: 1;\n  border: 1px solid var(--shadow-color);\n  border-radius: var(--corner-radius);\n  box-shadow: 0.5em 0.5em 2em rgba(var(--shadow-color-rgb), 0.75);\n  min-width: 20em;\n  max-width: calc(100% - 4em);\n  min-height: 20em;\n  max-height: calc(100% - 4em);\n  margin: auto;\n  padding: 1em;\n}\n.ModalView .centerWrapper .modalContentEl {\n  margin-bottom: 3.5em;\n  max-height: calc(100vh - 7.5em);\n}\n.ModalView .modalButtonEl {\n  position: absolute;\n  bottom: 1em;\n  right: 1em;\n  display: flex;\n  justify-content: flex-end;\n  align-items: center;\n}\n.ModalView .modalButtonEl .button {\n  margin-left: 1em;\n}\n.ModalView .modalButtonEl .waitingSpinner {\n  width: 2em;\n  height: 2em;\n  margin-bottom: 0.7em;\n  filter: url(#recolorImageTo--inverted-shadow-color);\n  animation-name: modalWaitingSpinnerKeyframes;\n  animation-duration: 2000ms;\n  animation-iteration-count: infinite;\n  animation-timing-function: linear;\n}\n@keyframes modalWaitingSpinnerKeyframes {\n  from {\n    transform: rotate(0deg);\n  }\n  to {\n    transform: rotate(360deg);\n  }\n}\n";
 
 var template = "<div class=\"modalShadowEl\"></div>\n<div class=\"centerWrapper\">\n  <div class=\"modalContentEl\"></div>\n  <div class=\"modalButtonEl\"></div>\n</div>\n";
 
-/* globals d3, uki */
+const img = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAMAAACahl6sAAAC+lBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB1fEeTAAAA/nRSTlMAAQIEAwUHBggKCRkMDwsO+Q0UEhH69vgQ/B7yF/sW9/T1HBgd8BvuIxXzJhPxLSQnIezvHxo0IOopJessMD7m7S826Cjn5N8r3Cpn6c7lPIe8YeEz4N1TPyI4ZdI6Y0fYRMPj1l5FMjne2ctAQ03iQTvb09e/wc9MzDHUSclYxtWfedG6xS640NrERlV3T1yvYG01V8jCenFCrbmEWnKPfYpKS6yWu1GaaqJpsGRZa7dQsWJspnSrtHOFnIFvjMq1noOdkFuVvl22UrJwblaozT2hfKqbVMd+pKB1mZiAToKpk0jApZGXN2ijiLN2p5SGjomNi3+uX3h7kma9/ZIe1xsAAA+KSURBVHgB1NcDeCRbGsbxt7ra0aaT2Yk2O5NkbNu2bdv2BKNrjW1fj6/tMde4to2v+qSn6tTpjBb95ffY/X/er7uq8T+h9zm98I0PT9wzc3m1Ds93zUBhVG7ipnfz2hQt+jtSpEiRP5ChBzUUKkm93zyxsuwfSVEpJDm5cwIKC+29x69MK17890QNoRINhUHc/A1dihUrVlwJIUYIOQj2/P/qPLRs2bJGCMkPIXLI0AzwVvPjZampqUYIuUbIz4+Bsbg7znerUCFVlJghRA3JBluV7nu4RIkSFajEGkLChswCU0tXr6xW7SZCKoClBn/tUKqaGSKVhEII95C2Z0+VIhQiSgoOYX1aJZ8c2rhx42BItRsPyQYz+sZHq1Y1QwiFEPlLUlSUMP75Pb2zXr2qVHJjk7B9IGYe7lDv1kIOgpP5h2rXrl1wSfgQfi+NmR8vbp8fQgqcRA1h9hrfO7tZ+/btw06i3pYUwuqPlTZwSTMRYpaot6WGlGL2V7fWhhYtmlGJMol8W2bIpKGHntr04qCa4KXTmRZEKQl/W/1PXnqgQTw4utClUSM1RJmEQmad3zvaB67253ZspJaok6z/elAM+Epa3ZHYS5RJ8s42BGsZX7RsaYRYStRJ5r0z0Qfeyv1zWEtRoh5XaJK8TW3BXcUTw4ZJJepxHfk2APYaXJlkhCgl5iSfPOgHfw3OTJqklFgnuecVH/hDxexu3agk/HFRyMyH0vF/pGm4NeX2dCPhSyikzfH6+P923GJJxjs9evQooIQmOTkR//eOWypJ+qxVjwJKaJLFd9aIRIfjFko+btWq4JJz2xGRDsfNl/w4ZkyYEhHSaEPpSHRQxs2X7B43hkpImJJFBxG5DqfzpkpGH+3ZM2wJHdeO2yPa4byZTVL29CRqiTHJS0sj2nFTJdqlNm0KKnkuKrIdRHfgBo2Y2oYYJcQsoZBWh/2R79BvtGRK3tQCSqbvRaQ7dMONfeHTd66Yml9CrCX9B0amQ56DuG6o5M0VK4ySqUpJblcuHS6XE9c1ZNHYUAmxlCweiP8/tYMyDA5cR/qesWONkhX2kjb7EQmWDt3S4dE1XNtDgwdTiWWUUMkmRC5E7fB4nLimvi8Pzi8h1i/K135EqkR0SBnk2sfl/GI6hYgU6bzeyUSkONQ5DG4d1/DadCKViFEO1UfEaFSiZhAnCpR5ZfhwM8U8r5eHIIK0cB3EpaEgB4eTMKN8i4hy6ETOIF6vjgKUO7CYQtRRtiDCHJShdnjdGsJ7cjERKdZRrlRBhGm6mmHQEVbrZfPmiRRplIu3I+Ic1GHLIH6vA+GsmUdsKVTyJBhweoKkDOJCGHUenjbNnkIl5zPBgKbb5vAbwk/y+DSDVELGDQILDuqQM4jP54Ki+j39+4dJyQETuppBvBrsvu1PlJR7moMJzSN3+ARlkujs3NwwKV3BhjNMRmysMsn8XKKkPBsAG5pHzSA6ZJ2XL18utxgpF8CIU80gXkgqrqIQJWWnH5x41Izo6FgnrPrNmjVLTbkLrDgpw1pBGcQDC/ezFEIpQVdT3vWCF7c8huCHxekOhErkWXqBGV3NiI+P12HaRB1Kyr5EMKN5lQrixlXRh06dOqW0DAQ7LiWDxGoIaTiHQuwty+qCHYcv1lYRR3SEvDmH2FO2gCG3UkG8yKc9Tx1Ky1owpFOGVEFiopGv4jhib8n2gyHNZ68wOCFsHJfP2rIXLLmVCuKGsOFpYm+pCZac9giS5ENQ/DrqsLecB1OxckWSIU6DoeYCgzWGWvaCKXecFCHoMGykDMHSMgVM6UpFYmKiF4avVxJrC9kRD6a0eClCiIVhnxFii/kr2PJJDUIcSMqSi2SlXPMA2HLbIhIMTgCnF1GHYMY0AVu6HCF4ANy9KEiKOeIFW1qM3GAo7weQI0Kkmg/BWLTcEBQN4NMlQVLNj2DMLyUIcYDzHhEi5dwOxjzUIAkEAglAydsEKacyGNPNApMTDfJDrD1HfWBMS6QEOxdGDhWsNXvAWpKUUCbIjQeGyoyQ58BavAiQ+LF3VYgZcx9Yiy6jSI9GzirF0AfBmu/qxzfFofNMU6hkEFjzpqti8NJMVVOw5rEEpOVLwJV/W4mQ5mDNlaYqj3/8W5UB1pxpqgAenaFKAGuOtExFOl4NE+IDa1qmKg15L6t09iFRCnT5KUgK0cCbmiFCFIUyZFkXFffTqqGKwtEuKl9hDFm3S5UA1pwlVVF4216Rl5dXEqzpJVWZOJ+nqgzWPBmSYEg6Xsi7an1ITbDmzVCl4+/rVRPAWmyWKRQSwOH1wjKLC2AtPkuVgIPLZA+TdmAtMSWfJSQJvUKf3+J7sBZIUWTFY7K14FVhM1jLrB4klcSiogiweOaZt/1gzJFV3UoEuRFlLQgpDcY8tQSpRofzDBVYHDWMB2PRVUSItackgA+lBMNHH90NxhKrGOSaTABPUoLZIKwGY2l9RIk1JwCglzWBvE7+4gZbWlafoCrWnBgAfeUGw6OP1gFb3tKljQ65xgeg5KPWBoowzAZbMaUFKcYF8o61gRwgb4CttEqVKEOOyYBhjS2C3PNpLJhypFQiFGOtSYfhEVtE0CgwFVuXVLLFJMGw1IiQKr755psXwVSgrlDJGuOHIfovcgRZt24DmMoqR2wxKQ4EHaMIqcJQHyz5KpcT6lpiMiH8TURYKnbs2LEQLAUqE3tLEoTKFBEUiiBHNrjBkKN68+ZUYovxQtA+ExFmBTnXFAzFNzdUlluyEDLCVkEZ5879CIai6tSpo7SUQUhNewX5x0spYMddl0KUlliE+L6yV5CTj4CdQFsiUsyWWg5cdS9VBIkKI+Pkyb/HgRm9SmsKoRSpJR2m7rYxyCeffLIWzCS2JkpLNEye58wKkUEO3ekGK45a9evXV1Kqa7DoZY5BjAry9mlmg1Ssb7DNEoBV3Wx5DCPj7bcPu3kNUpHYU8r5IblPzbh8+fJ4MJKwdOlSNaUkZJ1O2jPIBzkxYEMv3SS/RLqwGMh8f6UKIipExgcf7NsGNtKbECWligM2s0WFlLFv34YUMOGv3KCBKJFSArCL+sqeQc6ceRFMZMxtQOwpdT1Q3GHJIMGMM1fevR8sJC2dO3euUSKnpEFVa7OaceVK9qZEMOCpNGqUKJFSKnsRxoNSBqGM7Oxnd4OBGt1/q+4uYNTYojAAU3d3dxe2xkuNBFKhSkMqyEoqSJKFQLRu8drWXdl6y2427JPVKnV3d3d3m7k97d0zMOjA9N148l7bL+f/7wzDzGAmEg7F9ztbOrwEBh0H49i1xiy+o2rPoUN9UHrxfCF1zAdj1549WXXFdpRsI5MNBQpICKUJ35WWIT4Ye3Jy0sSG1F6wQEYoeCioIWjZCIPrOLvZKq6jrnIBSDClPv/ZzHSvcTCOs5uzFaIWRKFUKokEhgL5khbj/3/khMF1bL6S1VnEi71dHzwgEu5Q/N2MVXQAl0EcV64kVhXvCKLXgwQPpbPfGxb7v57GGQfruHr16rES4jgKd7DoQYKHogrw7OocwoCW/3bcv39/rEgbVoLFYmEl3KGUCXROs5QbK+LYsOH5TFFOFRMSfEug6X6WeS+OFTg27HttF+HMRO9wgATFS6aoGfh/nkMYNFbg2Pd8nTb2DrXjlwQPpUswJ8yZKFbEsY9xPL/1Kjm2juaWk+qfkgQsWcAbLLT6Z0OsOI5bn96MjKWjqUN+0lvCUtoHeQ10WYF6FHR8urdmYsx24aJ/ybVyJKFFCfYstlAaj+Pe3r2HasbqunuyVgsSNZWQoQR/mtEqncYKO9asSWkcC0el/vZkPkmbEC4b9lpbcLsq6Hj5cosqBl8fjF9mJxK5tyRgQdDSv+FzvH49XR31midYl/FJhob4osKZ9/kc+fnrMlpFk1Gq18iRVl8SQgn5J3U2/XLc4jrevFln6BE9R92hJoBwJIRSO/SPAasYBnIQSD4DWbfu1VpTuegwSkqTZ5pMdCQcScswntFpOw856EAYx6vHjzVRGUoTWVLSTH4JbFghrjKffToYCOMYMuTC2DJCMyp0Nd2+7UfSK8xHjWo/5HG8YhwvXmTPV5cV9BioO+mcWABCCw+S/mH/dZ238ThYSHb2ypWaoSWEYhStrU91OiciyTIk6RHB+4w6D2Ac98ABRV/308FCdu++4elZTBBGU+XYsak/JUk4XL8k4AhzNXWBgxssMpDdN27k5qaYS0Ucqs6W6zYbK0EjQRJVhDFuYmQd3sF6wTp2M45r19661fUjqngb+Zw5168TCCdctPBdI77Jssox7EDBYiFv315Ye9QZF2bCinQZf3tTRgYjsVFJkpekTUkBzhjG0oJAsNim04FcuLB27emPRm3nML4XVNlHHDq0aRMLYSV4JLTwOkGKKLHfIA6+gbCO0x+XLJnu0bYM4YBVokx7+6xZ50aMYCF4JJyaqAX7InNoFg6Wj4F8XDJ9+ofZs11Oc/NiQQSqVRtL6sKFx1gIGsnY3xAqUQr4Cn6pm3HAzkuDBQO5AANhIU8vX/7Hfd3Rqz7v8aVYlQ4K+fVVaWmTJy88dmzWOf6RQE0Ugl6tbZvBOngGApAPH2Y/fXr5n3+yVq9eeuTzQqfcHFe7frlSxQqzP/JQqlyrxtL2yuTUY8YDKSmeVasAAiMhELoFF6hJnMCPSRVyXMYOPBBIFoUcyTs6f35mevqWbdseDhjw2WBwJbrdmnnz3hspBGXLayRE4mgqEXx1MxIHajpUHSUrK2v10qVH8gJC0lgIzpZXuHq2lURhVTCdxgOhVYdk+YckujUaAjmQ4vFASehIMIRI7LAJCr9U85ADDQQlyw/kPUBotvhGYo7izw9XsD71HghKFq2IPwgqie+RJEuje7NYy1nUAVXnJItCMjPTt2AItyQoW0iiaBv1r5CGJvoaCGy+UJGAEFQS7x1Y37hQLB5ykmeCA6qOKwJd54GgtqNsUYm2Zawesa07cikdCDmIQLJQ1wHykAcCJfHKlrVXpVh+BWPKg4FAsnBFeCBugEBJULZAMrJ/zVjfbr9sCzhosoKCvEcQnK1lXcW4ibKtZR4eCK0I3X0xhOy/qO2QLSKRS8uK9fBAj4x/YCC4IoEhuCSMxLagaTGJiKu52oiS5ReC2o6ype1aRfz7caVW9wcMgd0XDuwAcVEILskxk6JM0T/k+RSpPQWSBV0PBKElsSq6oEiJvrrIbAboOt20MCSRA1llS4irLPkDV8nasokHlgaAQNs9zoSudUtI/uBVtaXMdM591A/kXFKCqmkFyf9iFS7XvM14x8jUQ5MPaFyfBwxwaQ5MHjHWdHJBD12TStE5H/wBsvpxVBfssXQAAAAASUVORK5CYII=";
+
+/* globals uki */
 
 const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
@@ -876,15 +929,35 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         this._content = options.content;
         this._visible = options.visible || false;
         this._shadow = options.shadow || true;
+        this._confirmAction = options.confirmAction || (async () => {});
+        this._cancelAction = options.cancelAction || (async () => {});
+        this._validateForm = options.validateForm || (async () => null);
+        this.drawValidationErrors = false;
+        this.drawWaitingState = false;
+        this._usesDefaultSpecs = options._buttonSpecs === undefined;
         this._buttonSpecs = options.buttonSpecs || [
           {
             label: 'Cancel',
-            onclick: () => { this.hide(); }
+            onclick: async () => {
+              this.drawWaitingState = true;
+              await this.render();
+              await this.cancelAction();
+              this.hide();
+            }
           },
           {
             label: 'OK',
             primary: true,
-            onclick: () => { this.hide(); }
+            onclick: async () => {
+              this.drawWaitingState = true;
+              await this.render();
+              await this.confirmAction();
+              this.hide();
+            },
+            onDisabledClick: () => {
+              this.drawValidationErrors = true;
+              this.render();
+            }
           }
         ];
       }
@@ -922,6 +995,7 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
 
       set buttonSpecs (specs) {
         this._buttonSpecs = specs;
+        this._usesDefaultSpecs = false;
         this.render();
       }
 
@@ -934,6 +1008,30 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         return this.modalButtonEl?.selectAll('.ButtonView').nodes().map(el => {
           return el.__modalButtonView;
         });
+      }
+
+      get confirmAction () {
+        return this._confirmAction;
+      }
+
+      set confirmAction (value) {
+        this._confirmAction = value;
+      }
+
+      get cancelAction () {
+        return this._cancelAction;
+      }
+
+      set cancelAction (value) {
+        this._cancelAction = value;
+      }
+
+      get validateForm () {
+        return this._validateForm;
+      }
+
+      set validateForm (value) {
+        this._validateForm = value;
       }
 
       async show ({
@@ -971,6 +1069,35 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         this.modalShadowEl = this.d3el.select('.modalShadowEl');
         this.modalContentEl = this.d3el.select('.modalContentEl');
         this.modalButtonEl = this.d3el.select('.modalButtonEl');
+
+        await this.applyContent();
+        await this.updateButtons();
+      }
+
+      async applyContent (skipString = false) {
+        if (typeof this.content === 'string' && !skipString) {
+          this.modalContentEl.html(this.content);
+        } else if (this.content instanceof uki.View) {
+          await this.content.render(this.modalContentEl);
+        } else if (typeof this.content === 'function') {
+          await this.content(this.modalContentEl);
+        }
+      }
+
+      async updateButtons () {
+        let buttons = this.modalButtonEl.selectAll('.ButtonView')
+          .data(this.buttonSpecs, (d, i) => i);
+        buttons.exit().remove();
+        const buttonsEnter = buttons.enter().append('div');
+        buttons = buttons.merge(buttonsEnter);
+
+        await ButtonView.initForD3Selection(buttonsEnter, d => Object.assign({}, d));
+        await ButtonView.iterD3Selection(buttons, async (buttonView, d) => {
+          Object.assign(buttonView, d);
+          if (this._usesDefaultSpecs && buttonView.label === 'OK') {
+            buttonView.disabled = !!this.validationErrors;
+          }
+        });
       }
 
       async draw () {
@@ -979,33 +1106,29 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         if (this.visible) {
           this.modalShadowEl.style('display', this.shadow ? null : 'none');
 
-          if (typeof this.content === 'string') {
-            this.modalContentEl.html(this.content);
-          } else if (this.content instanceof uki.View) {
-            await this.content.render(this.modalContentEl);
-          } else if (typeof content === 'function') {
-            await this.content(this.modalContentEl);
+          const priorErrors = this.validationErrors;
+          this.validationErrors = await this.validateForm();
+          await this.applyContent();
+          await this.updateButtons();
+
+          if (this.drawValidationErrors && this.validationErrors) {
+            for (const selection of this.validationErrors) {
+              this.d3el.select(selection).classed('error', true);
+            }
+          } else if (priorErrors) {
+            for (const selection of priorErrors) {
+              this.d3el.select(selection).classed('error', false);
+            }
           }
 
-          let buttons = this.modalButtonEl.selectAll('.ButtonView')
-            .data(this.buttonSpecs, (d, i) => i);
-          buttons.exit().remove();
-          const buttonsEnter = buttons.enter().append('div');
-          buttons = buttons.merge(buttonsEnter);
-
-          const buttonPromises = [];
-          buttons.each(function (d) {
-            const buttonOptions = Object.assign({}, d);
-            buttonOptions.d3el = d3.select(this);
-            if (this.__modalButtonView) {
-              Object.assign(this.__modalButtonView, buttonOptions);
-            } else {
-              this.__modalButtonView = new ButtonView(buttonOptions);
-            }
-            buttonPromises.push(this.__modalButtonView.render());
-          });
-
-          await Promise.all(buttonPromises);
+          if (this.drawWaitingState) {
+            this.modalButtonEl.insert('img', ':first-child')
+              .attr('src', img)
+              .classed('waitingSpinner', true);
+            ButtonView.iterD3Selection(this.modalButtonEl.selectAll('.ButtonView'), buttonView => {
+              buttonView.disabled = true;
+            });
+          }
         }
 
         this.d3el.style('display', this.visible ? null : 'none');
@@ -1015,11 +1138,11 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-var defaultVars = ":root {\n\n\t/* default theme: light background, dark text, blue accent */\n\t--theme-hue: 0;\t\t\t\t\t/* white */\n\t--accent-hue: 194;\t\t\t/* blue */\n  --error-hue: 14;         /* red-orange */\n\n\t--text-color-richer: hsl(var(--theme-hue), 0%, 5%);\t\t\t/* #0d0d0d\t\t*/\n\t--text-color: hsl(var(--theme-hue), 0%, 13%);\t\t/* #222222 \t\ttext color; button:hover:active color */\n\t--text-color-softer: hsl(var(--theme-hue), 0%, 33%);\t\t/* #555555 \t\tbutton color; button:hover border */\n\n  --error-color: hsl(var(--error-hue), 86%, 57%);\n\n  --accent-color: hsl(var(--accent-hue), 86%, 57%);\t\t\t\t/* #33C3F0 \t\tlink; button-primary bg+border; textarea,select:focus border */\n  --accent-color-hover: hsl(var(--accent-hue), 76%, 49%);\t/* #1EAEDB \t\tlink hover; button-primary:hover:active bg+border */\n  --accent-color-disabled: hsl(var(--accent-hue), 90%, 80%);\n\n  --disabled-color: hsl(var(--theme-hue), 0%, 75%);  /* disabled button color */\n\n  --border-color-richer: hsl(var(--theme-hue), 0%, 57%);\t/* #888888\t\tbutton:hover border */\n  --border-color: hsl(var(--theme-hue), 0%, 73%);\t\t\t\t\t/* #bbbbbb\t\tbutton border */\n\t--border-color-softer: hsl(var(--theme-hue), 0%, 82%);\t/* #d1d1d1\t\ttextarea,select,code,td,hr border\t */\n\n\t--background-color: white;\t\t\t\t\t\t\t\t\t\t\t\t\t\t/* transparent body background; textarea,select background */\n\t--background-color-softer: hsl(var(--theme-hue), 0%, 95%);\n  --background-color-richer: hsl(var(--theme-hue), 0%, 95%);\t\t\t/* #f1f1f1 \t\tcode background*/\n\n  --shadow-color: black;\n  --shadow-color-rgb: 0, 0, 0;\n\n\t--inverted-shadow-color: white;\n\n\n  /* Note: Skeleton was based off a 10px font sizing for REM  */\n\t/* 62.5% of typical 16px browser default = 10px */\n\t--base-font-size: 62.5%;\n\n\t/* Some more additions over Skeleton for configurable typography */\n\t--base-font-family: \"Raleway\", \"HelveticaNeue\", \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n\t--base-font-weight: 400;\n\t--heavy-font-weight: 600;\n\t--light-font-weight: 300;\n\n\t/* Grid Defaults - default to match orig skeleton settings */\n\t--grid-max-width: 960px;\n\n  /* Button and input field height */\n  --form-element-height: 38px;\n\n  --corner-radius: 4px;\n}\n\n/*  Dark Theme\n\tNote: prefers-color-scheme selector support is still limited, but\n\tincluded for future and an example of defining a different base 'theme'\n*/\n@media screen and (prefers-color-scheme: dark) {\n\t:root {\n\t\t/* dark theme: light background, dark text, blue accent */\n\t\t--theme-hue: 0;\t\t\t\t\t/* black */\n\t\t--accent-hue: 194;\t\t\t/* blue */\n    --error-hue: 14;         /* red-orange */\n\n\t\t--text-color-richer: hsl(var(--theme-hue), 0%, 95%);\t\t/* #f2f2f2 */\n\t\t--text-color: hsl(var(--theme-hue), 0%, 80%);\t\t/* #cccccc text color; button:hover:active color */\n\t\t--text-color-softer: hsl(var(--theme-hue), 0%, 67%);\t\t/* #ababab button color; button:hover border */\n\n\t\t--error-color: hsl(var(--error-hue), 76%, 49%);\n\n\t\t--accent-color: hsl(var(--accent-hue), 76%, 49%);\t\t\t\t/* link; button-primary bg+border; textarea,select:focus border */\n\t\t--accent-color-hover: hsl(var(--accent-hue), 86%, 57%);\t/* link hover; button-primary:hover:active bg+border */\n\t\t--accent-color-disabled: hsl(var(--accent-hue), 90%, 80%);\n\n    --disabled-color: hsl(var(--theme-hue), 0%, 35%);  /* disabled button text color */\n\n\t\t--border-color-richer: hsl(var(--theme-hue), 0%, 67%);\t/* #ababab\t\tbutton:hover border */\n\t\t--border-color: hsl(var(--theme-hue), 0%, 27%);\t\t\t\t\t/* button border */\n\t\t--border-color-softer: hsl(var(--theme-hue), 0%, 20%);\t/* textarea,select,code,td,hr border\t */\n\n\t\t--background-color: hsl(var(--theme-hue), 0%, 12%);\t\t\t/* body background; textarea,select background */\n\t\t--background-color-softer: hsl(var(--theme-hue), 0%, 18%);\n\t\t--background-color-richer: hsl(var(--theme-hue), 0%, 5%);\t\t\t\t/* code background*/\n\n    --shadow-color: black;\n    --shadow-color-rgb: 0, 0, 0;\n\n\t\t--inverted-shadow-color: white;\n  }\n}\n";
+var defaultVars = ":root {\n\n\t/* Default light theme: light background, dark text, blue accent */\n\t--theme-hue: 0;\t\t\t\t\t/* white */\n\t--accent-hue: 194;\t\t\t/* blue */\n  --error-hue: 14;        /* red-orange */\n\n\t--text-color-richer: hsl(var(--theme-hue), 0%, 5%);\n\t--text-color: hsl(var(--theme-hue), 0%, 13%);\n\t--text-color-softer: hsl(var(--theme-hue), 0%, 33%);\n\n  --error-color: hsl(var(--error-hue), 86%, 57%);\n\n  --accent-color: hsl(var(--accent-hue), 86%, 57%);\n  --accent-color-hover: hsl(var(--accent-hue), 76%, 49%);\n  --accent-color-disabled: hsl(var(--accent-hue), 90%, 80%);\n\n  --disabled-color: hsl(var(--theme-hue), 0%, 75%);\n\n  --border-color-richer: hsl(var(--theme-hue), 0%, 57%);\n  --border-color: hsl(var(--theme-hue), 0%, 73%);\n\t--border-color-softer: hsl(var(--theme-hue), 0%, 82%);\n\n\t--background-color: hsl(var(--theme-hue), 0%, 98%);\n\t--background-color-softer: hsl(var(--theme-hue), 0%, 95%);\n  --background-color-richer: white;\n\n  --shadow-color: black;\n  --shadow-color-rgb: 0, 0, 0;\n\n\t--inverted-shadow-color: white;\n\n  /* Note: Skeleton was based off a 10px font sizing for REM  */\n\t/* 62.5% of typical 16px browser default = 10px */\n\t--base-font-size: 62.5%;\n\n\t/* Some more additions over Skeleton for configurable typography */\n\t--base-font-family: \"Raleway\", \"HelveticaNeue\", \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n\t--base-font-weight: 400;\n\t--heavy-font-weight: 600;\n\t--light-font-weight: 300;\n\n  /* Button and input field height */\n  --form-element-height: 38px;\n\n  --corner-radius: 4px;\n}\n\n/* Dark Theme */\n@media screen and (prefers-color-scheme: dark) {\n\t:root {\n\t\t/* dark theme: light background, dark text, blue accent */\n\t\t--theme-hue: 0;\t\t\t\t\t/* black */\n\t\t--accent-hue: 194;\t\t\t/* blue */\n    --error-hue: 14;        /* red-orange */\n\n\t\t--text-color-richer: hsl(var(--theme-hue), 0%, 95%);\n\t\t--text-color: hsl(var(--theme-hue), 0%, 80%);\n\t\t--text-color-softer: hsl(var(--theme-hue), 0%, 67%);\n\n\t\t--error-color: hsl(var(--error-hue), 76%, 49%);\n\n\t\t--accent-color: hsl(var(--accent-hue), 76%, 49%);\n\t\t--accent-color-hover: hsl(var(--accent-hue), 86%, 57%);\n\t\t--accent-color-disabled: hsl(var(--accent-hue), 90%, 80%);\n\n    --disabled-color: hsl(var(--theme-hue), 0%, 35%);\n\n\t\t--border-color-richer: hsl(var(--theme-hue), 0%, 67%);\n\t\t--border-color: hsl(var(--theme-hue), 0%, 27%);\n\t\t--border-color-softer: hsl(var(--theme-hue), 0%, 20%);\n\n\t\t--background-color: hsl(var(--theme-hue), 0%, 12%);\n\t\t--background-color-softer: hsl(var(--theme-hue), 0%, 18%);\n\t\t--background-color-richer: hsl(var(--theme-hue), 0%, 5%);\n\n    --shadow-color: black;\n    --shadow-color-rgb: 0, 0, 0;\n\n\t\t--inverted-shadow-color: white;\n  }\n}\n";
 
 var normalize = "/*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */\n\n/* Document\n   ========================================================================== */\n\n/**\n * 1. Correct the line height in all browsers.\n * 2. Prevent adjustments of font size after orientation changes in iOS.\n */\n\nhtml {\n  line-height: 1.15; /* 1 */\n  -webkit-text-size-adjust: 100%; /* 2 */\n}\n\n/* Sections\n   ========================================================================== */\n\n/**\n * Remove the margin in all browsers.\n */\n\nbody {\n  margin: 0;\n}\n\n/**\n * Render the `main` element consistently in IE.\n */\n\nmain {\n  display: block;\n}\n\n/**\n * Correct the font size and margin on `h1` elements within `section` and\n * `article` contexts in Chrome, Firefox, and Safari.\n */\n\nh1 {\n  font-size: 2em;\n  margin: 0.67em 0;\n}\n\n/* Grouping content\n   ========================================================================== */\n\n/**\n * 1. Add the correct box sizing in Firefox.\n * 2. Show the overflow in Edge and IE.\n */\n\nhr {\n  box-sizing: content-box; /* 1 */\n  height: 0; /* 1 */\n  overflow: visible; /* 2 */\n}\n\n/**\n * 1. Correct the inheritance and scaling of font size in all browsers.\n * 2. Correct the odd `em` font sizing in all browsers.\n */\n\npre {\n  font-family: monospace, monospace; /* 1 */\n  font-size: 1em; /* 2 */\n}\n\n/* Text-level semantics\n   ========================================================================== */\n\n/**\n * Remove the gray background on active links in IE 10.\n */\n\na {\n  background-color: transparent;\n}\n\n/**\n * 1. Remove the bottom border in Chrome 57-\n * 2. Add the correct text decoration in Chrome, Edge, IE, Opera, and Safari.\n */\n\nabbr[title] {\n  border-bottom: none; /* 1 */\n  text-decoration: underline; /* 2 */\n  text-decoration: underline dotted; /* 2 */\n}\n\n/**\n * Add the correct font weight in Chrome, Edge, and Safari.\n */\n\nb,\nstrong {\n  font-weight: bolder;\n}\n\n/**\n * 1. Correct the inheritance and scaling of font size in all browsers.\n * 2. Correct the odd `em` font sizing in all browsers.\n */\n\ncode,\nkbd,\nsamp {\n  font-family: monospace, monospace; /* 1 */\n  font-size: 1em; /* 2 */\n}\n\n/**\n * Add the correct font size in all browsers.\n */\n\nsmall {\n  font-size: 80%;\n}\n\n/**\n * Prevent `sub` and `sup` elements from affecting the line height in\n * all browsers.\n */\n\nsub,\nsup {\n  font-size: 75%;\n  line-height: 0;\n  position: relative;\n  vertical-align: baseline;\n}\n\nsub {\n  bottom: -0.25em;\n}\n\nsup {\n  top: -0.5em;\n}\n\n/* Embedded content\n   ========================================================================== */\n\n/**\n * Remove the border on images inside links in IE 10.\n */\n\nimg {\n  border-style: none;\n}\n\n/* Forms\n   ========================================================================== */\n\n/**\n * 1. Change the font styles in all browsers.\n * 2. Remove the margin in Firefox and Safari.\n */\n\nbutton,\ninput,\noptgroup,\nselect,\ntextarea {\n  font-family: inherit; /* 1 */\n  font-size: 100%; /* 1 */\n  line-height: 1.15; /* 1 */\n  margin: 0; /* 2 */\n}\n\n/**\n * Show the overflow in IE.\n * 1. Show the overflow in Edge.\n */\n\nbutton,\ninput { /* 1 */\n  overflow: visible;\n}\n\n/**\n * Remove the inheritance of text transform in Edge, Firefox, and IE.\n * 1. Remove the inheritance of text transform in Firefox.\n */\n\nbutton,\nselect { /* 1 */\n  text-transform: none;\n}\n\n/**\n * Correct the inability to style clickable types in iOS and Safari.\n */\n\nbutton,\n[type=\"button\"],\n[type=\"reset\"],\n[type=\"submit\"] {\n  -webkit-appearance: button;\n}\n\n/**\n * Remove the inner border and padding in Firefox.\n */\n\nbutton::-moz-focus-inner,\n[type=\"button\"]::-moz-focus-inner,\n[type=\"reset\"]::-moz-focus-inner,\n[type=\"submit\"]::-moz-focus-inner {\n  border-style: none;\n  padding: 0;\n}\n\n/**\n * Restore the focus styles unset by the previous rule.\n */\n\nbutton:-moz-focusring,\n[type=\"button\"]:-moz-focusring,\n[type=\"reset\"]:-moz-focusring,\n[type=\"submit\"]:-moz-focusring {\n  outline: 1px dotted ButtonText;\n}\n\n/**\n * Correct the padding in Firefox.\n */\n\nfieldset {\n  padding: 0.35em 0.75em 0.625em;\n}\n\n/**\n * 1. Correct the text wrapping in Edge and IE.\n * 2. Correct the color inheritance from `fieldset` elements in IE.\n * 3. Remove the padding so developers are not caught out when they zero out\n *    `fieldset` elements in all browsers.\n */\n\nlegend {\n  box-sizing: border-box; /* 1 */\n  color: inherit; /* 2 */\n  display: table; /* 1 */\n  max-width: 100%; /* 1 */\n  padding: 0; /* 3 */\n  white-space: normal; /* 1 */\n}\n\n/**\n * Add the correct vertical alignment in Chrome, Firefox, and Opera.\n */\n\nprogress {\n  vertical-align: baseline;\n}\n\n/**\n * Remove the default vertical scrollbar in IE 10+.\n */\n\ntextarea {\n  overflow: auto;\n}\n\n/**\n * 1. Add the correct box sizing in IE 10.\n * 2. Remove the padding in IE 10.\n */\n\n[type=\"checkbox\"],\n[type=\"radio\"] {\n  box-sizing: border-box; /* 1 */\n  padding: 0; /* 2 */\n}\n\n/**\n * Correct the cursor style of increment and decrement buttons in Chrome.\n */\n\n[type=\"number\"]::-webkit-inner-spin-button,\n[type=\"number\"]::-webkit-outer-spin-button {\n  height: auto;\n}\n\n/**\n * 1. Correct the odd appearance in Chrome and Safari.\n * 2. Correct the outline style in Safari.\n */\n\n[type=\"search\"] {\n  -webkit-appearance: textfield; /* 1 */\n  outline-offset: -2px; /* 2 */\n}\n\n/**\n * Remove the inner padding in Chrome and Safari on macOS.\n */\n\n[type=\"search\"]::-webkit-search-decoration {\n  -webkit-appearance: none;\n}\n\n/**\n * 1. Correct the inability to style clickable types in iOS and Safari.\n * 2. Change font properties to `inherit` in Safari.\n */\n\n::-webkit-file-upload-button {\n  -webkit-appearance: button; /* 1 */\n  font: inherit; /* 2 */\n}\n\n/* Interactive\n   ========================================================================== */\n\n/*\n * Add the correct display in Edge, IE 10+, and Firefox.\n */\n\ndetails {\n  display: block;\n}\n\n/*\n * Add the correct display in all browsers.\n */\n\nsummary {\n  display: list-item;\n}\n\n/* Misc\n   ========================================================================== */\n\n/**\n * Add the correct display in IE 10+.\n */\n\ntemplate {\n  display: none;\n}\n\n/**\n * Add the correct display in IE 10.\n */\n\n[hidden] {\n  display: none;\n}\n";
 
-var honegumi = "/*\n* Based on Barebones by Steve Cochran\n* Based on Skeleton by Dave Gamache\n*\n* Free to use under the MIT license.\n*/\n\n/* CSS Variable definitions omitted (defaultVars.css is always loaded by UkiSettings.js)\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* Grid\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/* CSS Grid depends much more on CSS than HTML, so there is less boilerplate\n\t than with skeleton. Only basic 1-4 column grids are included.\n\t Any additional needs should be made using custom CSS directives */\n\n.grid-container {\n\tposition: relative;\n\tmax-width: var(--grid-max-width);\n\tmargin: 0 auto;\n\tpadding: 20px;\n\ttext-align: center;\n\tdisplay: grid;\n\tgrid-gap: 20px;\n\tgap: 20px;\n\n\t/* by default use min 200px wide columns auto-fit into width */\n\tgrid-template-columns: minmax(200px, 1fr);\n}\n\n/* grids to 3 columns above mobile sizes */\n@media (min-width: 600px) {\n\t.grid-container {\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t\tpadding: 10px 0;\n\t}\n\n\t/* basic grids */\n\t.grid-container.fifths {\n\t\tgrid-template-columns: repeat(5, 1fr);\n\t}\n\t.grid-container.quarters {\n\t\tgrid-template-columns: repeat(4, 1fr);\n\t}\n\t.grid-container.thirds {\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t}\n\t.grid-container.halves {\n\t\tgrid-template-columns: repeat(2, 1fr);\n\t}\n\t.grid-container.full {\n\t\tgrid-template-columns: 1fr;\n\t}\n}\n\n/* Base Styles\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhtml {\n  font-size: var(--base-font-size);\n  scroll-behavior: smooth;\n}\nbody {\n  font-size: 1.6em;\t\t/* changed from 15px in orig skeleton */\n  line-height: 1.6;\n  font-weight: var(--base-font-weight);\n  font-family: var(--base-font-family);\n  color: var(--text-color);\n  background-color: var(--background-color);;\n}\n\n\n/* Typography\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nh1, h2, h3, h4, h5, h6 {\n  margin-top: 0;\n  margin-bottom: 2rem;\n  font-weight: var(--light-font-weight); }\nh1 { font-size: 4.0rem; line-height: 1.2;  letter-spacing: -.1rem;}\nh2 { font-size: 3.6rem; line-height: 1.25; letter-spacing: -.1rem; }\nh3 { font-size: 3.0rem; line-height: 1.3;  letter-spacing: -.1rem; }\nh4 { font-size: 2.4rem; line-height: 1.35; letter-spacing: -.08rem; }\nh5 { font-size: 1.8rem; line-height: 1.5;  letter-spacing: -.05rem; }\nh6 { font-size: 1.5rem; line-height: 1.6;  letter-spacing: 0; }\n\n/* Larger than phablet */\n@media (min-width: 600px) {\n  h1 { font-size: 5.0rem; }\n  h2 { font-size: 4.2rem; }\n  h3 { font-size: 3.6rem; }\n  h4 { font-size: 3.0rem; }\n  h5 { font-size: 2.4rem; }\n  h6 { font-size: 1.5rem; }\n}\n\np {\n  margin-top: 0; }\n\nb, strong {\n  font-weight: var(--heavy-font-weight);\n}\n\n/* Links\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\na {\n  color: var(--accent-color); }\na:hover {\n  color: var(--accent-color-hover); }\n\n\n/* Buttons\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.button,\nbutton,\ninput[type=\"submit\"],\ninput[type=\"reset\"],\ninput[type=\"button\"] {\n  display: inline-block;\n  height: var(--form-element-height);\n  padding: 0 30px;\n  color: var(--text-color-softer);\n  text-align: center;\n  font-size: 11px;\n  font-weight: var(--heavy-font-weight);\n  line-height: var(--form-element-height);\n  letter-spacing: .1em;\n  text-transform: uppercase;\n  text-decoration: none;\n  white-space: nowrap;\n  background-color: transparent;\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--border-color);\n  cursor: pointer;\n  user-select: none;\n  vertical-align: bottom;\n  box-sizing: border-box; }\n.button:hover,\nbutton:hover,\ninput[type=\"submit\"]:hover,\ninput[type=\"reset\"]:hover,\ninput[type=\"button\"]:hover,\n.button:active,\nbutton:active,\ninput[type=\"submit\"]:active,\ninput[type=\"reset\"]:active,\ninput[type=\"button\"]:active {\n  color: var(--text-color);\n  border-color: var(--text-color-softer);\n  outline: 0; }\n.button.button-primary,\nbutton.button-primary,\ninput[type=\"submit\"].button-primary,\ninput[type=\"reset\"].button-primary,\ninput[type=\"button\"].button-primary {\n  color: var(--inverted-shadow-color);\n  background-color: var(--accent-color);\n  border-color: var(--accent-color); }\n.button.button-primary:hover,\nbutton.button-primary:hover,\ninput[type=\"submit\"].button-primary:hover,\ninput[type=\"reset\"].button-primary:hover,\ninput[type=\"button\"].button-primary:hover,\n.button.button-primary:active,\nbutton.button-primary:active,\ninput[type=\"submit\"].button-primary:active,\ninput[type=\"reset\"].button-primary:active,\ninput[type=\"button\"].button-primary:active {\n  color: var(--inverted-shadow-color);\n  background-color: var(--accent-color-hover);\n  border-color: var(--accent-color-hover); }\n.button.button-disabled,\n.button:disabled,\nbutton:disabled,\ninput[type=\"submit\"]:disabled,\ninput[type=\"reset\"]:disabled,\ninput[type=\"button\"]:disabled {\n\tcolor: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n.button.button-primary.button-disabled,\n.button.button-primary:disabled,\nbutton.button-primary:disabled,\ninput[type=\"submit\"].button-primary:disabled,\ninput[type=\"reset\"].button-primary:disabled,\ninput[type=\"button\"].button-primary:disabled {\n\tcolor: var(--background-color);\n\tbackground-color: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n\n\n/* Forms\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ninput:not([type]),\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ntextarea,\nselect {\n  height: var(--form-element-height);\n  padding: 6px 10px; /* The 6px vertically centers text on FF, ignored by Webkit */\n  background-color: var(--background-color);\n  color: var(--text-color);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius);\n  box-shadow: none;\n  box-sizing: border-box; }\n/* Removes awkward default styles on some inputs for iOS */\ninput:not([type]),\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ninput[type=\"button\"],\ninput[type=\"submit\"],\ntextarea {\n  -webkit-appearance: none;\n     -moz-appearance: none;\n          appearance: none; }\ntextarea {\n  min-height: 5em;\n  padding-top: 6px;\n  padding-bottom: 6px; }\ninput:not([type]):focus,\ninput[type=\"email\"]:focus,\ninput[type=\"number\"]:focus,\ninput[type=\"search\"]:focus,\ninput[type=\"text\"]:focus,\ninput[type=\"tel\"]:focus,\ninput[type=\"url\"]:focus,\ninput[type=\"password\"]:focus,\ntextarea:focus,\nselect:focus {\n  border: 1px solid var(--accent-color);\n  outline: 0; }\ninput:not([type]).error,\ninput[type=\"email\"].error,\ninput[type=\"number\"].error,\ninput[type=\"search\"].error,\ninput[type=\"text\"].error,\ninput[type=\"tel\"].error,\ninput[type=\"url\"].error,\ninput[type=\"password\"].error,\ntextarea.error,\nselect.error {\n  color: var(--error-color);\n  border: 1px solid var(--error-color);\n}\ninput:not([type]):disabled,\ninput[type=\"email\"]:disabled,\ninput[type=\"number\"]:disabled,\ninput[type=\"search\"]:disabled,\ninput[type=\"text\"]:disabled,\ninput[type=\"tel\"]:disabled,\ninput[type=\"url\"]:disabled,\ninput[type=\"password\"]:disabled,\ntextarea:disabled,\nselect:disabled {\n  color: var(--disabled-color);\n  background-color: var(--background-color-softer);\n}\nlabel,\nlegend {\n  display: block;\n  margin-bottom: .5em;\n  font-weight: var(--heavy-font-weight); }\nfieldset {\n  padding: 0;\n  border-width: 0; }\ninput[type=\"checkbox\"],\ninput[type=\"radio\"] {\n  display: inline; }\nlabel > .label-body {\n  display: inline-block;\n  margin-left: .5em;\n  font-weight: normal; }\n::placeholder {\n  color: var(--disabled-color);\n}\n\n/* Lists\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nul {\n  list-style: circle inside; }\nol {\n  list-style: decimal inside; }\nol, ul {\n  padding-left: 0;\n  margin-top: 0; }\nul ul, ul ol, ol ol, ol ul {\n\tfont-size: 100%;\n\tmargin: 1em 0 1em 3em;\n\tcolor: var(--text-color-softer);\n}\nli {\n  margin-bottom: 0.5em; }\n\n\n/* Scrollbars\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n::-webkit-scrollbar {\n  width: 1.25em;\n  height: 1.25em;\n}\n\n/* Track, Corner background color */\n::-webkit-scrollbar-track,\n::-webkit-scrollbar-corner,\n::-webkit-resizer {\n  background: transparent;\n}\n\n/* Buttons */\n::-webkit-scrollbar-button:single-button {\n  display: block;\n  width: 1.25em;\n  height: 1.25em;\n  border-radius: var(--corner-radius);\n  border-style: solid;\n}\n/* Up */\n::-webkit-scrollbar-button:vertical:decrement {\n  border-width: 0 0.625em 0.75em 0.625em;\n  border-color: transparent transparent var(--border-color-softer) transparent;\n}\n::-webkit-scrollbar-button:vertical:decrement:hover,\n::-webkit-scrollbar-button:vertical:decrement:active {\n  border-color: transparent transparent var(--text-color-softer) transparent;\n}\n/* Down */\n::-webkit-scrollbar-button:vertical:increment {\n  border-width: 0.75em 0.625em 0 0.625em;\n  border-color: var(--border-color-softer) transparent transparent transparent;\n}\n::-webkit-scrollbar-button:vertical:increment:hover,\n::-webkit-scrollbar-button:vertical:increment:active {\n  border-color: var(--text-color-softer) transparent transparent transparent;\n}\n/* Left */\n::-webkit-scrollbar-button:horizontal:decrement {\n  border-width: 0.625em 0.75em 0.625em 0;\n  border-color: transparent var(--border-color-softer) transparent transparent;\n}\n::-webkit-scrollbar-button:horizontal:decrement:hover,\n::-webkit-scrollbar-button:horizontal:decrement:active {\n  border-color: transparent var(--text-color-softer) transparent transparent;\n}\n/* Right */\n::-webkit-scrollbar-button:horizontal:increment {\n  border-width: 0.625em 0 0.625em 0.75em;\n  border-color: transparent transparent transparent var(--border-color-softer);\n}\n::-webkit-scrollbar-button:horizontal:increment:hover,\n::-webkit-scrollbar-button:horizontal:increment:active {\n  border-color: transparent transparent transparent var(--text-color-softer);\n}\n\n/* Handle */\n::-webkit-scrollbar-thumb {\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--background-color);\n  background: var(--border-color-softer);\n}\n::-webkit-scrollbar-thumb:hover {\n  cursor: grab;\n  background: var(--text-color-softer);\n}\n::-webkit-scrollbar-thumb:active {\n  cursor: grabbing;\n  background: var(--text-color-softer);\n}\n\n/* Code\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ncode {\n  padding: .2em .5em;\n  margin: 0 .2em;\n  font-size: 90%;\n  white-space: nowrap;\n  background: var(--background-color-richer);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius); }\npre > code {\n  display: block;\n  padding: 1em 1.5em;\n  white-space: pre;\n  overflow: auto; }\n\n\n/* Tables\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nth,\ntd {\n  padding: 12px 15px;\n  text-align: left;\n  border-bottom: 1px solid var(--border-color-softer); }\nth:first-child,\ntd:first-child {\n  padding-left: 0; }\nth:last-child,\ntd:last-child {\n  padding-right: 0; }\n\n\n/* Spacing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nbutton,\n.button {\n  margin-bottom: 1em; }\ninput,\ntextarea,\nselect,\nfieldset {\n  margin-bottom: 1.5em; }\npre,\nblockquote,\ndl,\nfigure,\ntable,\np,\nul,\nol,\nform {\n  margin-bottom: 2.5em; }\n\n\n/* Utilities\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.u-full-width {\n  width: 100%;\n  box-sizing: border-box; }\n.u-max-full-width {\n  max-width: 100%;\n  box-sizing: border-box; }\n.u-pull-right {\n  float: right; }\n.u-pull-left {\n  float: left; }\n.u-align-left {\n\ttext-align: left; }\n.u-align-right {\n\ttext-align: right; }\n\n\n/* Misc\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhr {\n  margin-top: 3em;\n  margin-bottom: 3.5em;\n  border-width: 0;\n  border-top: 1px solid var(--border-color-softer); }\n\n\n/* Clearing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* Self Clearing Goodness */\n/*.container:after,\n.row:after,\n.u-cf {\n  content: \"\";\n  display: table;\n  clear: both; }*/\n\n\n/* Media Queries\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/*\nNote: The best way to structure the use of media queries is to create the queries\nnear the relevant code. For example, if you wanted to change the styles for buttons\non small devices, paste the mobile query code up in the buttons section and style it\nthere.\n*/\n\n\n/* Larger than mobile (default point when grid becomes active) */\n@media (min-width: 600px) {}\n\n/* Larger than phablet */\n@media (min-width: 900px) {}\n\n/* Larger than tablet */\n@media (min-width: 1200px) {}\n";
+var honegumi = "/*\n* Based on Barebones by Steve Cochran\n* Based on Skeleton by Dave Gamache\n*\n* Free to use under the MIT license.\n*/\n\n/* CSS Variable definitions omitted (defaultVars.css is always loaded by UkiSettings.js)\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* grid-420\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/*\n  Auto-split when there's space for more than one 420px column... or if the\n\tnumber of columns is constrained, don't let them get wider than the\n\tthreshold where they'd normally split\n*/\n\n.grid-420 {\n\tposition: relative;\n\tmargin: 0 auto;\n\tdisplay: grid;\n\tgrid-gap: 38px;\n\tgap: 38px;\n\n\t/* by default use 1 column */\n\tgrid-template-columns: minmax(420px, 1fr);\n\tmax-width: max(420px, calc(100% - 200px));\n}\n\n@media (min-width: 1078px) {\n\t/* space for 2 columns + 1 gap + 200px margin */\n\t.grid-420 {\n\t\tgrid-template-columns: repeat(2, 1fr);\n\t\tmax-width: max(878px, calc(100% - 200px));\n\t}\n\t.grid-420.full {\n\t\tgrid-template-columns: minmax(420px, 1fr);\n\t\tmax-width: 878px;\n\t}\n}\n\n@media (min-width: 1536px) {\n\t/* space for 3 columns + 2 gaps + 200px margin */\n\t.grid-420 {\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t\tmax-width: minmax(1336px, calc(100% - 200px));\n\t}\n\t.grid-420.halves {\n\t\tgrid-template-columns: repeat(2, 1fr);\n\t\tmax-width: 1336px;\n\t}\n\t.grid-420.full {\n\t\tgrid-template-columns: minmax(420px, 1fr);\n\t\tmax-width: 878px;\n\t}\n}\n\n@media (min-width: 1994px) {\n\t/* space for 4 columns + 3 gaps + 200px margin */\n\t.grid-420 {\n\t\tgrid-template-columns: repeat(4, 1fr);\n\t\tmax-width: 2252px;\n\t\t/* don't go above where we'd otherwise break for 5 columns */\n\t}\n\t.grid-420.thirds {\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t\tmax-width: 1794px;\n\t}\n\t.grid-420.halves {\n\t\tgrid-template-columns: repeat(2, 1fr);\n\t\tmax-width: 1336px;\n\t}\n\t.grid-420.full {\n\t\tgrid-template-columns: minmax(420px, 1fr);\n\t\tmax-width: 878px;\n\t}\n}\n\n/* Base Styles\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhtml {\n  font-size: var(--base-font-size);\n  scroll-behavior: smooth;\n}\nbody {\n  font-size: 1.6em;\t\t/* changed from 15px in orig skeleton */\n  line-height: 1.6;\n  font-weight: var(--base-font-weight);\n  font-family: var(--base-font-family);\n  color: var(--text-color);\n  background-color: var(--background-color);;\n}\n\n\n/* Typography\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nh1, h2, h3, h4, h5, h6 {\n  margin-top: 0;\n  margin-bottom: 2rem;\n  font-weight: var(--light-font-weight); }\nh1 { font-size: 4.0rem; line-height: 1.2;  letter-spacing: -.1rem;}\nh2 { font-size: 3.6rem; line-height: 1.25; letter-spacing: -.1rem; }\nh3 { font-size: 3.0rem; line-height: 1.3;  letter-spacing: -.1rem; }\nh4 { font-size: 2.4rem; line-height: 1.35; letter-spacing: -.08rem; }\nh5 { font-size: 1.8rem; line-height: 1.5;  letter-spacing: -.05rem; }\nh6 { font-size: 1.5rem; line-height: 1.6;  letter-spacing: 0; }\n\n/* Larger than phablet */\n@media (min-width: 600px) {\n  h1 { font-size: 5.0rem; }\n  h2 { font-size: 4.2rem; }\n  h3 { font-size: 3.6rem; }\n  h4 { font-size: 3.0rem; }\n  h5 { font-size: 2.4rem; }\n  h6 { font-size: 1.5rem; }\n}\n\np {\n  margin-top: 0; }\n\nb, strong {\n  font-weight: var(--heavy-font-weight);\n}\n\n/* Links\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\na {\n  color: var(--accent-color); }\na:hover {\n  color: var(--accent-color-hover); }\n\n\n/* Buttons\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.button,\nbutton,\ninput[type=\"submit\"],\ninput[type=\"reset\"],\ninput[type=\"button\"] {\n  display: inline-block;\n  height: var(--form-element-height);\n  padding: 0 30px;\n  color: var(--text-color-softer);\n  text-align: center;\n  font-size: 11px;\n  font-weight: var(--heavy-font-weight);\n  line-height: var(--form-element-height);\n  letter-spacing: .1em;\n  text-transform: uppercase;\n  text-decoration: none;\n  white-space: nowrap;\n  background-color: transparent;\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--border-color);\n  cursor: pointer;\n  user-select: none;\n  vertical-align: bottom;\n  box-sizing: border-box; }\n.button:hover,\nbutton:hover,\ninput[type=\"submit\"]:hover,\ninput[type=\"reset\"]:hover,\ninput[type=\"button\"]:hover,\n.button:active,\nbutton:active,\ninput[type=\"submit\"]:active,\ninput[type=\"reset\"]:active,\ninput[type=\"button\"]:active {\n  color: var(--text-color);\n  border-color: var(--text-color-softer);\n  outline: 0; }\n.button.button-primary,\nbutton.button-primary,\ninput[type=\"submit\"].button-primary,\ninput[type=\"reset\"].button-primary,\ninput[type=\"button\"].button-primary {\n  color: var(--inverted-shadow-color);\n  background-color: var(--accent-color);\n  border-color: var(--accent-color); }\n.button.button-primary:hover,\nbutton.button-primary:hover,\ninput[type=\"submit\"].button-primary:hover,\ninput[type=\"reset\"].button-primary:hover,\ninput[type=\"button\"].button-primary:hover,\n.button.button-primary:active,\nbutton.button-primary:active,\ninput[type=\"submit\"].button-primary:active,\ninput[type=\"reset\"].button-primary:active,\ninput[type=\"button\"].button-primary:active {\n  color: var(--inverted-shadow-color);\n  background-color: var(--accent-color-hover);\n  border-color: var(--accent-color-hover); }\n.button.button-disabled,\n.button:disabled,\nbutton:disabled,\ninput[type=\"submit\"]:disabled,\ninput[type=\"reset\"]:disabled,\ninput[type=\"button\"]:disabled {\n\tcolor: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n.button.button-primary.button-disabled,\n.button.button-primary:disabled,\nbutton.button-primary:disabled,\ninput[type=\"submit\"].button-primary:disabled,\ninput[type=\"reset\"].button-primary:disabled,\ninput[type=\"button\"].button-primary:disabled {\n\tcolor: var(--background-color);\n\tbackground-color: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n\n\n/* Forms\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ninput:not([type]),\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ntextarea,\nselect {\n  height: var(--form-element-height);\n  padding: 6px 10px; /* The 6px vertically centers text on FF, ignored by Webkit */\n  background-color: var(--background-color);\n  color: var(--text-color);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius);\n  box-shadow: none;\n  box-sizing: border-box; }\n/* Removes awkward default styles on some inputs for iOS */\ninput:not([type]),\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ninput[type=\"button\"],\ninput[type=\"submit\"],\ntextarea {\n  -webkit-appearance: none;\n     -moz-appearance: none;\n          appearance: none; }\ntextarea {\n  min-height: 5em;\n  padding-top: 6px;\n  padding-bottom: 6px; }\ninput:not([type]):focus,\ninput[type=\"email\"]:focus,\ninput[type=\"number\"]:focus,\ninput[type=\"search\"]:focus,\ninput[type=\"text\"]:focus,\ninput[type=\"tel\"]:focus,\ninput[type=\"url\"]:focus,\ninput[type=\"password\"]:focus,\ntextarea:focus,\nselect:focus {\n  border: 1px solid var(--accent-color);\n  outline: 0; }\ninput:not([type]).error,\ninput[type=\"email\"].error,\ninput[type=\"number\"].error,\ninput[type=\"search\"].error,\ninput[type=\"text\"].error,\ninput[type=\"tel\"].error,\ninput[type=\"url\"].error,\ninput[type=\"password\"].error,\ntextarea.error,\nselect.error {\n  color: var(--error-color);\n  border: 1px solid var(--error-color);\n}\ninput:not([type]):disabled,\ninput[type=\"email\"]:disabled,\ninput[type=\"number\"]:disabled,\ninput[type=\"search\"]:disabled,\ninput[type=\"text\"]:disabled,\ninput[type=\"tel\"]:disabled,\ninput[type=\"url\"]:disabled,\ninput[type=\"password\"]:disabled,\ntextarea:disabled,\nselect:disabled {\n  color: var(--disabled-color);\n  background-color: var(--background-color-softer);\n}\nlabel,\nlegend {\n  display: block;\n  margin-bottom: .5em;\n  font-weight: var(--heavy-font-weight); }\nfieldset {\n  padding: 0;\n  border-width: 0; }\ninput[type=\"checkbox\"],\ninput[type=\"radio\"] {\n  display: inline; }\nlabel > .label-body {\n  display: inline-block;\n  margin-left: .5em;\n  font-weight: normal; }\n::placeholder {\n  color: var(--disabled-color);\n}\n\n/* Lists\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nul {\n  list-style: circle inside; }\nol {\n  list-style: decimal inside; }\nol, ul {\n  padding-left: 0;\n  margin-top: 0; }\nul ul, ul ol, ol ol, ol ul {\n\tfont-size: 100%;\n\tmargin: 1em 0 1em 3em;\n\tcolor: var(--text-color-softer);\n}\nli {\n  margin-bottom: 0.5em; }\n\n\n/* Scrollbars\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n::-webkit-scrollbar {\n  width: 1.25em;\n  height: 1.25em;\n}\n\n/* Track, Corner background color */\n::-webkit-scrollbar-track,\n::-webkit-scrollbar-corner,\n::-webkit-resizer {\n  background: transparent;\n}\n\n/* Buttons */\n::-webkit-scrollbar-button:single-button {\n  display: block;\n  width: 1.25em;\n  height: 1.25em;\n  border-radius: var(--corner-radius);\n  border-style: solid;\n}\n/* Up */\n::-webkit-scrollbar-button:vertical:decrement {\n  border-width: 0 0.625em 0.75em 0.625em;\n  border-color: transparent transparent var(--border-color-softer) transparent;\n}\n::-webkit-scrollbar-button:vertical:decrement:hover,\n::-webkit-scrollbar-button:vertical:decrement:active {\n  border-color: transparent transparent var(--text-color-softer) transparent;\n}\n/* Down */\n::-webkit-scrollbar-button:vertical:increment {\n  border-width: 0.75em 0.625em 0 0.625em;\n  border-color: var(--border-color-softer) transparent transparent transparent;\n}\n::-webkit-scrollbar-button:vertical:increment:hover,\n::-webkit-scrollbar-button:vertical:increment:active {\n  border-color: var(--text-color-softer) transparent transparent transparent;\n}\n/* Left */\n::-webkit-scrollbar-button:horizontal:decrement {\n  border-width: 0.625em 0.75em 0.625em 0;\n  border-color: transparent var(--border-color-softer) transparent transparent;\n}\n::-webkit-scrollbar-button:horizontal:decrement:hover,\n::-webkit-scrollbar-button:horizontal:decrement:active {\n  border-color: transparent var(--text-color-softer) transparent transparent;\n}\n/* Right */\n::-webkit-scrollbar-button:horizontal:increment {\n  border-width: 0.625em 0 0.625em 0.75em;\n  border-color: transparent transparent transparent var(--border-color-softer);\n}\n::-webkit-scrollbar-button:horizontal:increment:hover,\n::-webkit-scrollbar-button:horizontal:increment:active {\n  border-color: transparent transparent transparent var(--text-color-softer);\n}\n\n/* Handle */\n::-webkit-scrollbar-thumb {\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--background-color);\n  background: var(--border-color-softer);\n}\n::-webkit-scrollbar-thumb:hover {\n  cursor: grab;\n  background: var(--text-color-softer);\n}\n::-webkit-scrollbar-thumb:active {\n  cursor: grabbing;\n  background: var(--text-color-softer);\n}\n\n/* Code\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ncode {\n  padding: .2em .5em;\n  margin: 0 .2em;\n  font-size: 90%;\n  white-space: nowrap;\n  background: var(--background-color-richer);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius); }\npre > code {\n  display: block;\n  padding: 1em 1.5em;\n  white-space: pre;\n  overflow: auto; }\n\n\n/* Tables\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nth,\ntd {\n  padding: 12px 15px;\n  text-align: left;\n  border-bottom: 1px solid var(--border-color-softer); }\nth:first-child,\ntd:first-child {\n  padding-left: 0; }\nth:last-child,\ntd:last-child {\n  padding-right: 0; }\n\n\n/* Spacing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nbutton,\n.button {\n  margin-bottom: 1em; }\ninput,\ntextarea,\nselect,\nfieldset {\n  margin-bottom: 1.5em; }\npre,\nblockquote,\ndl,\nfigure,\ntable,\np,\nul,\nol,\nform {\n  margin-bottom: 2.5em; }\n\n\n/* Utilities\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.u-full-width {\n  width: 100%;\n  box-sizing: border-box; }\n.u-max-full-width {\n  max-width: 100%;\n  box-sizing: border-box; }\n.u-pull-right {\n  float: right; }\n.u-pull-left {\n  float: left; }\n.u-align-left {\n\ttext-align: left; }\n.u-align-right {\n\ttext-align: right; }\n\n\n/* Misc\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhr {\n  margin-top: 3em;\n  margin-bottom: 3.5em;\n  border-width: 0;\n  border-top: 1px solid var(--border-color-softer); }\n\n\n/* Clearing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* Self Clearing Goodness */\n/*.container:after,\n.row:after,\n.u-cf {\n  content: \"\";\n  display: table;\n  clear: both; }*/\n\n\n/* Media Queries\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/*\nNote: The best way to structure the use of media queries is to create the queries\nnear the relevant code. For example, if you wanted to change the styles for buttons\non small devices, paste the mobile query code up in the buttons section and style it\nthere.\n*/\n\n\n/* Larger than mobile (default point when grid becomes active) */\n@media (min-width: 600px) {}\n\n/* Larger than phablet */\n@media (min-width: 900px) {}\n\n/* Larger than tablet */\n@media (min-width: 1200px) {}\n";
 
 /* globals d3, uki */
 
@@ -1050,6 +1173,9 @@ class GlobalUI extends ThemeableMixin({
     this.modal = options.modal || null;
     uki.showModal = async modalArgs => { return await this.showModal(modalArgs); };
     uki.hideModal = async () => { return await this.hideModal(); };
+    uki.alert = async () => { return await this.alert(...arguments); };
+    uki.prompt = async () => { return await this.prompt(...arguments); };
+    uki.confirm = async () => { return await this.confirm(...arguments); };
   }
 
   async setTheme (value) {
@@ -1115,6 +1241,53 @@ class GlobalUI extends ThemeableMixin({
       await this.modal.hide();
     }
     return this.modal;
+  }
+
+  async alert (message) {
+    return new Promise((resolve, reject) => {
+      this.showModal({
+        content: message,
+        buttonSpecs: [{ content: 'OK', onclick: resolve, primary: true }]
+      });
+    });
+  }
+
+  async confirm (message) {
+    return new Promise((resolve, reject) => {
+      this.showModal({
+        content: message,
+        cancelAction: () => { resolve(false); },
+        confirmAction: () => { resolve(true); }
+      });
+    });
+  }
+
+  async prompt (message, defaultValue, validate) {
+    validate = validate || (() => true);
+    return new Promise((resolve, reject) => {
+      this.showModal({
+        content: modalContentEl => {
+          modalContentEl.html(message);
+          const inputField = modalContentEl.append('input')
+            .classed('promptInputEl', true);
+          inputField.on('keyup change', () => {
+            this.modal.render();
+          });
+          inputField.node().value = defaultValue;
+        },
+        validateForm: () => {
+          const currentValue = this.modal.modalContentEl
+            .select('.promptInputEl').node().value;
+          return validate(currentValue);
+        },
+        confirmAction: () => {
+          const currentValue = this.modal.modalContentEl
+            .select('.promptInputEl').node().value;
+          resolve(currentValue);
+        },
+        cancelAction: () => { resolve(null); }
+      });
+    });
   }
 }
 
@@ -1226,8 +1399,6 @@ const { OverlaidView, OverlaidViewMixin } = uki.utils.createMixinAndDefault({
     return OverlaidView;
   }
 });
-
-const img = "data:image/png;base64,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";
 
 const img$1 = "data:image/svg+xml,%3c%3fxml version='1.0' encoding='utf-8'%3f%3e%3c!-- Generator: Adobe Illustrator 19.2.1%2c SVG Export Plug-In . SVG Version: 6.00 Build 0) --%3e%3csvg version='1.1' id='Layer_1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' x='0px' y='0px' viewBox='0 0 512 512' style='enable-background:new 0 0 512 512%3b' xml:space='preserve'%3e%3cstyle type='text/css'%3e .st0%7bfill:black%3b%7d%3c/style%3e%3cg%3e %3crect x='199.3' y='-40.9' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -106.0387 256)' class='st0' width='113.3' height='593.8'/%3e %3crect x='-40.9' y='199.3' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -106.0387 256)' class='st0' width='593.8' height='113.3'/%3e%3c/g%3e%3c/svg%3e";
 
@@ -2474,7 +2645,7 @@ const { VegaView, VegaViewMixin } = uki.utils.createMixinAndDefault({
 });
 
 var name = "@ukijs/ui";
-var version = "0.2.1";
+var version = "0.2.2";
 var description = "A UI toolkit using the uki.js library";
 var module = "dist/uki-ui.esm.js";
 var scripts = {
@@ -2584,6 +2755,9 @@ const showContextMenu = options => globalUI.showContextMenu(options);
 const hideTooltip = options => globalUI.hideTooltip(options);
 const showModal = options => globalUI.showModal(options);
 const hideModal = options => globalUI.hideModal(options);
+const alert = message => globalUI.alert(message);
+const confirm = message => globalUI.confirm(message);
+const prompt = (message, defaultValue, validate) => globalUI.prompt(message, defaultValue, validate);
 
 globalThis.uki.ui = {
   version: version$1,
@@ -2594,6 +2768,9 @@ globalThis.uki.ui = {
   hideTooltip,
   showModal,
   hideModal,
+  alert,
+  confirm,
+  prompt,
   ThemeableMixin,
   OverlaidView,
   OverlaidViewMixin,
@@ -2637,4 +2814,4 @@ globalThis.uki.ui = {
   VegaViewMixin
 };
 
-export { AnimatedView, AnimatedViewMixin, BaseTableView, BaseTableViewMixin, ButtonView, ButtonViewMixin, CanvasGLView, CanvasGLViewMixin, CanvasView, CanvasViewMixin, FlexTableView, FlexTableViewMixin, GLRootView, GLRootViewMixin, GLView, GLViewMixin, IFrameGLView, IFrameGLViewMixin, IFrameView, IFrameViewMixin, InformativeView, InformativeViewMixin, LineChartView, LineChartViewMixin, ModalView, ModalViewMixin, OverlaidView, OverlaidViewMixin, ParentSizeView, ParentSizeViewMixin, RecolorableImageView, RecolorableImageViewMixin, SvgGLView, SvgGLViewMixin, SvgView, SvgViewMixin, ThemeableMixin, TooltipView, TooltipViewMixin, VegaView, VegaViewMixin, dynamicDependencies, globalUI, hideModal, hideTooltip, showContextMenu, showModal, showTooltip, version$1 as version };
+export { AnimatedView, AnimatedViewMixin, BaseTableView, BaseTableViewMixin, ButtonView, ButtonViewMixin, CanvasGLView, CanvasGLViewMixin, CanvasView, CanvasViewMixin, FlexTableView, FlexTableViewMixin, GLRootView, GLRootViewMixin, GLView, GLViewMixin, IFrameGLView, IFrameGLViewMixin, IFrameView, IFrameViewMixin, InformativeView, InformativeViewMixin, LineChartView, LineChartViewMixin, ModalView, ModalViewMixin, OverlaidView, OverlaidViewMixin, ParentSizeView, ParentSizeViewMixin, RecolorableImageView, RecolorableImageViewMixin, SvgGLView, SvgGLViewMixin, SvgView, SvgViewMixin, ThemeableMixin, TooltipView, TooltipViewMixin, VegaView, VegaViewMixin, alert, confirm, dynamicDependencies, globalUI, hideModal, hideTooltip, prompt, showContextMenu, showModal, showTooltip, version$1 as version };

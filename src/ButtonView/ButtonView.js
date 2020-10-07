@@ -22,6 +22,7 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
         this._tooltip = options.tooltip;
         this._onclick = options.onclick || null;
         this._onDisabledClick = options.onDisabledClick || null;
+        this._tabindex = options.tabindex || 0;
       }
 
       set size (value) {
@@ -105,6 +106,15 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
         return this._onclick;
       }
 
+      get tabindex () {
+        return this._tabindex;
+      }
+
+      set tabindex (value) {
+        this._tabindex = value;
+        this.render();
+      }
+
       set onDisabledClick (value) {
         this._onDisabledClick = value;
         this.render();
@@ -116,7 +126,9 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
 
       async setup () {
         await super.setup(...arguments);
-        this.d3el.classed('button', true);
+        this.d3el.classed('button', true)
+          .attr('tabindex', this.disabled ? null : this.tabindex)
+          .attr('role', 'button');
         this.d3el.append('img')
           .style('display', 'none');
         this.d3el.append('div')
@@ -126,20 +138,25 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
           .classed('badge', true)
           .style('display', 'none');
 
-        this.d3el.on('click.ButtonView', () => {
-          if (!this.disabled) {
-            if (this.onclick) {
-              this.onclick();
+        const self = this;
+        this.d3el.on('click.ButtonView, keypress.ButtonView', function (event) {
+          if (event.type === 'keypress' && event.keyCode !== 32) {
+            return;
+          }
+          if (!self.disabled) {
+            if (self.onclick) {
+              self.onclick(...arguments);
             }
-            this.trigger('click');
+            self.trigger('click');
           } else {
-            if (this.onDisabledClick) {
-              this.onDisabledClick();
+            if (self.onDisabledClick) {
+              self.onDisabledClick(...arguments);
             }
           }
-        }).on('mouseenter.ButtonView', () => {
+        }).on('mouseenter.ButtonView', event => {
           if (this.tooltip) {
             const tooltipArgs = Object.assign({
+              showEvent: event,
               targetBounds: this.d3el.node().getBoundingClientRect()
             }, this.tooltip);
             globalThis.uki.showTooltip(tooltipArgs);

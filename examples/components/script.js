@@ -39,6 +39,13 @@ class ModalLauncherView extends ui.GLView {
     });
     this.d3el.style('padding', '1em');
 
+    const simpleButton = new uki.ui.ButtonView({
+      d3el: this.d3el.append('div').append('div'),
+      label: 'Tooltip Demo Button',
+      tooltip: { content: 'Simple tooltip' }
+    });
+    simpleButton.disabled = true;
+
     for (const disabled of [false, true]) {
       for (const primary of [false, true]) {
         for (const showBadge of [false, true]) {

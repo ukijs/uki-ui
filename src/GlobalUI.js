@@ -2,6 +2,7 @@
 import { ThemeableMixin } from './ThemeableMixin/ThemeableMixin.js';
 import { TooltipView } from './TooltipView/TooltipView.js';
 import { ModalView } from './ModalView/ModalView.js';
+import { PromptModalView } from './PromptModalView/PromptModalView.js';
 import defaultVars from './style/defaultVars.css';
 import normalize from '../node_modules/normalize.css/normalize.css';
 import honegumi from './style/honegumi.css'; // TODO: npm install this one too
@@ -33,6 +34,9 @@ class GlobalUI extends ThemeableMixin({
     this.modal = options.modal || null;
     uki.showModal = async modalArgs => { return await this.showModal(modalArgs); };
     uki.hideModal = async () => { return await this.hideModal(); };
+    uki.alert = async () => { return await this.alert(...arguments); };
+    uki.prompt = async () => { return await this.prompt(...arguments); };
+    uki.confirm = async () => { return await this.confirm(...arguments); };
   }
 
   async setTheme (value) {
@@ -98,6 +102,42 @@ class GlobalUI extends ThemeableMixin({
       await this.modal.hide();
     }
     return this.modal;
+  }
+
+  async alert (message) {
+    return new Promise((resolve, reject) => {
+      this.showModal({
+        content: message,
+        buttonSpecs: [{ content: 'OK', onclick: resolve, primary: true }]
+      });
+    });
+  }
+
+  async confirm (message) {
+    return new Promise((resolve, reject) => {
+      this.showModal({
+        content: message,
+        cancelAction: () => { resolve(false); },
+        confirmAction: () => { resolve(true); }
+      });
+    });
+  }
+
+  async prompt (message, defaultValue, validate) {
+    validate = validate || (() => true);
+    return new Promise((resolve, reject) => {
+      this.showModal(new PromptModalView({
+        message,
+        defaultValue,
+        validate,
+        confirmAction: () => {
+          const currentValue = this.modal.modalContentEl
+            .select('.promptInputEl').node().value;
+          resolve(currentValue);
+        },
+        cancelAction: () => { resolve(null); }
+      }));
+    });
   }
 }
 export default GlobalUI;
