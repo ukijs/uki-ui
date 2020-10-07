@@ -108,7 +108,8 @@ class GlobalUI extends ThemeableMixin({
     return new Promise((resolve, reject) => {
       this.showModal({
         content: message,
-        buttonSpecs: [{ content: 'OK', onclick: resolve, primary: true }]
+        buttonSpecs: ['defaultOK'],
+        confirmAction: resolve
       });
     });
   }
@@ -117,6 +118,7 @@ class GlobalUI extends ThemeableMixin({
     return new Promise((resolve, reject) => {
       this.showModal({
         content: message,
+        buttonSpecs: 'default',
         cancelAction: () => { resolve(false); },
         confirmAction: () => { resolve(true); }
       });

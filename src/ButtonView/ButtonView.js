@@ -139,7 +139,7 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
           .style('display', 'none');
 
         const self = this;
-        this.d3el.on('click.ButtonView, keypress.ButtonView', function (event) {
+        this.d3el.on('click.ButtonView keypress.ButtonView', function (event) {
           if (event.type === 'keypress' && event.keyCode !== 32) {
             return;
           }

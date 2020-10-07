@@ -337,7 +337,7 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
           .style('display', 'none');
 
         const self = this;
-        this.d3el.on('click.ButtonView, keypress.ButtonView', function (event) {
+        this.d3el.on('click.ButtonView keypress.ButtonView', function (event) {
           if (event.type === 'keypress' && event.keyCode !== 32) {
             return;
           }
@@ -931,35 +931,10 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         this._shadow = options.shadow || true;
         this._confirmAction = options.confirmAction || (async () => {});
         this._cancelAction = options.cancelAction || (async () => {});
-        this._validateForm = options.validateForm || (async () => null);
-        this.drawValidationErrors = false;
-        this.drawWaitingState = false;
-        this._usesDefaultSpecs = options._buttonSpecs === undefined;
-        this._buttonSpecs = options.buttonSpecs || [
-          {
-            label: 'Cancel',
-            onclick: async () => {
-              this.drawWaitingState = true;
-              await this.render();
-              await this.cancelAction();
-              this.hide();
-            }
-          },
-          {
-            label: 'OK',
-            primary: true,
-            onclick: async () => {
-              this.drawWaitingState = true;
-              await this.render();
-              await this.confirmAction();
-              this.hide();
-            },
-            onDisabledClick: () => {
-              this.drawValidationErrors = true;
-              this.render();
-            }
-          }
-        ];
+        this._validateForm = options.validateForm || (async () => []);
+        this._drawValidationErrors = false;
+        this._drawWaitingState = false;
+        this._buttonSpecSetterHelper(options.buttonSpecs || 'default');
       }
 
       get content () {
@@ -986,16 +961,6 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
 
       set shadow (value) {
         this._shadow = value;
-        this.render();
-      }
-
-      get buttonSpecs () {
-        return this._buttonSpecs;
-      }
-
-      set buttonSpecs (specs) {
-        this._buttonSpecs = specs;
-        this._usesDefaultSpecs = false;
         this.render();
       }
 
@@ -1034,21 +999,98 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         this._validateForm = value;
       }
 
+      get buttonSpecs () {
+        return this._buttonSpecs;
+      }
+
+      _buttonSpecSetterHelper (specs) {
+        this._nukePriorButtons = true;
+        this._usesDefaultSpecs = specs === 'default';
+        if (this._usesDefaultSpecs) {
+          this._buttonSpecs = this.defaultButtonSpecs;
+        } else {
+          this._buttonSpecs = specs;
+        }
+        this._buttonSpecs = this._buttonSpecs.map(spec => {
+          if (spec === 'defaultCancel') {
+            return this._defaultCancelButtonSpec;
+          } else if (spec === 'defaultOK') {
+            return this._defaultOkButtonSpec;
+          } else {
+            return spec;
+          }
+        });
+      }
+
+      set buttonSpecs (specs) {
+        this._buttonSpecSetterHelper(specs);
+        this.render();
+      }
+
+      get defaultButtonSpecs () {
+        return ['defaultCancel', 'defaultOK'];
+      }
+
+      get _defaultCancelButtonSpec () {
+        return {
+          label: 'Cancel',
+          onclick: async () => {
+            this._drawWaitingState = true;
+            await this.render();
+            await this.cancelAction();
+            this.hide();
+          }
+        };
+      }
+
+      get _defaultOkButtonSpec () {
+        return {
+          label: 'OK',
+          primary: true,
+          onclick: async () => {
+            this._drawWaitingState = true;
+            await this.render();
+            await this.confirmAction();
+            this.hide();
+          },
+          onDisabledClick: () => {
+            this._drawValidationErrors = true;
+            this.render();
+          }
+        };
+      }
+
       async show ({
         content,
         hide,
         shadow,
-        buttonSpecs
+        buttonSpecs,
+        confirmAction,
+        cancelAction,
+        validateForm
       } = {}) {
         this.visible = !hide;
+        if (!this.visible) {
+          this._drawValidationErrors = false;
+          this._drawWaitingState = false;
+        }
         if (content !== undefined) {
           this._content = content;
         }
         if (buttonSpecs !== undefined) {
-          this._buttonSpecs = buttonSpecs;
+          this._buttonSpecSetterHelper(buttonSpecs);
         }
         if (shadow !== undefined) {
           this._shadow = shadow;
+        }
+        if (confirmAction !== undefined) {
+          this._confirmAction = confirmAction;
+        }
+        if (cancelAction !== undefined) {
+          this._cancelAction = cancelAction;
+        }
+        if (validateForm !== undefined) {
+          this._validateForm = validateForm;
         }
         await this.render();
       }
@@ -1085,6 +1127,11 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
       }
 
       async updateButtons () {
+        if (this._nukePriorButtons) {
+          this.modalButtonEl.selectAll('.ButtonView').data([])
+            .exit().remove();
+          this._nukePriorButtons = false;
+        }
         let buttons = this.modalButtonEl.selectAll('.ButtonView')
           .data(this.buttonSpecs, (d, i) => i);
         buttons.exit().remove();
@@ -1095,7 +1142,7 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         await ButtonView.iterD3Selection(buttons, async (buttonView, d) => {
           Object.assign(buttonView, d);
           if (this._usesDefaultSpecs && buttonView.label === 'OK') {
-            buttonView.disabled = !!this.validationErrors;
+            buttonView.disabled = this.validationErrors?.length > 0;
           }
         });
       }
@@ -1106,25 +1153,28 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         if (this.visible) {
           this.modalShadowEl.style('display', this.shadow ? null : 'none');
 
-          const priorErrors = this.validationErrors;
+          const priorErrors = this.validationErrors || [];
           this.validationErrors = await this.validateForm();
           await this.applyContent();
           await this.updateButtons();
 
-          if (this.drawValidationErrors && this.validationErrors) {
+          if (this._drawValidationErrors && this.validationErrors.length > 0) {
             for (const selection of this.validationErrors) {
               this.d3el.select(selection).classed('error', true);
             }
-          } else if (priorErrors) {
+          } else if (priorErrors.length > 0) {
             for (const selection of priorErrors) {
               this.d3el.select(selection).classed('error', false);
             }
           }
 
-          if (this.drawWaitingState) {
-            this.modalButtonEl.insert('img', ':first-child')
-              .attr('src', img)
-              .classed('waitingSpinner', true);
+          if (this._drawWaitingState) {
+            const spinner = this.modalButtonEl.select('.waitingSpinner');
+            if (!spinner.node()) {
+              this.modalButtonEl.insert('img', ':first-child')
+                .attr('src', img)
+                .classed('waitingSpinner', true);
+            }
             ButtonView.iterD3Selection(this.modalButtonEl.selectAll('.ButtonView'), buttonView => {
               buttonView.disabled = true;
             });
@@ -1135,6 +1185,53 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
       }
     }
     return ModalView;
+  }
+});
+
+/* globals uki */
+
+const { PromptModalView, PromptModalViewMixin } = uki.utils.createMixinAndDefault({
+  DefaultSuperClass: ModalView,
+  classDefFunc: SuperClass => {
+    class PromptModalView extends SuperClass {
+      constructor (options = {}) {
+        super(options);
+
+        this._message = options.message;
+        this._defaultValue = options.defaultValue;
+        this._validate = options.validate || (() => true);
+      }
+
+      async setup () {
+        await super.setup(...arguments);
+
+        let content = this._message;
+        if (content) {
+          content += '<br/>';
+        }
+        this.modalContentEl.html(content);
+
+        this.promptInputEl = this.modalContentEl.append('input')
+          .classed('promptInputEl', true)
+          .on('keyup.PromptModalView change.PromptModalView', () => {
+            this.render();
+          });
+
+        if (this._defaultValue !== undefined) {
+          this.promptInputEl.node().value = this._defaultValue;
+        }
+      }
+
+      validateForm () {
+        const currentValue = this.promptInputEl.node().value;
+        if (!this._validate(currentValue)) {
+          return ['.promptInputEl'];
+        } else {
+          return [];
+        }
+      }
+    }
+    return PromptModalView;
   }
 });
 
@@ -1247,7 +1344,8 @@ class GlobalUI extends ThemeableMixin({
     return new Promise((resolve, reject) => {
       this.showModal({
         content: message,
-        buttonSpecs: [{ content: 'OK', onclick: resolve, primary: true }]
+        buttonSpecs: ['defaultOK'],
+        confirmAction: resolve
       });
     });
   }
@@ -1256,6 +1354,7 @@ class GlobalUI extends ThemeableMixin({
     return new Promise((resolve, reject) => {
       this.showModal({
         content: message,
+        buttonSpecs: 'default',
         cancelAction: () => { resolve(false); },
         confirmAction: () => { resolve(true); }
       });
@@ -1265,28 +1364,17 @@ class GlobalUI extends ThemeableMixin({
   async prompt (message, defaultValue, validate) {
     validate = validate || (() => true);
     return new Promise((resolve, reject) => {
-      this.showModal({
-        content: modalContentEl => {
-          modalContentEl.html(message);
-          const inputField = modalContentEl.append('input')
-            .classed('promptInputEl', true);
-          inputField.on('keyup change', () => {
-            this.modal.render();
-          });
-          inputField.node().value = defaultValue;
-        },
-        validateForm: () => {
-          const currentValue = this.modal.modalContentEl
-            .select('.promptInputEl').node().value;
-          return validate(currentValue);
-        },
+      this.showModal(new PromptModalView({
+        message,
+        defaultValue,
+        validate,
         confirmAction: () => {
           const currentValue = this.modal.modalContentEl
             .select('.promptInputEl').node().value;
           resolve(currentValue);
         },
         cancelAction: () => { resolve(null); }
-      });
+      }));
     });
   }
 }
@@ -2645,7 +2733,7 @@ const { VegaView, VegaViewMixin } = uki.utils.createMixinAndDefault({
 });
 
 var name = "@ukijs/ui";
-var version = "0.2.2";
+var version = "0.2.3";
 var description = "A UI toolkit using the uki.js library";
 var module = "dist/uki-ui.esm.js";
 var scripts = {
@@ -2811,7 +2899,9 @@ globalThis.uki.ui = {
   LineChartView,
   LineChartViewMixin,
   VegaView,
-  VegaViewMixin
+  VegaViewMixin,
+  PromptModalView,
+  PromptModalViewMixin
 };
 
-export { AnimatedView, AnimatedViewMixin, BaseTableView, BaseTableViewMixin, ButtonView, ButtonViewMixin, CanvasGLView, CanvasGLViewMixin, CanvasView, CanvasViewMixin, FlexTableView, FlexTableViewMixin, GLRootView, GLRootViewMixin, GLView, GLViewMixin, IFrameGLView, IFrameGLViewMixin, IFrameView, IFrameViewMixin, InformativeView, InformativeViewMixin, LineChartView, LineChartViewMixin, ModalView, ModalViewMixin, OverlaidView, OverlaidViewMixin, ParentSizeView, ParentSizeViewMixin, RecolorableImageView, RecolorableImageViewMixin, SvgGLView, SvgGLViewMixin, SvgView, SvgViewMixin, ThemeableMixin, TooltipView, TooltipViewMixin, VegaView, VegaViewMixin, alert, confirm, dynamicDependencies, globalUI, hideModal, hideTooltip, prompt, showContextMenu, showModal, showTooltip, version$1 as version };
+export { AnimatedView, AnimatedViewMixin, BaseTableView, BaseTableViewMixin, ButtonView, ButtonViewMixin, CanvasGLView, CanvasGLViewMixin, CanvasView, CanvasViewMixin, FlexTableView, FlexTableViewMixin, GLRootView, GLRootViewMixin, GLView, GLViewMixin, IFrameGLView, IFrameGLViewMixin, IFrameView, IFrameViewMixin, InformativeView, InformativeViewMixin, LineChartView, LineChartViewMixin, ModalView, ModalViewMixin, OverlaidView, OverlaidViewMixin, ParentSizeView, ParentSizeViewMixin, PromptModalView, PromptModalViewMixin, RecolorableImageView, RecolorableImageViewMixin, SvgGLView, SvgGLViewMixin, SvgView, SvgViewMixin, ThemeableMixin, TooltipView, TooltipViewMixin, VegaView, VegaViewMixin, alert, confirm, dynamicDependencies, globalUI, hideModal, hideTooltip, prompt, showContextMenu, showModal, showTooltip, version$1 as version };

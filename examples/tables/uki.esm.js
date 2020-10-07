@@ -700,7 +700,7 @@ const { View, ViewMixin } = createMixinAndDefault({
 });
 
 var name = "uki";
-var version = "0.7.3";
+var version = "0.7.4";
 var description = "Minimal, d3-based Model-View library";
 var module = "dist/uki.esm.js";
 var scripts = {

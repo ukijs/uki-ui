@@ -39,12 +39,42 @@ class ModalLauncherView extends ui.GLView {
     });
     this.d3el.style('padding', '1em');
 
+    const simpleRow = this.d3el.append('div');
+
     const simpleButton = new uki.ui.ButtonView({
-      d3el: this.d3el.append('div').append('div'),
+      d3el: simpleRow.append('div')
+        .classed('demoButton', true),
       label: 'Tooltip Demo Button',
       tooltip: { content: 'Simple tooltip' }
     });
     simpleButton.disabled = true;
+
+    const alertButton = new uki.ui.ButtonView({
+      d3el: simpleRow.append('div')
+        .classed('demoButton', true),
+      label: 'Alert',
+      onclick: async () => {
+        console.log('alert response:', await uki.ui.alert('Standin for <code>window.alert(message);</code>'));
+      }
+    });
+
+    const confirmButton = new uki.ui.ButtonView({
+      d3el: simpleRow.append('div')
+        .classed('demoButton', true),
+      label: 'Confirm',
+      onclick: async () => {
+        console.log('confirm response:', await uki.ui.confirm('Standin for <code>window.confirm(message);</code>'));
+      }
+    });
+
+    const promptButton = new uki.ui.ButtonView({
+      d3el: simpleRow.append('div')
+        .classed('demoButton', true),
+      label: 'Prompt',
+      onclick: async () => {
+        console.log('prompt response:', await uki.ui.prompt('Standin for <code>window.prompt(message, [defaultValue], [validate]);</code>', 'Default Value', value => !!value));
+      }
+    });
 
     for (const disabled of [false, true]) {
       for (const primary of [false, true]) {
@@ -62,11 +92,10 @@ class ModalLauncherView extends ui.GLView {
 
   createButton (wrapper, img, label, showBadge, disabled, primary) {
     const container = wrapper.append('div')
-      .style('display', 'inline-block')
-      .style('margin-bottom', '2em');
+      .classed('demoButton', 'true');
     let count = 0;
     const button = new ui.ButtonView({
-      d3el: container.append('div').style('margin-right', '2em'),
+      d3el: container.append('div'),
       label,
       img,
       badge: showBadge ? 0 : undefined,
@@ -80,27 +109,22 @@ class ModalLauncherView extends ui.GLView {
     const showModalFunc = () => {
       uki.showModal({
         content: 'This is an example modal',
-        buttonSpecs: [
-          {
-            label: 'Cancel',
-            onclick: () => {
-              modalResult.text('Clicked Cancel');
-              uki.hideModal();
-              count -= 1;
-              button.badge = count;
-            }
-          },
-          {
-            label: 'OK',
-            primary: true,
-            onclick: () => {
-              modalResult.text('Clicked OK');
-              uki.hideModal();
+        cancelAction: () => {
+          count -= 1;
+          modalResult.text('Clicked Cancel');
+          button.badge = count;
+        },
+        confirmAction: () => {
+          modalResult.text('Waiting...');
+          return new Promise((resolve, reject) => {
+            window.setTimeout(() => {
               count += 1;
+              modalResult.text('Clicked OK');
               button.badge = count;
-            }
-          }
-        ]
+              resolve();
+            }, 1000);
+          });
+        }
       });
     };
     button.onclick = showModalFunc;

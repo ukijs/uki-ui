@@ -1,5 +1,5 @@
 /* globals uki */
-import { ModalView } from '../ModalView/MModalView.js';
+import { ModalView } from '../ModalView/ModalView.js';
 
 const { PromptModalView, PromptModalViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: ModalView,
@@ -35,7 +35,11 @@ const { PromptModalView, PromptModalViewMixin } = uki.utils.createMixinAndDefaul
 
       validateForm () {
         const currentValue = this.promptInputEl.node().value;
-        return this._validate(currentValue);
+        if (!this._validate(currentValue)) {
+          return ['.promptInputEl'];
+        } else {
+          return [];
+        }
       }
     }
     return PromptModalView;
