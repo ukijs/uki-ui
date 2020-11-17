@@ -18,6 +18,10 @@ class BasicDemoView extends ui.InformativeViewMixin(
     super(options);
   }
 
+  get isLoading () {
+    return super.isLoading;
+  }
+
   setup () {
     super.setup(...arguments);
     this.d3el.html(this.getNamedResource('lipsum'));
@@ -170,10 +174,6 @@ class ModalLauncherView extends ui.GLView {
 
 class SvgDemoView extends ui.InformativeViewMixin(
                           ui.SvgGLView) {
-  get emptyMessage () {
-    return 'This is an SVG view';
-  }
-
   setup () {
     super.setup(...arguments);
     const circle = this.d3el.append('circle')
@@ -186,10 +186,6 @@ class SvgDemoView extends ui.InformativeViewMixin(
         .attr('cy', coords[1]);
     });
   }
-
-  drawFrame () {
-    console.log('frame');
-  }
 }
 
 class IFrameView extends ui.InformativeViewMixin(
@@ -198,10 +194,6 @@ class IFrameView extends ui.InformativeViewMixin(
   constructor (options) {
     options.src = 'https://github.com/ukijs/uki';
     super(options);
-  }
-
-  get emptyMessage () {
-    return 'This is an iframe view';
   }
 }
 

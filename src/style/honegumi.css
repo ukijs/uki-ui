@@ -24,8 +24,14 @@
 	gap: 38px;
 
 	/* by default use 1 column */
-	grid-template-columns: minmax(420px, 1fr);
 	max-width: max(420px, calc(100% - 200px));
+}
+
+@media (min-width: 620px) {
+	/* space for 1 column + 200px margin */
+	.grid-420 {
+		grid-template-columns: minmax(420px, 1fr);
+	}
 }
 
 @media (min-width: 1078px) {

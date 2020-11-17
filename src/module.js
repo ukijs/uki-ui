@@ -1,6 +1,6 @@
 import GlobalUI from './GlobalUI.js';
 
-import { ThemeableMixin } from './ThemeableMixin/ThemeableMixin.js';
+import { ThemeableView, ThemeableMixin } from './ThemeableMixin/ThemeableMixin.js';
 import { OverlaidView, OverlaidViewMixin } from './OverlaidView/OverlaidView.js';
 import { InformativeView, InformativeViewMixin } from './InformativeView/InformativeView.js';
 import { ParentSizeView, ParentSizeViewMixin } from './ParentSizeView/ParentSizeView.js';
@@ -63,6 +63,7 @@ globalThis.uki.ui = {
   alert,
   confirm,
   prompt,
+  ThemeableView,
   ThemeableMixin,
   OverlaidView,
   OverlaidViewMixin,

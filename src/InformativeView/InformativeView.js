@@ -21,9 +21,7 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
         this._informativeImg = options.informativeImg || null;
         this._loading = options.loading || false;
         this._firstRenderCompleted = false;
-        this._resourcesLoaded = false;
         this.on('load', () => {
-          this._resourcesLoaded = true;
           this.render();
         });
       }
@@ -73,13 +71,17 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
       }
 
       get overlayVisible () {
-        return this.isLoading || super.overlayVisible;
+        return this.isLoading || this.informativeMessage || this.informativeImg || super.overlayVisible;
       }
 
       async loadLateResource () {
-        this._resourcesLoaded = false;
         this.render();
         await super.loadLateResource(...arguments);
+      }
+
+      async updateResource () {
+        this.render();
+        await super.updateResource(...arguments);
       }
 
       async setup () {

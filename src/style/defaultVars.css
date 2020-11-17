@@ -1,6 +1,5 @@
 :root {
-
-	/* Default light theme: light background, dark text, blue accent */
+	/* Default light theme: light background, dark text, blue accent, red-orange error color */
 	--theme-hue: 0;					/* white */
 	--accent-hue: 194;			/* blue */
   --error-hue: 14;        /* red-orange */
@@ -49,10 +48,8 @@
 /* Dark Theme */
 @media screen and (prefers-color-scheme: dark) {
 	:root {
-		/* dark theme: light background, dark text, blue accent */
+		/* dark theme: override for dark background, light text, slightly adjust accent / error saturation, lightness */
 		--theme-hue: 0;					/* black */
-		--accent-hue: 194;			/* blue */
-    --error-hue: 14;        /* red-orange */
 
 		--text-color-richer: hsl(var(--theme-hue), 0%, 95%);
 		--text-color: hsl(var(--theme-hue), 0%, 80%);

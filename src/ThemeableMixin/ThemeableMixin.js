@@ -1,3 +1,5 @@
+/* globals uki */
+
 const ThemeableMixin = function ({
   SuperClass,
   defaultStyle, // Raw text of default stylesheet
@@ -74,4 +76,6 @@ Object.defineProperty(ThemeableMixin, Symbol.hasInstance, {
   value: i => !!i._instanceOfThemeableMixin
 });
 
-export { ThemeableMixin };
+class ThemeableView extends ThemeableMixin({ SuperClass: uki.View }) {}
+
+export { ThemeableView, ThemeableMixin };

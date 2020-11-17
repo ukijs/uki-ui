@@ -78,10 +78,10 @@ const { OverlaidView, OverlaidViewMixin } = uki.utils.createMixinAndDefault({
         const bounds = this.getBounds();
         const parentBounds = this.getBounds(d3.select(this.d3el.node().parentNode));
         this.overlayShadowEl
-          .style('top', bounds.top - parentBounds.top)
-          .style('left', bounds.left - parentBounds.left)
-          .style('right', bounds.right - parentBounds.right)
-          .style('bottom', bounds.bottom - parentBounds.bottom)
+          .style('top', (bounds.top - parentBounds.top) + 'px')
+          .style('left', (bounds.left - parentBounds.left) + 'px')
+          .style('right', (bounds.right - parentBounds.right) + 'px')
+          .style('bottom', (bounds.bottom - parentBounds.bottom) + 'px')
           .classed('shadowed', this.overlayShadow);
       }
 

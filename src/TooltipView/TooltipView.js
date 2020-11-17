@@ -431,7 +431,8 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
             } else {
               const buttonOptions = {
                 d3el: d3.select(this),
-                borderless: true
+                borderless: true,
+                disabled: d.disabled || (d.subEntries && d.subEntries.length === 0)
               };
               if (typeof d === 'string') {
                 buttonOptions.label = d;
@@ -449,8 +450,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
             if (event.type === 'keypress' && event.keyCode !== 32) {
               return;
             }
-            if (d && d.onclick && !d.disabled) {
-              d.onclick();
+            if (d && !d.disabled) {
               this._rootTooltip.hide();
             }
           }).on('mouseenter.TooltipView, keypress.TooltipView2', function (event, d) {

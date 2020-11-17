@@ -21,6 +21,9 @@ const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixi
       }
 
       updateRecolorFilters () {
+        if (!this.d3el) {
+          return;
+        }
         const temp = this.d3el.append('p');
 
         // Extract all CSS rules that look like
@@ -29,9 +32,10 @@ const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixi
         // filter: url(#recolorImageTo--some-css-variable)
         // from this view's style resources
         for (const resource of this.resources) {
-          if (resource.sheet) {
+          const sheet = resource.styleTag?.sheet || resource.linkTag?.sheet || null;
+          if (sheet) {
             try {
-              for (const rule of Array.from(resource.sheet.cssRules || resource.sheet.rules)) {
+              for (const rule of Array.from(sheet.cssRules || sheet.rules)) {
                 if (rule.style && rule.style.filter) {
                   // First check for CSS variables
                   const cssVar = /#recolorImageTo(--[^)"]*)/.exec(rule.style.filter);
