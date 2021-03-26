@@ -76,9 +76,29 @@ Object.defineProperty(ThemeableMixin, Symbol.hasInstance, {
   value: i => !!i._instanceOfThemeableMixin
 });
 
-class ThemeableView extends ThemeableMixin({ SuperClass: uki.View }) {}
+class ThemeableView extends ThemeableMixin({ SuperClass: uki.View, cnNotOnD3el: true }) {}
 
 /* globals d3, uki */
+
+const DEFAULT_EXTRA_RECOLORS = [
+  '--text-color-richer',
+  '--text-color',
+  '--text-color-softer',
+  '--error-color',
+  '--accent-color',
+  '--accent-color-hover',
+  '--accent-color-disabled',
+  '--disabled-color',
+  '--border-color-richer',
+  '--border-color',
+  '--border-color-softer',
+  '--background-color',
+  '--background-color-softer',
+  '--background-color-richer',
+  '--shadow-color',
+  '--shadow-color-rgb',
+  '--inverted-shadow-color'
+];
 
 const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
@@ -87,9 +107,7 @@ const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixi
       constructor (options) {
         super(options);
         this._recolorFilters = {};
-        for (const color of options.extraRecolorFilters || []) {
-          this._recolorFilters[color] = true;
-        }
+        this._extraRecolorFilters = options.extraRecolorFilters || DEFAULT_EXTRA_RECOLORS;
         window.matchMedia('(prefers-color-scheme: dark)').addListener(() => {
           this.updateRecolorFilters();
         });
@@ -100,11 +118,48 @@ const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixi
         this.updateRecolorFilters();
       }
 
+      parseColor (string, tempElement) {
+        // First check for CSS variables
+        const cssVar = /#recolorImageTo(--[^)"]*)/.exec(string);
+        if (cssVar && cssVar[1]) {
+          tempElement.setAttribute('style', `color: var(${cssVar[1]})`);
+          const styles = window.getComputedStyle(tempElement);
+          // Check that the variable exists
+          if (styles.getPropertyValue(cssVar[1])) {
+            // Convert the computed 0-255 rgb color to 0-1
+            const rgbChunks = /rgba?\((\d+)[\s,]+(\d+)[\s,]+(\d+)/.exec(styles.color);
+            if (rgbChunks[1] && rgbChunks[2] && rgbChunks[3]) {
+              this._recolorFilters[cssVar[1]] = {
+                r: parseInt(rgbChunks[1]) / 255,
+                g: parseInt(rgbChunks[2]) / 255,
+                b: parseInt(rgbChunks[3]) / 255
+              };
+            }
+          }
+        } else {
+          // Try for raw hex codes
+          const hexCode = cssVar || /#recolorImageTo(......)/.exec(string);
+          if (hexCode && hexCode[1]) {
+            // Convert the hex code to 0-1 rgb
+            this._recolorFilters[hexCode[1]] = {
+              r: parseInt(hexCode[1].slice(0, 2), 16) / 255,
+              g: parseInt(hexCode[1].slice(2, 4), 16) / 255,
+              b: parseInt(hexCode[1].slice(4, 6), 16) / 255
+            };
+          }
+        }
+      }
+
       updateRecolorFilters () {
         if (!this.d3el) {
           return;
         }
         const temp = this.d3el.append('p');
+
+        // Parse any styles that were in extraRecolorFilters
+        for (const extraFilter of this._extraRecolorFilters) {
+          this.parseColor('#recolorImageTo' + extraFilter, temp.node());
+        }
 
         // Extract all CSS rules that look like
         // filter: url(#recolorImageToFFFFFF)
@@ -112,46 +167,23 @@ const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixi
         // filter: url(#recolorImageTo--some-css-variable)
         // from this view's style resources
         for (const resource of this.resources) {
-          const sheet = resource.styleTag?.sheet || resource.linkTag?.sheet || null;
-          if (sheet) {
-            try {
-              for (const rule of Array.from(sheet.cssRules || sheet.rules)) {
-                if (rule.style && rule.style.filter) {
-                  // First check for CSS variables
-                  const cssVar = /#recolorImageTo(--[^)"]*)/.exec(rule.style.filter);
-                  if (cssVar && cssVar[1]) {
-                    temp.node().setAttribute('style', `color: var(${cssVar[1]})`);
-                    const styles = window.getComputedStyle(temp.node());
-                    // Check that the variable exists
-                    if (styles.getPropertyValue(cssVar[1])) {
-                      // Convert the computed 0-255 rgb color to 0-1
-                      const rgbChunks = /rgba?\((\d+)[\s,]+(\d+)[\s,]+(\d+)/.exec(styles.color);
-                      if (rgbChunks[1] && rgbChunks[2] && rgbChunks[3]) {
-                        this._recolorFilters[cssVar[1]] = {
-                          r: parseInt(rgbChunks[1]) / 255,
-                          g: parseInt(rgbChunks[2]) / 255,
-                          b: parseInt(rgbChunks[3]) / 255
-                        };
-                      }
-                    }
-                  } else {
-                    // Try for raw hex codes
-                    const hexCode = cssVar || /#recolorImageTo(......)/.exec(rule.style.filter);
-                    if (hexCode && hexCode[1]) {
-                      // Convert the hex code to 0-1 rgb
-                      this._recolorFilters[hexCode[1]] = {
-                        r: parseInt(hexCode[1].slice(0, 2), 16) / 255,
-                        g: parseInt(hexCode[1].slice(2, 4), 16) / 255,
-                        b: parseInt(hexCode[1].slice(4, 6), 16) / 255
-                      };
-                    }
-                  }
-                }
-              }
-            } catch (err) {
-              if (!(err instanceof window.DOMException)) {
-                throw err;
-              }
+          const sheet = resource?.styleTag?.sheet || resource?.linkTag?.sheet || null;
+          if (!sheet) {
+            continue;
+          }
+          let rules;
+          try {
+            rules = sheet?.cssRules || sheet?.rules || [];
+          } catch (e) {
+            // If loading a stylesheet from a different domain (e.g. we hit
+            // this with goldenlayout stylesheets), CORS will throw an error if
+            // we attempt to access sheet.cssRules directly
+            continue;
+          }
+
+          for (const rule of rules) {
+            if (rule.style && rule.style.filter) {
+              this.parseColor(rule.style.filter, temp.node());
             }
           }
         }
@@ -205,7 +237,7 @@ const { RecolorableImageView, RecolorableImageViewMixin } = uki.utils.createMixi
   }
 });
 
-var defaultStyle = ".ButtonView.button {\n  position: relative;\n}\n.ButtonView.button.button-borderless {\n  border-color: transparent;\n}\n.ButtonView.button img {\n  display: inline-block;\n  position: relative;\n  top: 0.65em;\n  width: 2em;\n  height: 2em;\n  left: -1em;\n  filter: url(#recolorImageTo--text-color-softer);\n}\n.ButtonView.button.imgOnly {\n  padding: 0;\n}\n.ButtonView.button.imgOnly img {\n  left: 0;\n  padding: 0 0.5em;\n}\n.ButtonView.button .label {\n  display: inline-block;\n  white-space: nowrap;\n  vertical-align: top;\n}\n.ButtonView.button .badge {\n  position: absolute;\n  font-weight: bolder;\n  right: -1em;\n  top: -1em;\n  height: 2em;\n  line-height: 2em;\n  border-radius: var(--corner-radius);\n  text-align: right;\n  background-color: var(--accent-color);\n  color: var(--inverted-shadow-color);\n  padding: 0 0.5em 0 0.6em;\n  z-index: 1;\n  border: 1px solid var(--background-color);\n}\n.ButtonView.button:active img,\n.ButtonView.button:hover img {\n  filter: url(#recolorImageTo--text-color);\n}\n.ButtonView.button.button-primary img {\n  filter: url(#recolorImageTo--inverted-shadow-color);\n}\n.ButtonView.button:disabled img,\n.ButtonView.button.button-disabled img {\n  filter: url(#recolorImageTo--disabled-color);\n}\n.ButtonView.button:disabled .badge,\n.ButtonView.button.button-disabled .badge {\n  color: var(--background-color);\n  background-color: var(--disabled-color);\n}\n.ButtonView.button:disabled.button-primary img,\n.ButtonView.button.button-disabled.button-primary img {\n  filter: url(#recolorImageTo--background-color);\n}\n.ButtonView.button:disabled.button-primary .badge,\n.ButtonView.button.button-disabled.button-primary .badge {\n  color: var(--background-color);\n  background-color: var(--disabled-color);\n}\n";
+var defaultStyle$8 = ".ButtonView.button {\n  position: relative;\n}\n.ButtonView.button.button-borderless {\n  border-color: transparent;\n}\n.ButtonView.button img {\n  display: inline-block;\n  position: relative;\n  top: 0.65em;\n  width: 2em;\n  height: 2em;\n  left: -1em;\n  filter: url(#recolorImageTo--text-color-softer);\n}\n.ButtonView.button.imgOnly {\n  padding: 0;\n}\n.ButtonView.button.imgOnly img {\n  left: 0;\n  padding: 0 0.5em;\n}\n.ButtonView.button .label {\n  display: inline-block;\n  white-space: nowrap;\n  vertical-align: top;\n}\n.ButtonView.button .badge {\n  position: absolute;\n  font-weight: bolder;\n  right: -1em;\n  top: -1em;\n  height: 2em;\n  line-height: 2em;\n  border-radius: var(--corner-radius);\n  text-align: right;\n  background-color: var(--accent-color);\n  color: var(--inverted-shadow-color);\n  padding: 0 0.5em 0 0.6em;\n  z-index: 1;\n  border: 1px solid var(--background-color);\n}\n.ButtonView.button:active img,\n.ButtonView.button:hover img {\n  filter: url(#recolorImageTo--text-color);\n}\n.ButtonView.button.button-primary img {\n  filter: url(#recolorImageTo--inverted-shadow-color);\n}\n.ButtonView.button:disabled img,\n.ButtonView.button.button-disabled img {\n  filter: url(#recolorImageTo--disabled-color);\n}\n.ButtonView.button:disabled .badge,\n.ButtonView.button.button-disabled .badge {\n  color: var(--background-color);\n  background-color: var(--disabled-color);\n}\n.ButtonView.button:disabled.button-primary img,\n.ButtonView.button.button-disabled.button-primary img {\n  filter: url(#recolorImageTo--background-color);\n}\n.ButtonView.button:disabled.button-primary .badge,\n.ButtonView.button.button-disabled.button-primary .badge {\n  color: var(--background-color);\n  background-color: var(--disabled-color);\n}\n";
 
 /* globals uki */
 
@@ -213,7 +245,7 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
   classDefFunc: SuperClass => {
     class ButtonView extends RecolorableImageViewMixin(ThemeableMixin({
-      SuperClass, defaultStyle, className: 'ButtonView'
+      SuperClass, defaultStyle: defaultStyle$8, className: 'ButtonView'
     })) {
       constructor (options) {
         super(options);
@@ -398,7 +430,7 @@ const { ButtonView, ButtonViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-var defaultStyle$1 = ".TooltipView {\n  position: fixed;\n  z-index: 1001;\n  padding: 0.5em;\n  border-radius: 0.5em;\n  background: var(--background-color);\n  color: var(--text-color);\n  box-shadow: 2px 2px 5px rgba(var(--shadow-color-rgb), 0.75);\n  pointer-events: none;\n  max-height: 50%;\n  overflow-y: auto;\n  overflow-x: hidden;\n}\n.TooltipView.interactive {\n  pointer-events: all;\n}\n.TooltipView .menuItem {\n  display: block;\n  margin: 0.5em 0;\n}\n.TooltipView .menuItem.submenu:after {\n  content: '\\25b6';\n  color: var(--text-color-softer);\n  position: absolute;\n  right: 0.5em;\n}\n.TooltipView .menuItem.submenu.button-primary:after {\n  color: var(--inverted-shadow-color);\n}\n.TooltipView .menuItem.checked:before {\n  content: '\\2713';\n  color: var(--text-color-softer);\n  position: absolute;\n  left: 0.5em;\n}\n.TooltipView .menuItem.checked.button-primary:before {\n  color: var(--inverted-shadow-color);\n}\n.TooltipView .menuItem.separator {\n  margin: 0;\n  height: 0;\n  width: 100%;\n  border-top: 1px solid var(--border-color-softer);\n}\n";
+var defaultStyle$7 = ".TooltipView {\n  position: fixed;\n  z-index: 1001;\n  padding: 0.5em;\n  border-radius: 0.5em;\n  background: var(--background-color);\n  color: var(--text-color);\n  box-shadow: 2px 2px 5px rgba(var(--shadow-color-rgb), 0.75);\n  pointer-events: none;\n  max-height: 50%;\n  overflow-y: auto;\n  overflow-x: hidden;\n}\n.TooltipView.interactive {\n  pointer-events: all;\n}\n.TooltipView .menuItem {\n  display: block;\n  margin: 0.5em 0;\n  text-align: left;\n}\n.TooltipView .menuItem .label {\n  max-width: 30em;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n.TooltipView .menuItem.submenu:after {\n  content: '\\25b6';\n  color: var(--text-color-softer);\n  position: absolute;\n  right: 0.5em;\n}\n.TooltipView .menuItem.submenu.button-primary:after {\n  color: var(--inverted-shadow-color);\n}\n.TooltipView .menuItem.checked:before {\n  content: '\\2713';\n  color: var(--text-color-softer);\n  position: absolute;\n  left: 0.5em;\n}\n.TooltipView .menuItem.checked.button-primary:before {\n  color: var(--inverted-shadow-color);\n}\n.TooltipView .menuItem.separator {\n  margin: 0;\n  height: 0;\n  width: 100%;\n  border-top: 1px solid var(--border-color-softer);\n}\n";
 
 /* globals d3, uki */
 
@@ -406,7 +438,7 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
   classDefFunc: SuperClass => {
     class TooltipView extends ThemeableMixin({
-      SuperClass, defaultStyle: defaultStyle$1, className: 'TooltipView'
+      SuperClass, defaultStyle: defaultStyle$7, className: 'TooltipView'
     }) {
       constructor (options = {}) {
         super(options);
@@ -917,11 +949,11 @@ const { TooltipView, TooltipViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-var defaultStyle$2 = ".ModalView {\n  position: fixed;\n  left: 0px;\n  top: 0px;\n  right: 0px;\n  bottom: 0px;\n  display: flex;\n  z-index: 1000;\n}\n.ModalView .modalShadowEl {\n  position: absolute;\n  left: 0px;\n  top: 0px;\n  right: 0px;\n  bottom: 0px;\n  background: var(--text-color-softer);\n  opacity: 0.75;\n}\n.ModalView .centerWrapper {\n  position: relative;\n  background-color: var(--background-color);\n  opacity: 1;\n  border: 1px solid var(--shadow-color);\n  border-radius: var(--corner-radius);\n  box-shadow: 0.5em 0.5em 2em rgba(var(--shadow-color-rgb), 0.75);\n  min-width: 20em;\n  max-width: calc(100% - 4em);\n  min-height: 20em;\n  max-height: calc(100% - 4em);\n  margin: auto;\n  padding: 1em;\n}\n.ModalView .centerWrapper .modalContentEl {\n  margin-bottom: 3.5em;\n  max-height: calc(100vh - 7.5em);\n  overflow: auto;\n}\n.ModalView .modalButtonEl {\n  position: absolute;\n  bottom: 1em;\n  right: 1em;\n  display: flex;\n  justify-content: flex-end;\n  align-items: center;\n}\n.ModalView .modalButtonEl .button {\n  margin-left: 1em;\n}\n.ModalView .modalButtonEl .waitingSpinner {\n  width: 2em;\n  height: 2em;\n  margin-bottom: 0.7em;\n  filter: url(#recolorImageTo--text-color-softer);\n  animation-name: modalWaitingSpinnerKeyframes;\n  animation-duration: 2000ms;\n  animation-iteration-count: infinite;\n  animation-timing-function: linear;\n}\n@keyframes modalWaitingSpinnerKeyframes {\n  from {\n    transform: rotate(0deg);\n  }\n  to {\n    transform: rotate(360deg);\n  }\n}\n";
+var defaultStyle$6 = ".ModalView {\n  position: fixed;\n  left: 0px;\n  top: 0px;\n  right: 0px;\n  bottom: 0px;\n  display: flex;\n  z-index: 1000;\n}\n.ModalView .modalShadowEl {\n  position: absolute;\n  left: 0px;\n  top: 0px;\n  right: 0px;\n  bottom: 0px;\n  background: var(--text-color-softer);\n  opacity: 0.75;\n}\n.ModalView .centerWrapper {\n  position: relative;\n  background-color: var(--background-color);\n  opacity: 1;\n  border: 1px solid var(--shadow-color);\n  border-radius: var(--corner-radius);\n  box-shadow: 0.5em 0.5em 2em rgba(var(--shadow-color-rgb), 0.75);\n  min-width: 20em;\n  max-width: calc(100% - 4em);\n  min-height: 10em;\n  max-height: calc(100% - 4em);\n  margin: auto;\n  padding: 1em;\n}\n.ModalView .centerWrapper .modalContentEl {\n  margin-bottom: 3.5em;\n  max-height: calc(100vh - 7.5em);\n  overflow: auto;\n}\n.ModalView .modalButtonEl {\n  position: absolute;\n  bottom: 1em;\n  right: 1em;\n  display: flex;\n  justify-content: flex-end;\n  align-items: center;\n}\n.ModalView .modalButtonEl .button {\n  margin-left: 1em;\n}\n.ModalView .modalButtonEl .waitingSpinner {\n  width: 2em;\n  height: 2em;\n  margin-bottom: 0.7em;\n  filter: url(#recolorImageTo--text-color-softer);\n  animation-name: modalWaitingSpinnerKeyframes;\n  animation-duration: 2000ms;\n  animation-iteration-count: infinite;\n  animation-timing-function: linear;\n}\n@keyframes modalWaitingSpinnerKeyframes {\n  from {\n    transform: rotate(0deg);\n  }\n  to {\n    transform: rotate(360deg);\n  }\n}\n";
 
-var template = "<div class=\"modalShadowEl\"></div>\n<div class=\"centerWrapper\">\n  <div class=\"modalContentEl\"></div>\n  <div class=\"modalButtonEl\"></div>\n</div>\n";
+var template$2 = "<div class=\"modalShadowEl\"></div>\n<div class=\"centerWrapper\">\n  <div class=\"modalContentEl\"></div>\n  <div class=\"modalButtonEl\"></div>\n</div>\n";
 
-const img = "data:image/png;base64,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";
+var img$2 = "data:image/png;base64,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";
 
 /* globals uki */
 
@@ -929,7 +961,7 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
   classDefFunc: SuperClass => {
     class ModalView extends ThemeableMixin({
-      SuperClass, defaultStyle: defaultStyle$2, className: 'ModalView'
+      SuperClass, defaultStyle: defaultStyle$6, className: 'ModalView'
     }) {
       constructor (options = {}) {
         super(options);
@@ -1114,7 +1146,7 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
         this.d3el.attr('class', null);
         await super.setup(...arguments);
         this.d3el.style('display', 'none')
-          .html(template);
+          .html(template$2);
 
         this.modalShadowEl = this.d3el.select('.modalShadowEl');
         this.modalContentEl = this.d3el.select('.modalContentEl');
@@ -1180,7 +1212,7 @@ const { ModalView, ModalViewMixin } = uki.utils.createMixinAndDefault({
             const spinner = this.modalButtonEl.select('.waitingSpinner');
             if (!spinner.node()) {
               this.modalButtonEl.insert('img', ':first-child')
-                .attr('src', img)
+                .attr('src', img$2)
                 .classed('waitingSpinner', true);
             }
             ButtonView.iterD3Selection(this.modalButtonEl.selectAll('.ButtonView'), buttonView => {
@@ -1230,9 +1262,12 @@ const { PromptModalView, PromptModalViewMixin } = uki.utils.createMixinAndDefaul
         }
       }
 
+      get currentValue () {
+        return this.promptInputEl.node().value;
+      }
+
       validateForm () {
-        const currentValue = this.promptInputEl.node().value;
-        if (!this._validate(currentValue)) {
+        if (!this._validate(this.currentValue)) {
           return ['.promptInputEl'];
         } else {
           return [];
@@ -1247,15 +1282,15 @@ var defaultVars = ":root {\n\t/* Default light theme: light background, dark tex
 
 var normalize = "/*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */\n\n/* Document\n   ========================================================================== */\n\n/**\n * 1. Correct the line height in all browsers.\n * 2. Prevent adjustments of font size after orientation changes in iOS.\n */\n\nhtml {\n  line-height: 1.15; /* 1 */\n  -webkit-text-size-adjust: 100%; /* 2 */\n}\n\n/* Sections\n   ========================================================================== */\n\n/**\n * Remove the margin in all browsers.\n */\n\nbody {\n  margin: 0;\n}\n\n/**\n * Render the `main` element consistently in IE.\n */\n\nmain {\n  display: block;\n}\n\n/**\n * Correct the font size and margin on `h1` elements within `section` and\n * `article` contexts in Chrome, Firefox, and Safari.\n */\n\nh1 {\n  font-size: 2em;\n  margin: 0.67em 0;\n}\n\n/* Grouping content\n   ========================================================================== */\n\n/**\n * 1. Add the correct box sizing in Firefox.\n * 2. Show the overflow in Edge and IE.\n */\n\nhr {\n  box-sizing: content-box; /* 1 */\n  height: 0; /* 1 */\n  overflow: visible; /* 2 */\n}\n\n/**\n * 1. Correct the inheritance and scaling of font size in all browsers.\n * 2. Correct the odd `em` font sizing in all browsers.\n */\n\npre {\n  font-family: monospace, monospace; /* 1 */\n  font-size: 1em; /* 2 */\n}\n\n/* Text-level semantics\n   ========================================================================== */\n\n/**\n * Remove the gray background on active links in IE 10.\n */\n\na {\n  background-color: transparent;\n}\n\n/**\n * 1. Remove the bottom border in Chrome 57-\n * 2. Add the correct text decoration in Chrome, Edge, IE, Opera, and Safari.\n */\n\nabbr[title] {\n  border-bottom: none; /* 1 */\n  text-decoration: underline; /* 2 */\n  text-decoration: underline dotted; /* 2 */\n}\n\n/**\n * Add the correct font weight in Chrome, Edge, and Safari.\n */\n\nb,\nstrong {\n  font-weight: bolder;\n}\n\n/**\n * 1. Correct the inheritance and scaling of font size in all browsers.\n * 2. Correct the odd `em` font sizing in all browsers.\n */\n\ncode,\nkbd,\nsamp {\n  font-family: monospace, monospace; /* 1 */\n  font-size: 1em; /* 2 */\n}\n\n/**\n * Add the correct font size in all browsers.\n */\n\nsmall {\n  font-size: 80%;\n}\n\n/**\n * Prevent `sub` and `sup` elements from affecting the line height in\n * all browsers.\n */\n\nsub,\nsup {\n  font-size: 75%;\n  line-height: 0;\n  position: relative;\n  vertical-align: baseline;\n}\n\nsub {\n  bottom: -0.25em;\n}\n\nsup {\n  top: -0.5em;\n}\n\n/* Embedded content\n   ========================================================================== */\n\n/**\n * Remove the border on images inside links in IE 10.\n */\n\nimg {\n  border-style: none;\n}\n\n/* Forms\n   ========================================================================== */\n\n/**\n * 1. Change the font styles in all browsers.\n * 2. Remove the margin in Firefox and Safari.\n */\n\nbutton,\ninput,\noptgroup,\nselect,\ntextarea {\n  font-family: inherit; /* 1 */\n  font-size: 100%; /* 1 */\n  line-height: 1.15; /* 1 */\n  margin: 0; /* 2 */\n}\n\n/**\n * Show the overflow in IE.\n * 1. Show the overflow in Edge.\n */\n\nbutton,\ninput { /* 1 */\n  overflow: visible;\n}\n\n/**\n * Remove the inheritance of text transform in Edge, Firefox, and IE.\n * 1. Remove the inheritance of text transform in Firefox.\n */\n\nbutton,\nselect { /* 1 */\n  text-transform: none;\n}\n\n/**\n * Correct the inability to style clickable types in iOS and Safari.\n */\n\nbutton,\n[type=\"button\"],\n[type=\"reset\"],\n[type=\"submit\"] {\n  -webkit-appearance: button;\n}\n\n/**\n * Remove the inner border and padding in Firefox.\n */\n\nbutton::-moz-focus-inner,\n[type=\"button\"]::-moz-focus-inner,\n[type=\"reset\"]::-moz-focus-inner,\n[type=\"submit\"]::-moz-focus-inner {\n  border-style: none;\n  padding: 0;\n}\n\n/**\n * Restore the focus styles unset by the previous rule.\n */\n\nbutton:-moz-focusring,\n[type=\"button\"]:-moz-focusring,\n[type=\"reset\"]:-moz-focusring,\n[type=\"submit\"]:-moz-focusring {\n  outline: 1px dotted ButtonText;\n}\n\n/**\n * Correct the padding in Firefox.\n */\n\nfieldset {\n  padding: 0.35em 0.75em 0.625em;\n}\n\n/**\n * 1. Correct the text wrapping in Edge and IE.\n * 2. Correct the color inheritance from `fieldset` elements in IE.\n * 3. Remove the padding so developers are not caught out when they zero out\n *    `fieldset` elements in all browsers.\n */\n\nlegend {\n  box-sizing: border-box; /* 1 */\n  color: inherit; /* 2 */\n  display: table; /* 1 */\n  max-width: 100%; /* 1 */\n  padding: 0; /* 3 */\n  white-space: normal; /* 1 */\n}\n\n/**\n * Add the correct vertical alignment in Chrome, Firefox, and Opera.\n */\n\nprogress {\n  vertical-align: baseline;\n}\n\n/**\n * Remove the default vertical scrollbar in IE 10+.\n */\n\ntextarea {\n  overflow: auto;\n}\n\n/**\n * 1. Add the correct box sizing in IE 10.\n * 2. Remove the padding in IE 10.\n */\n\n[type=\"checkbox\"],\n[type=\"radio\"] {\n  box-sizing: border-box; /* 1 */\n  padding: 0; /* 2 */\n}\n\n/**\n * Correct the cursor style of increment and decrement buttons in Chrome.\n */\n\n[type=\"number\"]::-webkit-inner-spin-button,\n[type=\"number\"]::-webkit-outer-spin-button {\n  height: auto;\n}\n\n/**\n * 1. Correct the odd appearance in Chrome and Safari.\n * 2. Correct the outline style in Safari.\n */\n\n[type=\"search\"] {\n  -webkit-appearance: textfield; /* 1 */\n  outline-offset: -2px; /* 2 */\n}\n\n/**\n * Remove the inner padding in Chrome and Safari on macOS.\n */\n\n[type=\"search\"]::-webkit-search-decoration {\n  -webkit-appearance: none;\n}\n\n/**\n * 1. Correct the inability to style clickable types in iOS and Safari.\n * 2. Change font properties to `inherit` in Safari.\n */\n\n::-webkit-file-upload-button {\n  -webkit-appearance: button; /* 1 */\n  font: inherit; /* 2 */\n}\n\n/* Interactive\n   ========================================================================== */\n\n/*\n * Add the correct display in Edge, IE 10+, and Firefox.\n */\n\ndetails {\n  display: block;\n}\n\n/*\n * Add the correct display in all browsers.\n */\n\nsummary {\n  display: list-item;\n}\n\n/* Misc\n   ========================================================================== */\n\n/**\n * Add the correct display in IE 10+.\n */\n\ntemplate {\n  display: none;\n}\n\n/**\n * Add the correct display in IE 10.\n */\n\n[hidden] {\n  display: none;\n}\n";
 
-var honegumi = "/*\n* Based on Barebones by Steve Cochran\n* Based on Skeleton by Dave Gamache\n*\n* Free to use under the MIT license.\n*/\n\n/* CSS Variable definitions omitted (defaultVars.css is always loaded by UkiSettings.js)\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* grid-420\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/*\n  Auto-split when there's space for more than one 420px column... or if the\n\tnumber of columns is constrained, don't let them get wider than the\n\tthreshold where they'd normally split\n*/\n\n.grid-420 {\n\tposition: relative;\n\tmargin: 0 auto;\n\tdisplay: grid;\n\tgrid-gap: 38px;\n\tgap: 38px;\n\n\t/* by default use 1 column */\n\tmax-width: max(420px, calc(100% - 200px));\n}\n\n@media (min-width: 620px) {\n\t/* space for 1 column + 200px margin */\n\t.grid-420 {\n\t\tgrid-template-columns: minmax(420px, 1fr);\n\t}\n}\n\n@media (min-width: 1078px) {\n\t/* space for 2 columns + 1 gap + 200px margin */\n\t.grid-420 {\n\t\tgrid-template-columns: repeat(2, 1fr);\n\t\tmax-width: max(878px, calc(100% - 200px));\n\t}\n\t.grid-420.full {\n\t\tgrid-template-columns: minmax(420px, 1fr);\n\t\tmax-width: 878px;\n\t}\n}\n\n@media (min-width: 1536px) {\n\t/* space for 3 columns + 2 gaps + 200px margin */\n\t.grid-420 {\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t\tmax-width: minmax(1336px, calc(100% - 200px));\n\t}\n\t.grid-420.halves {\n\t\tgrid-template-columns: repeat(2, 1fr);\n\t\tmax-width: 1336px;\n\t}\n\t.grid-420.full {\n\t\tgrid-template-columns: minmax(420px, 1fr);\n\t\tmax-width: 878px;\n\t}\n}\n\n@media (min-width: 1994px) {\n\t/* space for 4 columns + 3 gaps + 200px margin */\n\t.grid-420 {\n\t\tgrid-template-columns: repeat(4, 1fr);\n\t\tmax-width: 2252px;\n\t\t/* don't go above where we'd otherwise break for 5 columns */\n\t}\n\t.grid-420.thirds {\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t\tmax-width: 1794px;\n\t}\n\t.grid-420.halves {\n\t\tgrid-template-columns: repeat(2, 1fr);\n\t\tmax-width: 1336px;\n\t}\n\t.grid-420.full {\n\t\tgrid-template-columns: minmax(420px, 1fr);\n\t\tmax-width: 878px;\n\t}\n}\n\n/* Base Styles\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhtml {\n  font-size: var(--base-font-size);\n  scroll-behavior: smooth;\n}\nbody {\n  font-size: 1.6em;\t\t/* changed from 15px in orig skeleton */\n  line-height: 1.6;\n  font-weight: var(--base-font-weight);\n  font-family: var(--base-font-family);\n  color: var(--text-color);\n  background-color: var(--background-color);;\n}\n\n\n/* Typography\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nh1, h2, h3, h4, h5, h6 {\n  margin-top: 0;\n  margin-bottom: 2rem;\n  font-weight: var(--light-font-weight); }\nh1 { font-size: 4.0rem; line-height: 1.2;  letter-spacing: -.1rem;}\nh2 { font-size: 3.6rem; line-height: 1.25; letter-spacing: -.1rem; }\nh3 { font-size: 3.0rem; line-height: 1.3;  letter-spacing: -.1rem; }\nh4 { font-size: 2.4rem; line-height: 1.35; letter-spacing: -.08rem; }\nh5 { font-size: 1.8rem; line-height: 1.5;  letter-spacing: -.05rem; }\nh6 { font-size: 1.5rem; line-height: 1.6;  letter-spacing: 0; }\n\n/* Larger than phablet */\n@media (min-width: 600px) {\n  h1 { font-size: 5.0rem; }\n  h2 { font-size: 4.2rem; }\n  h3 { font-size: 3.6rem; }\n  h4 { font-size: 3.0rem; }\n  h5 { font-size: 2.4rem; }\n  h6 { font-size: 1.5rem; }\n}\n\np {\n  margin-top: 0; }\n\nb, strong {\n  font-weight: var(--heavy-font-weight);\n}\n\n/* Links\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\na {\n  color: var(--accent-color); }\na:hover {\n  color: var(--accent-color-hover); }\n\n\n/* Buttons\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.button,\nbutton,\ninput[type=\"submit\"],\ninput[type=\"reset\"],\ninput[type=\"button\"] {\n  display: inline-block;\n  height: var(--form-element-height);\n  padding: 0 30px;\n  color: var(--text-color-softer);\n  text-align: center;\n  font-size: 11px;\n  font-weight: var(--heavy-font-weight);\n  line-height: calc(var(--form-element-height) - 1px);\n  letter-spacing: .1em;\n  text-transform: uppercase;\n  text-decoration: none;\n  white-space: nowrap;\n  background-color: transparent;\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--border-color);\n  cursor: pointer;\n  user-select: none;\n  vertical-align: bottom;\n  box-sizing: border-box; }\n.button:hover,\nbutton:hover,\ninput[type=\"submit\"]:hover,\ninput[type=\"reset\"]:hover,\ninput[type=\"button\"]:hover,\n.button:active,\nbutton:active,\ninput[type=\"submit\"]:active,\ninput[type=\"reset\"]:active,\ninput[type=\"button\"]:active {\n  color: var(--text-color);\n  border-color: var(--text-color-softer);\n  outline: 0; }\n.button.button-primary,\nbutton.button-primary,\ninput[type=\"submit\"].button-primary,\ninput[type=\"reset\"].button-primary,\ninput[type=\"button\"].button-primary {\n  color: var(--inverted-shadow-color);\n  background-color: var(--accent-color);\n  border-color: var(--accent-color); }\n.button.button-primary:hover,\nbutton.button-primary:hover,\ninput[type=\"submit\"].button-primary:hover,\ninput[type=\"reset\"].button-primary:hover,\ninput[type=\"button\"].button-primary:hover,\n.button.button-primary:active,\nbutton.button-primary:active,\ninput[type=\"submit\"].button-primary:active,\ninput[type=\"reset\"].button-primary:active,\ninput[type=\"button\"].button-primary:active {\n  color: var(--inverted-shadow-color);\n  background-color: var(--accent-color-hover);\n  border-color: var(--accent-color-hover); }\n.button.button-disabled,\n.button:disabled,\nbutton:disabled,\ninput[type=\"submit\"]:disabled,\ninput[type=\"reset\"]:disabled,\ninput[type=\"button\"]:disabled {\n\tcolor: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n.button.button-primary.button-disabled,\n.button.button-primary:disabled,\nbutton.button-primary:disabled,\ninput[type=\"submit\"].button-primary:disabled,\ninput[type=\"reset\"].button-primary:disabled,\ninput[type=\"button\"].button-primary:disabled {\n\tcolor: var(--background-color);\n\tbackground-color: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n\n\n/* Forms\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ninput:not([type]),\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ntextarea,\nselect {\n  height: var(--form-element-height);\n  padding: 6px 10px; /* The 6px vertically centers text on FF, ignored by Webkit */\n  background-color: var(--background-color);\n  color: var(--text-color);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius);\n  box-shadow: none;\n  box-sizing: border-box; }\n/* Removes awkward default styles on some inputs for iOS */\ninput:not([type]),\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ninput[type=\"button\"],\ninput[type=\"submit\"],\ntextarea {\n  -webkit-appearance: none;\n     -moz-appearance: none;\n          appearance: none; }\ntextarea {\n  min-height: 5em;\n  padding-top: 6px;\n  padding-bottom: 6px; }\ninput:not([type]):focus,\ninput[type=\"email\"]:focus,\ninput[type=\"number\"]:focus,\ninput[type=\"search\"]:focus,\ninput[type=\"text\"]:focus,\ninput[type=\"tel\"]:focus,\ninput[type=\"url\"]:focus,\ninput[type=\"password\"]:focus,\ntextarea:focus,\nselect:focus {\n  border: 1px solid var(--accent-color);\n  outline: 0; }\ninput:not([type]).error,\ninput[type=\"email\"].error,\ninput[type=\"number\"].error,\ninput[type=\"search\"].error,\ninput[type=\"text\"].error,\ninput[type=\"tel\"].error,\ninput[type=\"url\"].error,\ninput[type=\"password\"].error,\ntextarea.error,\nselect.error {\n  color: var(--error-color);\n  border: 1px solid var(--error-color);\n}\ninput:not([type]):disabled,\ninput[type=\"email\"]:disabled,\ninput[type=\"number\"]:disabled,\ninput[type=\"search\"]:disabled,\ninput[type=\"text\"]:disabled,\ninput[type=\"tel\"]:disabled,\ninput[type=\"url\"]:disabled,\ninput[type=\"password\"]:disabled,\ntextarea:disabled,\nselect:disabled {\n  color: var(--disabled-color);\n  background-color: var(--background-color-softer);\n}\nlabel,\nlegend {\n  display: block;\n  margin-bottom: .5em;\n  font-weight: var(--heavy-font-weight); }\nfieldset {\n  padding: 0;\n  border-width: 0; }\ninput[type=\"checkbox\"],\ninput[type=\"radio\"] {\n  display: inline; }\nlabel > .label-body {\n  display: inline-block;\n  margin-left: .5em;\n  font-weight: normal; }\n::placeholder {\n  color: var(--disabled-color);\n}\n\n/* Lists\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nul {\n  list-style: circle inside; }\nol {\n  list-style: decimal inside; }\nol, ul {\n  padding-left: 0;\n  margin-top: 0; }\nul ul, ul ol, ol ol, ol ul {\n\tfont-size: 100%;\n\tmargin: 1em 0 1em 3em;\n\tcolor: var(--text-color-softer);\n}\nli {\n  margin-bottom: 0.5em; }\n\n\n/* Scrollbars\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n::-webkit-scrollbar {\n  width: 1.25em;\n  height: 1.25em;\n}\n\n/* Track, Corner background color */\n::-webkit-scrollbar-track,\n::-webkit-scrollbar-corner,\n::-webkit-resizer {\n  background: transparent;\n}\n\n/* Buttons */\n::-webkit-scrollbar-button:single-button {\n  display: block;\n  width: 1.25em;\n  height: 1.25em;\n  border-radius: var(--corner-radius);\n  border-style: solid;\n}\n/* Up */\n::-webkit-scrollbar-button:vertical:decrement {\n  border-width: 0 0.625em 0.75em 0.625em;\n  border-color: transparent transparent var(--border-color-softer) transparent;\n}\n::-webkit-scrollbar-button:vertical:decrement:hover,\n::-webkit-scrollbar-button:vertical:decrement:active {\n  border-color: transparent transparent var(--text-color-softer) transparent;\n}\n/* Down */\n::-webkit-scrollbar-button:vertical:increment {\n  border-width: 0.75em 0.625em 0 0.625em;\n  border-color: var(--border-color-softer) transparent transparent transparent;\n}\n::-webkit-scrollbar-button:vertical:increment:hover,\n::-webkit-scrollbar-button:vertical:increment:active {\n  border-color: var(--text-color-softer) transparent transparent transparent;\n}\n/* Left */\n::-webkit-scrollbar-button:horizontal:decrement {\n  border-width: 0.625em 0.75em 0.625em 0;\n  border-color: transparent var(--border-color-softer) transparent transparent;\n}\n::-webkit-scrollbar-button:horizontal:decrement:hover,\n::-webkit-scrollbar-button:horizontal:decrement:active {\n  border-color: transparent var(--text-color-softer) transparent transparent;\n}\n/* Right */\n::-webkit-scrollbar-button:horizontal:increment {\n  border-width: 0.625em 0 0.625em 0.75em;\n  border-color: transparent transparent transparent var(--border-color-softer);\n}\n::-webkit-scrollbar-button:horizontal:increment:hover,\n::-webkit-scrollbar-button:horizontal:increment:active {\n  border-color: transparent transparent transparent var(--text-color-softer);\n}\n\n/* Handle */\n::-webkit-scrollbar-thumb {\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--background-color);\n  background: var(--border-color-softer);\n}\n::-webkit-scrollbar-thumb:hover {\n  cursor: grab;\n  background: var(--text-color-softer);\n}\n::-webkit-scrollbar-thumb:active {\n  cursor: grabbing;\n  background: var(--text-color-softer);\n}\n\n/* Code\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ncode {\n  padding: .2em .5em;\n  margin: 0 .2em;\n  font-size: 90%;\n  white-space: nowrap;\n  background: var(--background-color-richer);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius); }\npre > code {\n  display: block;\n  padding: 1em 1.5em;\n  white-space: pre;\n  overflow: auto; }\n\n\n/* Tables\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nth,\ntd {\n  padding: 12px 15px;\n  text-align: left;\n  border-bottom: 1px solid var(--border-color-softer); }\nth:first-child,\ntd:first-child {\n  padding-left: 0; }\nth:last-child,\ntd:last-child {\n  padding-right: 0; }\n\n\n/* Spacing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nbutton,\n.button {\n  margin-bottom: 1em; }\ninput,\ntextarea,\nselect,\nfieldset {\n  margin-bottom: 1.5em; }\npre,\nblockquote,\ndl,\nfigure,\ntable,\np,\nul,\nol,\nform {\n  margin-bottom: 2.5em; }\n\n\n/* Utilities\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.u-full-width {\n  width: 100%;\n  box-sizing: border-box; }\n.u-max-full-width {\n  max-width: 100%;\n  box-sizing: border-box; }\n.u-pull-right {\n  float: right; }\n.u-pull-left {\n  float: left; }\n.u-align-left {\n\ttext-align: left; }\n.u-align-right {\n\ttext-align: right; }\n\n\n/* Misc\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhr {\n  margin-top: 3em;\n  margin-bottom: 3.5em;\n  border-width: 0;\n  border-top: 1px solid var(--border-color-softer); }\n\n\n/* Clearing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* Self Clearing Goodness */\n/*.container:after,\n.row:after,\n.u-cf {\n  content: \"\";\n  display: table;\n  clear: both; }*/\n\n\n/* Media Queries\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/*\nNote: The best way to structure the use of media queries is to create the queries\nnear the relevant code. For example, if you wanted to change the styles for buttons\non small devices, paste the mobile query code up in the buttons section and style it\nthere.\n*/\n\n\n/* Larger than mobile (default point when grid becomes active) */\n@media (min-width: 600px) {}\n\n/* Larger than phablet */\n@media (min-width: 900px) {}\n\n/* Larger than tablet */\n@media (min-width: 1200px) {}\n";
+var honegumi = "/*\n* Based on Barebones by Steve Cochran\n* Based on Skeleton by Dave Gamache\n*\n* Free to use under the MIT license.\n*/\n\n/* CSS Variable definitions omitted (defaultVars.css is always loaded by UkiSettings.js)\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* VERY basic / elegant layout baked in for (my) convenience\nfrom https://heydonworks.com/article/the-flexbox-holy-albatross-reincarnated/\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n.flexbox-albatross {\n  display: flex;\n  flex-wrap: wrap;\n  --margin: 1rem;\n  --modifier: calc(40rem - 100%);\n  margin: calc(var(--margin) * -1);\n}\n\n.flexbox-albatross > * {\n  flex-grow: 1;\n  flex-basis: calc(var(--modifier) * 999);\n  margin: var(--margin);\n}\n\n/* Base Styles\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhtml {\n  font-size: var(--base-font-size);\n  scroll-behavior: smooth;\n}\nbody {\n  font-size: 1.6em;\t\t/* changed from 15px in orig skeleton */\n  line-height: 1.6;\n  font-weight: var(--base-font-weight);\n  font-family: var(--base-font-family);\n  color: var(--text-color);\n  background-color: var(--background-color);;\n}\n\n\n/* Typography\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nh1, h2, h3, h4, h5, h6 {\n  margin-top: 0;\n  margin-bottom: 2rem;\n  font-weight: var(--light-font-weight); }\nh1 { font-size: 4.0rem; line-height: 1.2;  letter-spacing: -.1rem;}\nh2 { font-size: 3.6rem; line-height: 1.25; letter-spacing: -.1rem; }\nh3 { font-size: 3.0rem; line-height: 1.3;  letter-spacing: -.1rem; }\nh4 { font-size: 2.4rem; line-height: 1.35; letter-spacing: -.08rem; }\nh5 { font-size: 1.8rem; line-height: 1.5;  letter-spacing: -.05rem; }\nh6 { font-size: 1.5rem; line-height: 1.6;  letter-spacing: 0; }\n\n/* Larger than phablet */\n@media (min-width: 600px) {\n  h1 { font-size: 5.0rem; }\n  h2 { font-size: 4.2rem; }\n  h3 { font-size: 3.6rem; }\n  h4 { font-size: 3.0rem; }\n  h5 { font-size: 2.4rem; }\n  h6 { font-size: 1.5rem; }\n}\n\np {\n  margin-top: 0; }\n\nb, strong {\n  font-weight: var(--heavy-font-weight);\n}\n\n/* Links\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\na {\n  color: var(--accent-color); }\na:hover {\n  color: var(--accent-color-hover); }\n\n\n/* Buttons\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.button,\nbutton,\ninput[type=\"submit\"],\ninput[type=\"reset\"],\ninput[type=\"button\"] {\n  display: inline-block;\n  height: var(--form-element-height);\n  padding: 0 30px;\n  color: var(--text-color-softer);\n  text-align: center;\n  font-size: 11px;\n  font-weight: var(--heavy-font-weight);\n  line-height: calc(var(--form-element-height) - 1px);\n  letter-spacing: .1em;\n  text-transform: uppercase;\n  text-decoration: none;\n  white-space: nowrap;\n  background-color: transparent;\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--border-color);\n  cursor: pointer;\n  user-select: none;\n  vertical-align: bottom;\n  box-sizing: border-box; }\n.button:hover,\nbutton:hover,\ninput[type=\"submit\"]:hover,\ninput[type=\"reset\"]:hover,\ninput[type=\"button\"]:hover,\n.button:active,\nbutton:active,\ninput[type=\"submit\"]:active,\ninput[type=\"reset\"]:active,\ninput[type=\"button\"]:active {\n  color: var(--text-color);\n  border-color: var(--text-color-softer);\n  outline: 0; }\n.button.button-primary,\nbutton.button-primary,\ninput[type=\"submit\"].button-primary,\ninput[type=\"reset\"].button-primary,\ninput[type=\"button\"].button-primary {\n  color: var(--inverted-shadow-color);\n  background-color: var(--accent-color);\n  border-color: var(--accent-color); }\n.button.button-primary:hover,\nbutton.button-primary:hover,\ninput[type=\"submit\"].button-primary:hover,\ninput[type=\"reset\"].button-primary:hover,\ninput[type=\"button\"].button-primary:hover,\n.button.button-primary:active,\nbutton.button-primary:active,\ninput[type=\"submit\"].button-primary:active,\ninput[type=\"reset\"].button-primary:active,\ninput[type=\"button\"].button-primary:active {\n  color: var(--inverted-shadow-color);\n  background-color: var(--accent-color-hover);\n  border-color: var(--accent-color-hover); }\n.button.button-disabled,\n.button:disabled,\nbutton:disabled,\ninput[type=\"submit\"]:disabled,\ninput[type=\"reset\"]:disabled,\ninput[type=\"button\"]:disabled {\n\tcolor: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n.button.button-primary.button-disabled,\n.button.button-primary:disabled,\nbutton.button-primary:disabled,\ninput[type=\"submit\"].button-primary:disabled,\ninput[type=\"reset\"].button-primary:disabled,\ninput[type=\"button\"].button-primary:disabled {\n\tcolor: var(--background-color);\n\tbackground-color: var(--disabled-color);\n\tborder-color: var(--disabled-color);\n\tcursor: default; }\n\n\n/* Forms\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ninput:not([type]),\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ntextarea,\nselect {\n  height: var(--form-element-height);\n  padding: 6px 10px; /* The 6px vertically centers text on FF, ignored by Webkit */\n  background-color: var(--background-color);\n  color: var(--text-color);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius);\n  box-shadow: none;\n  box-sizing: border-box; }\n/* Removes awkward default styles on some inputs for iOS */\ninput:not([type]),\ninput[type=\"email\"],\ninput[type=\"number\"],\ninput[type=\"search\"],\ninput[type=\"text\"],\ninput[type=\"tel\"],\ninput[type=\"url\"],\ninput[type=\"password\"],\ninput[type=\"button\"],\ninput[type=\"submit\"],\ntextarea {\n  -webkit-appearance: none;\n     -moz-appearance: none;\n          appearance: none; }\ntextarea {\n  min-height: 5em;\n  padding-top: 6px;\n  padding-bottom: 6px; }\ninput:not([type]):focus,\ninput[type=\"email\"]:focus,\ninput[type=\"number\"]:focus,\ninput[type=\"search\"]:focus,\ninput[type=\"text\"]:focus,\ninput[type=\"tel\"]:focus,\ninput[type=\"url\"]:focus,\ninput[type=\"password\"]:focus,\ntextarea:focus,\nselect:focus {\n  border: 1px solid var(--accent-color);\n  outline: 0; }\ninput:not([type]).error,\ninput[type=\"email\"].error,\ninput[type=\"number\"].error,\ninput[type=\"search\"].error,\ninput[type=\"text\"].error,\ninput[type=\"tel\"].error,\ninput[type=\"url\"].error,\ninput[type=\"password\"].error,\ntextarea.error,\nselect.error {\n  color: var(--error-color);\n  border: 1px solid var(--error-color);\n}\ninput:not([type]):disabled,\ninput[type=\"email\"]:disabled,\ninput[type=\"number\"]:disabled,\ninput[type=\"search\"]:disabled,\ninput[type=\"text\"]:disabled,\ninput[type=\"tel\"]:disabled,\ninput[type=\"url\"]:disabled,\ninput[type=\"password\"]:disabled,\ntextarea:disabled,\nselect:disabled {\n  color: var(--disabled-color);\n  background-color: var(--background-color-softer);\n}\nlabel,\nlegend {\n  display: block;\n  margin-bottom: .5em;\n  font-weight: var(--heavy-font-weight); }\nfieldset {\n  padding: 0;\n  border-width: 0; }\ninput[type=\"checkbox\"],\ninput[type=\"radio\"] {\n  display: inline; }\nlabel > .label-body {\n  display: inline-block;\n  margin-left: .5em;\n  font-weight: normal; }\n::placeholder {\n  color: var(--disabled-color);\n}\n\n/* Lists\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nul {\n  list-style: circle inside; }\nol {\n  list-style: decimal inside; }\nol, ul {\n  padding-left: 0;\n  margin-top: 0; }\nul ul, ul ol, ol ol, ol ul {\n\tfont-size: 100%;\n\tmargin: 1em 0 1em 3em;\n\tcolor: var(--text-color-softer);\n}\nli {\n  margin-bottom: 0.5em; }\n\n\n/* Scrollbars\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n::-webkit-scrollbar {\n  width: 1.25em;\n  height: 1.25em;\n}\n\n/* Track, Corner background color */\n::-webkit-scrollbar-track,\n::-webkit-scrollbar-corner,\n::-webkit-resizer {\n  background: transparent;\n}\n\n/* Buttons */\n::-webkit-scrollbar-button:single-button {\n  display: block;\n  width: 1.25em;\n  height: 1.25em;\n  border-radius: var(--corner-radius);\n  border-style: solid;\n}\n/* Up */\n::-webkit-scrollbar-button:vertical:decrement {\n  border-width: 0 0.625em 0.75em 0.625em;\n  border-color: transparent transparent var(--border-color-softer) transparent;\n}\n::-webkit-scrollbar-button:vertical:decrement:hover,\n::-webkit-scrollbar-button:vertical:decrement:active {\n  border-color: transparent transparent var(--text-color-softer) transparent;\n}\n/* Down */\n::-webkit-scrollbar-button:vertical:increment {\n  border-width: 0.75em 0.625em 0 0.625em;\n  border-color: var(--border-color-softer) transparent transparent transparent;\n}\n::-webkit-scrollbar-button:vertical:increment:hover,\n::-webkit-scrollbar-button:vertical:increment:active {\n  border-color: var(--text-color-softer) transparent transparent transparent;\n}\n/* Left */\n::-webkit-scrollbar-button:horizontal:decrement {\n  border-width: 0.625em 0.75em 0.625em 0;\n  border-color: transparent var(--border-color-softer) transparent transparent;\n}\n::-webkit-scrollbar-button:horizontal:decrement:hover,\n::-webkit-scrollbar-button:horizontal:decrement:active {\n  border-color: transparent var(--text-color-softer) transparent transparent;\n}\n/* Right */\n::-webkit-scrollbar-button:horizontal:increment {\n  border-width: 0.625em 0 0.625em 0.75em;\n  border-color: transparent transparent transparent var(--border-color-softer);\n}\n::-webkit-scrollbar-button:horizontal:increment:hover,\n::-webkit-scrollbar-button:horizontal:increment:active {\n  border-color: transparent transparent transparent var(--text-color-softer);\n}\n\n/* Handle */\n::-webkit-scrollbar-thumb {\n  border-radius: var(--corner-radius);\n  border: 1px solid var(--background-color);\n  background: var(--border-color-softer);\n}\n::-webkit-scrollbar-thumb:hover {\n  cursor: grab;\n  background: var(--text-color-softer);\n}\n::-webkit-scrollbar-thumb:active {\n  cursor: grabbing;\n  background: var(--text-color-softer);\n}\n\n/* Code\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\ncode {\n  padding: .2em .5em;\n  margin: 0 .2em;\n  font-size: 90%;\n  white-space: nowrap;\n  background: var(--background-color-richer);\n  border: 1px solid var(--border-color-softer);\n  border-radius: var(--corner-radius); }\npre > code {\n  display: block;\n  padding: 1em 1.5em;\n  white-space: pre;\n  overflow: auto; }\n\n\n/* Tables\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nth,\ntd {\n  padding: 12px 15px;\n  text-align: left;\n  border-bottom: 1px solid var(--border-color-softer); }\nth:first-child,\ntd:first-child {\n  padding-left: 0; }\nth:last-child,\ntd:last-child {\n  padding-right: 0; }\n\n\n/* Spacing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nbutton,\n.button {\n  margin-bottom: 1em; }\ninput,\ntextarea,\nselect,\nfieldset {\n  margin-bottom: 1.5em; }\npre,\nblockquote,\ndl,\nfigure,\ntable,\np,\nul,\nol,\nform {\n  margin-bottom: 2.5em; }\n\n\n/* Utilities\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n.u-full-width {\n  width: 100%;\n  box-sizing: border-box; }\n.u-max-full-width {\n  max-width: 100%;\n  box-sizing: border-box; }\n.u-pull-right {\n  float: right; }\n.u-pull-left {\n  float: left; }\n.u-align-left {\n\ttext-align: left; }\n.u-align-right {\n\ttext-align: right; }\n\n\n/* Misc\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\nhr {\n  margin-top: 3em;\n  margin-bottom: 3.5em;\n  border-width: 0;\n  border-top: 1px solid var(--border-color-softer); }\n\niframe {\n\tborder: 0;\n\tbackground-color: white;\n}\n\n\n/* Clearing\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n\n/* Self Clearing Goodness */\n/*.container:after,\n.row:after,\n.u-cf {\n  content: \"\";\n  display: table;\n  clear: both; }*/\n\n\n/* Media Queries\n–––––––––––––––––––––––––––––––––––––––––––––––––– */\n/*\nNote: The best way to structure the use of media queries is to create the queries\nnear the relevant code. For example, if you wanted to change the styles for buttons\non small devices, paste the mobile query code up in the buttons section and style it\nthere.\n*/\n\n\n/* Larger than mobile (default point when grid becomes active) */\n@media (min-width: 600px) {}\n\n/* Larger than phablet */\n@media (min-width: 900px) {}\n\n/* Larger than tablet */\n@media (min-width: 1200px) {}\n";
 
 /* globals d3, uki */
 
-const defaultStyle$3 = normalize + honegumi;
+const defaultStyle$5 = normalize + honegumi;
 
 class GlobalUI extends ThemeableMixin({
   SuperClass: uki.Model,
-  defaultStyle: defaultStyle$3,
+  defaultStyle: defaultStyle$5,
   className: 'GlobalUI',
   cnNotOnD3el: true // not actually used, because there's no d3el anyway
 }) {
@@ -1348,41 +1383,49 @@ class GlobalUI extends ThemeableMixin({
     return this.modal;
   }
 
-  async alert (message) {
+  async alert (message, modalArgs = {}) {
     return new Promise((resolve, reject) => {
-      this.showModal({
-        content: message,
-        buttonSpecs: ['defaultOK'],
-        confirmAction: resolve
-      });
+      modalArgs.content = modalArgs.content || message;
+      modalArgs.buttonSpecs = modalArgs.buttonSpecs || ['defaultOK'];
+      const customConfirm = modalArgs.confirmAction;
+      modalArgs.confirmAction = customConfirm
+        ? async () => { await customConfirm(); resolve(); }
+        : resolve;
+      this.showModal(modalArgs);
     });
   }
 
-  async confirm (message) {
+  async confirm (message, modalArgs = {}) {
     return new Promise((resolve, reject) => {
-      this.showModal({
-        content: message,
-        buttonSpecs: 'default',
-        cancelAction: () => { resolve(false); },
-        confirmAction: () => { resolve(true); }
-      });
+      modalArgs.content = modalArgs.content || message;
+      modalArgs.buttonSpecs = modalArgs.buttonSpecs || 'default';
+      const customCancel = modalArgs.cancelAction;
+      modalArgs.cancelAction = customCancel
+        ? async () => { await customCancel(); resolve(false); }
+        : () => { resolve(false); };
+      const customConfirm = modalArgs.confirmAction;
+      modalArgs.confirmAction = customConfirm
+        ? async () => { await customConfirm(); resolve(true); }
+        : () => { resolve(true); };
+      this.showModal(modalArgs);
     });
   }
 
-  async prompt (message, defaultValue, validate) {
-    validate = validate || (() => true);
+  async prompt (message, defaultValue, promptModalArgs) {
     return new Promise((resolve, reject) => {
-      this.showModal(new PromptModalView({
-        message,
-        defaultValue,
-        validate,
-        confirmAction: () => {
-          const currentValue = this.modal.modalContentEl
-            .select('.promptInputEl').node().value;
-          resolve(currentValue);
-        },
-        cancelAction: () => { resolve(null); }
-      }));
+      let promptView = null; // pointer to the view so we can resolve its value
+      promptModalArgs.message = promptModalArgs.message || message;
+      promptModalArgs.defaultValue = promptModalArgs.defaultValue || defaultValue;
+      const customCancel = promptModalArgs.cancelAction;
+      promptModalArgs.cancelAction = customCancel
+        ? async () => { await customCancel(null); resolve(null); }
+        : () => { resolve(null); };
+      const customConfirm = promptModalArgs.confirmAction;
+      promptModalArgs.confirmAction = customConfirm
+        ? async () => { await customConfirm(promptView.currentValue); resolve(promptView.currentValue); }
+        : () => { resolve(promptView.currentValue); };
+      promptView = new PromptModalView(promptModalArgs);
+      this.showModal(promptView);
     });
   }
 }
@@ -1458,18 +1501,21 @@ const { OverlaidView, OverlaidViewMixin } = uki.utils.createMixinAndDefault({
 
         await super.draw(...arguments);
 
-        this.updateOverlaySize();
+        if (this.overlayVisible) {
+          this.updateOverlaySize();
+        }
       }
 
       updateOverlaySize () {
-        // Match the position / size of this.d3el, relative to its parent
+        // Make sure the overlay covers both this.d3el and its parent, whichever
+        // is larger (e.g. this.d3el might be scrolled)
         const bounds = this.getBounds();
         const parentBounds = this.getBounds(d3.select(this.d3el.node().parentNode));
         this.overlayShadowEl
-          .style('top', (bounds.top - parentBounds.top) + 'px')
-          .style('left', (bounds.left - parentBounds.left) + 'px')
-          .style('right', (bounds.right - parentBounds.right) + 'px')
-          .style('bottom', (bounds.bottom - parentBounds.bottom) + 'px')
+          .style('top', '0px')
+          .style('left', '0px')
+          .style('width', Math.max(bounds.width, parentBounds.width) + 'px')
+          .style('height', Math.max(bounds.height, parentBounds.height) + 'px')
           .classed('shadowed', this.overlayShadow);
       }
 
@@ -1496,9 +1542,9 @@ const { OverlaidView, OverlaidViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-const img$1 = "data:image/svg+xml,%3c%3fxml version='1.0' encoding='utf-8'%3f%3e%3c!-- Generator: Adobe Illustrator 19.2.1%2c SVG Export Plug-In . SVG Version: 6.00 Build 0) --%3e%3csvg version='1.1' id='Layer_1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' x='0px' y='0px' viewBox='0 0 512 512' style='enable-background:new 0 0 512 512%3b' xml:space='preserve'%3e%3cstyle type='text/css'%3e .st0%7bfill:black%3b%7d%3c/style%3e%3cg%3e %3crect x='199.3' y='-40.9' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -106.0387 256)' class='st0' width='113.3' height='593.8'/%3e %3crect x='-40.9' y='199.3' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -106.0387 256)' class='st0' width='593.8' height='113.3'/%3e%3c/g%3e%3c/svg%3e";
+var img$1 = "data:image/svg+xml,%3c%3fxml version='1.0' encoding='utf-8'%3f%3e%3c!-- Generator: Adobe Illustrator 19.2.1%2c SVG Export Plug-In . SVG Version: 6.00 Build 0) --%3e%3csvg version='1.1' id='Layer_1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' x='0px' y='0px' viewBox='0 0 512 512' style='enable-background:new 0 0 512 512%3b' xml:space='preserve'%3e%3cstyle type='text/css'%3e .st0%7bfill:black%3b%7d%3c/style%3e%3cg%3e %3crect x='199.3' y='-40.9' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -106.0387 256)' class='st0' width='113.3' height='593.8'/%3e %3crect x='-40.9' y='199.3' transform='matrix(0.7071 -0.7071 0.7071 0.7071 -106.0387 256)' class='st0' width='593.8' height='113.3'/%3e%3c/g%3e%3c/svg%3e";
 
-var defaultStyle$5 = ".InformativeView {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n}\n.InformativeView .informativeIconEl {\n  width: 2em;\n  height: 2em;\n  filter: url(#recolorImageTo--inverted-shadow-color);\n}\n.InformativeView .informativeIconEl.spin {\n  animation-name: loadingSpinnerKeyframes;\n  animation-duration: 2000ms;\n  animation-iteration-count: infinite;\n  animation-timing-function: linear;\n}\n.InformativeView .informativeMessageEl {\n  margin-top: 1em;\n  font-weight: 600;\n}\n.InformativeView .informativeErrorEl {\n  margin-top: 2em;\n  align-self: flex-start;\n}\n.InformativeView .informativeErrorEl pre {\n  max-height: 30em;\n  overflow: auto;\n}\n.InformativeView.error .informativeIconEl {\n  filter: url(#recolorImageTo--error-color);\n}\n.InformativeView.error .informativeMessageEl {\n  color: var(--error-color);\n}\n@keyframes loadingSpinnerKeyframes {\n  from {\n    transform: rotate(0deg);\n  }\n  to {\n    transform: rotate(360deg);\n  }\n}\n";
+var defaultStyle$3 = ".InformativeView {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n}\n.InformativeView .informativeIconEl {\n  width: 2em;\n  height: 2em;\n  filter: url(#recolorImageTo--inverted-shadow-color);\n}\n.InformativeView .informativeIconEl.spin {\n  animation-name: loadingSpinnerKeyframes;\n  animation-duration: 2000ms;\n  animation-iteration-count: infinite;\n  animation-timing-function: linear;\n}\n.InformativeView .informativeMessageEl {\n  margin-top: 1em;\n  font-weight: 600;\n}\n.InformativeView .informativeErrorEl {\n  margin-top: 2em;\n  align-self: flex-start;\n}\n.InformativeView .informativeErrorEl pre {\n  max-height: 30em;\n  overflow: auto;\n  font: 10px monospace;\n}\n.InformativeView.error .informativeIconEl {\n  filter: url(#recolorImageTo--error-color);\n}\n.InformativeView.error .informativeMessageEl {\n  color: var(--error-color);\n}\n@keyframes loadingSpinnerKeyframes {\n  from {\n    transform: rotate(0deg);\n  }\n  to {\n    transform: rotate(360deg);\n  }\n}\n";
 
 /* globals uki */
 
@@ -1506,7 +1552,7 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
   DefaultSuperClass: OverlaidView,
   classDefFunc: SuperClass => {
     class InformativeView extends RecolorableImageViewMixin(OverlaidViewMixin(ThemeableMixin({
-      SuperClass, defaultStyle: defaultStyle$5, className: 'InformativeView', cnNotOnD3el: true
+      SuperClass, defaultStyle: defaultStyle$3, className: 'InformativeView', cnNotOnD3el: true
     }))) {
       constructor (options) {
         super(options);
@@ -1516,9 +1562,9 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
         this._informativeImg = options.informativeImg || null;
         this._loading = options.loading || false;
         this._firstRenderCompleted = false;
-        this.on('load', () => {
-          this.render();
-        });
+        this.on('resourcesLoaded', () => { this.render(); });
+        this.on('resourceLoaded', () => { this.render(); });
+        this.on('resourceUnloaded', () => { this.render(); });
       }
 
       get informativeMessage () {
@@ -1539,7 +1585,7 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
       }
 
       get error () {
-        return this._error;
+        return this._error || this.resources.find(r => r instanceof Error) || null;
       }
 
       set error (value) {
@@ -1548,7 +1594,7 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
       }
 
       get isLoading () {
-        return this._loading || !this._resourcesLoaded || !this._firstRenderCompleted;
+        return super.isLoading || this._loading || !this._firstRenderCompleted;
       }
 
       set isLoading (value) {
@@ -1572,11 +1618,13 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
       async loadLateResource () {
         this.render();
         await super.loadLateResource(...arguments);
+        this.render();
       }
 
       async updateResource () {
         this.render();
         await super.updateResource(...arguments);
+        this.render();
       }
 
       async setup () {
@@ -1607,7 +1655,13 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
           this.informativeErrorEl = this.overlayContentEl.append('details')
             .classed('informativeErrorEl', true)
             .style('display', 'none');
-          this.informativeErrorEl.append('pre');
+          this.informativeErrorEl.append('pre').classed('body', true);
+          this.informativeErrorEl.append('pre').classed('stack', true);
+          this.informativeErrorRethrowButton = new ButtonView({
+            d3el: this.informativeErrorEl.append('div'),
+            label: 'Rethrow in DevTools',
+            primary: true
+          });
         }
       }
 
@@ -1616,11 +1670,11 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
 
         await super.draw(...arguments);
 
-        if (this._error) {
-          await this.drawError(this.d3el, this._error);
+        if (this.error) {
+          await this.drawError(this.d3el, this.error);
         } else {
           this.overlayContentEl.classed('error', false);
-          this.informativeIconEl.attr('src', this.isLoading ? img : this.informativeImg)
+          this.informativeIconEl.attr('src', this.isLoading ? img$2 : this.informativeImg)
             .style('display', this.isLoading || this.informativeImg ? null : 'none')
             .classed('spin', this.isLoading);
           this.informativeMessageEl.text(this.isLoading ? this.loadingMessage : this.informativeMessage)
@@ -1632,8 +1686,8 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
       async drawError (d3el, error) {
         // In the event that there are multiple errors (i.e. this._error could
         // be different than error), we want to show the earliest one (e.g. one
-        // from setup() or from some custom source) before showing an error from
-        // draw()
+        // from setup() or one from a subclass overriding the this.error getter)
+        // before showing an error from draw()
         error = this._error || error;
 
         // Force the overlay to display; it may not have displayed
@@ -1647,12 +1701,17 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
           .classed('spin', false);
         this.informativeMessageEl.text('An error occurred while attempting to render this view')
           .style('display', null);
-        this.informativeErrorEl.style('display', null)
-          .select('pre')
-          .text(error.stack)
-          .on('click', () => {
-            throw error;
-          });
+        this.informativeErrorEl.style('display', null);
+        let errorBody = error.body || null;
+        if (errorBody && errorBody instanceof Object) {
+          // Display objects (usually details from a server error) as pretty JSON
+          errorBody = JSON.stringify(errorBody, null, 2);
+        }
+        this.informativeErrorEl.select('.body')
+          .text(errorBody);
+        this.informativeErrorEl.select('.stack')
+          .text(error.stack);
+        this.informativeErrorRethrowButton.onclick = () => { throw error; };
       }
     }
     return InformativeView;
@@ -1667,7 +1726,7 @@ const { ParentSizeView, ParentSizeViewMixin } = uki.utils.createMixinAndDefault(
     class ParentSizeView extends SuperClass {
       getBounds (parent = d3.select(this.d3el.node().parentNode)) {
         // Temporarily set this element's size to 0,0 so that it doesn't influence
-        // it's parent's natural size
+        // its parent's natural size
         const previousBounds = {
           width: this.d3el.attr('width'),
           height: this.d3el.attr('height')
@@ -1756,7 +1815,7 @@ const { AnimatedView, AnimatedViewMixin } = uki.utils.createMixinAndDefault({
 const { SvgView, SvgViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
   classDefFunc: SuperClass => {
-    class SvgView extends ParentSizeViewMixin(SuperClass) {
+    class SvgView extends SuperClass {
       async setup () {
         const tagName = this.d3el.node().tagName.toUpperCase();
         if (tagName !== 'SVG') {
@@ -1807,6 +1866,12 @@ const { SvgView, SvgViewMixin } = uki.utils.createMixinAndDefault({
         link.node().click();
         link.remove();
       }
+
+      updateContainerCharacteristics (d3el) {
+        // Computing em and scrollbar sizes doesn't work on SVG elements; use
+        // its parent node
+        super.updateContainerCharacteristics(d3.select(d3el.node().parentNode));
+      }
     }
     return SvgView;
   }
@@ -1817,7 +1882,7 @@ const { SvgView, SvgViewMixin } = uki.utils.createMixinAndDefault({
 const { CanvasView, CanvasViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
   classDefFunc: SuperClass => {
-    class CanvasView extends ParentSizeViewMixin(SuperClass) {
+    class CanvasView extends SuperClass {
       async setup () {
         const tagName = this.d3el.node().tagName.toUpperCase();
         if (tagName !== 'CANVAS') {
@@ -1834,6 +1899,12 @@ const { CanvasView, CanvasViewMixin } = uki.utils.createMixinAndDefault({
         link.node().click();
         link.remove();
       }
+
+      updateContainerCharacteristics (d3el) {
+        // Computing em and scrollbar sizes doesn't work on canvas elements; use
+        // its parent node
+        super.updateContainerCharacteristics(d3.select(d3el.node().parentNode));
+      }
     }
     return CanvasView;
   }
@@ -1844,7 +1915,7 @@ const { CanvasView, CanvasViewMixin } = uki.utils.createMixinAndDefault({
 const { IFrameView, IFrameViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
   classDefFunc: SuperClass => {
-    class IFrameView extends ParentSizeViewMixin(SuperClass) {
+    class IFrameView extends SuperClass {
       constructor (options) {
         super(options);
         this._src = options.src;
@@ -1885,15 +1956,33 @@ const { IFrameView, IFrameViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-var defaultStyle$6 = ".GLRootView,\n.lm_dragging {\n  overflow: hidden;\n}\n.GLRootView .lm_goldenlayout,\n.lm_dragging .lm_goldenlayout {\n  background: transparent;\n}\n.GLRootView .lm_content,\n.lm_dragging .lm_content {\n  background: var(--background-color);\n  border: 1px solid var(--border-color);\n}\n.GLRootView .lm_dragProxy .lm_content,\n.lm_dragging .lm_dragProxy .lm_content {\n  box-shadow: 2px 2px 4px rgba(var(--shadow-color-rgb), 0.2);\n}\n.GLRootView .lm_dropTargetIndicator,\n.lm_dragging .lm_dropTargetIndicator {\n  box-shadow: inset 0 0 30px rgba(var(--shadow-color-rgb), 40%);\n  outline: 1px dashed var(--border-color);\n}\n.GLRootView .lm_dropTargetIndicator .lm_inner,\n.lm_dragging .lm_dropTargetIndicator .lm_inner {\n  background: var(--shadow-color);\n  opacity: 0.1;\n}\n.GLRootView .lm_splitter,\n.lm_dragging .lm_splitter {\n  background: var(--background-color-richer);\n  opacity: 0.001;\n  transition: opacity 200ms ease;\n}\n.GLRootView .lm_splitter:hover,\n.lm_dragging .lm_splitter:hover,\n.GLRootView .lm_splitter.lm_dragging,\n.lm_dragging .lm_splitter.lm_dragging {\n  background: var(--background-color-richer);\n  opacity: 1;\n}\n.GLRootView .lm_header,\n.lm_dragging .lm_header {\n  height: var(--form-element-height) !important;\n}\n.GLRootView .lm_header .lm_tab,\n.lm_dragging .lm_header .lm_tab {\n  font-weight: 600;\n  font-size: 11px;\n  height: calc(var(--form-element-height) - 7.2px);\n  letter-spacing: 0.1em;\n  text-transform: uppercase;\n  color: var(--text-color-softer);\n  background: var(--background-color-softer);\n  display: flex;\n  align-items: center;\n  white-space: nowrap;\n  margin: 0;\n  padding: 2.4px 1.5em 4px 1.5em;\n  border: 1px solid var(--border-color);\n  border-bottom: none;\n  border-radius: var(--corner-radius) var(--corner-radius) 0 0;\n}\n.GLRootView .lm_header .lm_tab .lm_title,\n.lm_dragging .lm_header .lm_tab .lm_title {\n  padding-top: 1px;\n  margin: 0 0.5em;\n}\n.GLRootView .lm_header .lm_tab .icon,\n.lm_dragging .lm_header .lm_tab .icon {\n  margin: 0 0.5em;\n  filter: url(#recolorImageTo--disabled-color);\n}\n.GLRootView .lm_header .lm_tab .icon img,\n.lm_dragging .lm_header .lm_tab .icon img {\n  width: 11px;\n  height: 11px;\n  margin-top: 5px;\n}\n.GLRootView .lm_header .lm_tab .icon:hover,\n.lm_dragging .lm_header .lm_tab .icon:hover {\n  filter: url(#recolorImageTo--text-color);\n}\n.GLRootView .lm_header .lm_tab .lm_close_tab,\n.lm_dragging .lm_header .lm_tab .lm_close_tab {\n  position: relative;\n  top: -0.3em;\n  margin: 0 -0.5em 0 0.5em;\n}\n.GLRootView .lm_header .lm_tab .lm_close_tab:after,\n.lm_dragging .lm_header .lm_tab .lm_close_tab:after {\n  content: '\\2a09';\n  color: var(--disabled-color);\n  font-size: 1.3em;\n}\n.GLRootView .lm_header .lm_tab .lm_close_tab:hover:after,\n.lm_dragging .lm_header .lm_tab .lm_close_tab:hover:after {\n  color: var(--text-color);\n}\n.GLRootView .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_header .lm_tab.lm_active {\n  padding-bottom: 5px;\n}\n.GLRootView .lm_tabdropdown_list,\n.lm_dragging .lm_tabdropdown_list {\n  border-radius: var(--corner-radius);\n  box-shadow: 2px 2px 5px rgba(var(--shadow-color-rgb), 0.75);\n}\n.GLRootView .lm_tabdropdown_list .lm_tab,\n.lm_dragging .lm_tabdropdown_list .lm_tab {\n  border: none;\n  border-radius: 0;\n}\n.GLRootView .lm_tabdropdown_list .lm_tab .icon,\n.lm_dragging .lm_tabdropdown_list .lm_tab .icon {\n  display: none;\n}\n.GLRootView .lm_dragProxy.lm_right .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_dragProxy.lm_right .lm_header .lm_tab.lm_active,\n.GLRootView .lm_stack.lm_right .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_stack.lm_right .lm_header .lm_tab.lm_active {\n  box-shadow: 2px -2px 2px -2px rgba(var(--shadow-color-rgb), 0.2);\n}\n.GLRootView .lm_dragProxy.lm_bottom .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_dragProxy.lm_bottom .lm_header .lm_tab.lm_active,\n.GLRootView .lm_stack.lm_bottom .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_stack.lm_bottom .lm_header .lm_tab.lm_active {\n  box-shadow: 2px 2px 2px -2px rgba(var(--shadow-color-rgb), 0.2);\n}\n.GLRootView .lm_selected .lm_header,\n.lm_dragging .lm_selected .lm_header {\n  background-color: #452500;\n}\n.GLRootView .lm_tab:hover,\n.lm_dragging .lm_tab:hover,\n.GLRootView .lm_tab.lm_active,\n.lm_dragging .lm_tab.lm_active {\n  background: var(--background-color);\n  color: var(--text-color);\n}\n.GLRootView .lm_controls > li,\n.lm_dragging .lm_controls > li {\n  position: relative;\n  margin: 0 0.25em;\n}\n.GLRootView .lm_controls > li.lm_tabdropdown:before,\n.lm_dragging .lm_controls > li.lm_tabdropdown:before,\n.GLRootView .lm_controls > li:after,\n.lm_dragging .lm_controls > li:after {\n  color: var(--disabled-color);\n}\n.GLRootView .lm_controls > li.lm_tabdropdown:hover:before,\n.lm_dragging .lm_controls > li.lm_tabdropdown:hover:before,\n.GLRootView .lm_controls > li:hover:after,\n.lm_dragging .lm_controls > li:hover:after {\n  color: var(--text-color);\n}\n.GLRootView .lm_controls .lm_popout:after,\n.lm_dragging .lm_controls .lm_popout:after {\n  content: '\\1f5d7';\n}\n.GLRootView .lm_controls .lm_maximise:after,\n.lm_dragging .lm_controls .lm_maximise:after {\n  content: '\\1f5d6';\n}\n.GLRootView .lm_controls .lm_close,\n.lm_dragging .lm_controls .lm_close {\n  margin: 1px 0 0 0.25em;\n}\n.GLRootView .lm_controls .lm_close:after,\n.lm_dragging .lm_controls .lm_close:after {\n  content: '\\2a09';\n}\n.GLRootView .lm_maximised .lm_header,\n.lm_dragging .lm_maximised .lm_header {\n  background-color: var(--text-color-softer);\n}\n.GLRootView .lm_maximised .lm_controls .lm_maximise:after,\n.lm_dragging .lm_maximised .lm_controls .lm_maximise:after {\n  content: '\\1f5d5';\n}\n.GLRootView .lm_transition_indicator,\n.lm_dragging .lm_transition_indicator {\n  background-color: var(--shadow-color);\n  border: 1px dashed var(--border-color);\n}\n.lm_popin {\n  cursor: pointer;\n  top: 0;\n  left: 0;\n  bottom: unset;\n  right: unset;\n  background: var(--background-color);\n  border: 1px solid var(--border-color);\n  border-radius: 0 0 var(--corner-radius) 0;\n}\n.lm_popin:after {\n  content: '\\25f0';\n  color: var(--text-color-softer);\n  position: relative;\n  top: -3px;\n  right: -3px;\n}\n.lm_popin:hover {\n  border-color: var(--text-color-softer);\n}\n.lm_popin:hover:after {\n  color: var(--text-color);\n}\n.lm_popin .lm_bg {\n  display: none;\n}\n.lm_popin .lm_icon {\n  display: none;\n}\n";
+var defaultStyle$2 = ".GLRootView,\n.lm_dragging {\n  overflow: hidden;\n}\n.GLRootView .lm_goldenlayout,\n.lm_dragging .lm_goldenlayout {\n  background: transparent;\n}\n.GLRootView .lm_content,\n.lm_dragging .lm_content {\n  background: var(--background-color);\n  border: 1px solid var(--border-color);\n}\n.GLRootView .lm_dragProxy .lm_content,\n.lm_dragging .lm_dragProxy .lm_content {\n  box-shadow: 2px 2px 4px rgba(var(--shadow-color-rgb), 0.2);\n}\n.GLRootView .lm_dropTargetIndicator,\n.lm_dragging .lm_dropTargetIndicator {\n  box-shadow: inset 0 0 30px rgba(var(--shadow-color-rgb), 40%);\n  outline: 1px dashed var(--border-color);\n}\n.GLRootView .lm_dropTargetIndicator .lm_inner,\n.lm_dragging .lm_dropTargetIndicator .lm_inner {\n  background: var(--shadow-color);\n  opacity: 0.1;\n}\n.GLRootView .lm_splitter,\n.lm_dragging .lm_splitter {\n  background: var(--background-color-richer);\n  opacity: 0.001;\n  transition: opacity 200ms ease;\n}\n.GLRootView .lm_splitter:hover,\n.lm_dragging .lm_splitter:hover,\n.GLRootView .lm_splitter.lm_dragging,\n.lm_dragging .lm_splitter.lm_dragging {\n  background: var(--background-color-richer);\n  opacity: 1;\n}\n.GLRootView .lm_header,\n.lm_dragging .lm_header {\n  height: var(--form-element-height) !important;\n}\n.GLRootView .lm_header .lm_tab,\n.lm_dragging .lm_header .lm_tab {\n  font-weight: 600;\n  font-size: 11px;\n  height: calc(var(--form-element-height) - 7.2px);\n  letter-spacing: 0.1em;\n  text-transform: uppercase;\n  color: var(--text-color-softer);\n  background: var(--background-color-softer);\n  display: flex;\n  align-items: center;\n  white-space: nowrap;\n  margin: 0;\n  padding: 2.4px 1.5em 4px 1.5em;\n  border: 1px solid var(--border-color);\n  border-bottom: none;\n  border-radius: var(--corner-radius) var(--corner-radius) 0 0;\n}\n.GLRootView .lm_header .lm_tab .lm_title,\n.lm_dragging .lm_header .lm_tab .lm_title {\n  padding-top: 1px;\n  margin: 0 0.5em;\n}\n.GLRootView .lm_header .lm_tab .icon,\n.lm_dragging .lm_header .lm_tab .icon {\n  margin: 0 0.5em;\n  filter: url(#recolorImageTo--disabled-color);\n}\n.GLRootView .lm_header .lm_tab .icon img,\n.lm_dragging .lm_header .lm_tab .icon img {\n  width: 11px;\n  height: 11px;\n  margin-top: 5px;\n}\n.GLRootView .lm_header .lm_tab .icon:hover,\n.lm_dragging .lm_header .lm_tab .icon:hover {\n  filter: url(#recolorImageTo--text-color);\n}\n.GLRootView .lm_header .lm_tab .lm_close_tab,\n.lm_dragging .lm_header .lm_tab .lm_close_tab {\n  position: relative;\n  top: -0.3em;\n  margin: 0 -0.5em 0 0.5em;\n}\n.GLRootView .lm_header .lm_tab .lm_close_tab:after,\n.lm_dragging .lm_header .lm_tab .lm_close_tab:after {\n  content: '\\2a09';\n  color: var(--disabled-color);\n  font-size: 1.3em;\n}\n.GLRootView .lm_header .lm_tab .lm_close_tab:hover:after,\n.lm_dragging .lm_header .lm_tab .lm_close_tab:hover:after {\n  color: var(--text-color);\n}\n.GLRootView .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_header .lm_tab.lm_active {\n  padding-bottom: 5px;\n}\n.GLRootView .lm_tabdropdown_list,\n.lm_dragging .lm_tabdropdown_list {\n  border-radius: var(--corner-radius);\n  box-shadow: 2px 2px 5px rgba(var(--shadow-color-rgb), 0.75);\n}\n.GLRootView .lm_tabdropdown_list .lm_tab,\n.lm_dragging .lm_tabdropdown_list .lm_tab {\n  border: none;\n  border-radius: 0;\n}\n.GLRootView .lm_tabdropdown_list .lm_tab .icon,\n.lm_dragging .lm_tabdropdown_list .lm_tab .icon {\n  display: none;\n}\n.GLRootView .lm_dragProxy.lm_right .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_dragProxy.lm_right .lm_header .lm_tab.lm_active,\n.GLRootView .lm_stack.lm_right .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_stack.lm_right .lm_header .lm_tab.lm_active {\n  box-shadow: 2px -2px 2px -2px rgba(var(--shadow-color-rgb), 0.2);\n}\n.GLRootView .lm_dragProxy.lm_bottom .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_dragProxy.lm_bottom .lm_header .lm_tab.lm_active,\n.GLRootView .lm_stack.lm_bottom .lm_header .lm_tab.lm_active,\n.lm_dragging .lm_stack.lm_bottom .lm_header .lm_tab.lm_active {\n  box-shadow: 2px 2px 2px -2px rgba(var(--shadow-color-rgb), 0.2);\n}\n.GLRootView .lm_selected .lm_header,\n.lm_dragging .lm_selected .lm_header {\n  background-color: #452500;\n}\n.GLRootView .lm_tab:hover,\n.lm_dragging .lm_tab:hover,\n.GLRootView .lm_tab.lm_active,\n.lm_dragging .lm_tab.lm_active {\n  background: var(--background-color);\n  color: var(--text-color);\n}\n.GLRootView .lm_controls > li,\n.lm_dragging .lm_controls > li {\n  position: relative;\n  margin: 0 0.25em;\n}\n.GLRootView .lm_controls > li.lm_tabdropdown:before,\n.lm_dragging .lm_controls > li.lm_tabdropdown:before,\n.GLRootView .lm_controls > li:after,\n.lm_dragging .lm_controls > li:after {\n  color: var(--disabled-color);\n}\n.GLRootView .lm_controls > li.lm_tabdropdown:hover:before,\n.lm_dragging .lm_controls > li.lm_tabdropdown:hover:before,\n.GLRootView .lm_controls > li:hover:after,\n.lm_dragging .lm_controls > li:hover:after {\n  color: var(--text-color);\n}\n.GLRootView .lm_controls .lm_popout:after,\n.lm_dragging .lm_controls .lm_popout:after {\n  content: '\\1f5d7';\n}\n.GLRootView .lm_controls .lm_maximise:after,\n.lm_dragging .lm_controls .lm_maximise:after {\n  content: '\\1f5d6';\n}\n.GLRootView .lm_controls .lm_close,\n.lm_dragging .lm_controls .lm_close {\n  margin: 1px 0 0 0.25em;\n}\n.GLRootView .lm_controls .lm_close:after,\n.lm_dragging .lm_controls .lm_close:after {\n  content: '\\2a09';\n}\n.GLRootView .lm_maximised .lm_header,\n.lm_dragging .lm_maximised .lm_header {\n  background-color: var(--text-color-softer);\n}\n.GLRootView .lm_maximised .lm_controls .lm_maximise:after,\n.lm_dragging .lm_maximised .lm_controls .lm_maximise:after {\n  content: '\\1f5d5';\n}\n.GLRootView .lm_transition_indicator,\n.lm_dragging .lm_transition_indicator {\n  background-color: var(--shadow-color);\n  border: 1px dashed var(--border-color);\n}\n.lm_popin {\n  cursor: pointer;\n  top: 0;\n  left: 0;\n  bottom: unset;\n  right: unset;\n  background: var(--background-color);\n  border: 1px solid var(--border-color);\n  border-radius: 0 0 var(--corner-radius) 0;\n}\n.lm_popin:after {\n  content: '\\25f0';\n  color: var(--text-color-softer);\n  position: relative;\n  top: -3px;\n  right: -3px;\n}\n.lm_popin:hover {\n  border-color: var(--text-color-softer);\n}\n.lm_popin:hover:after {\n  color: var(--text-color);\n}\n.lm_popin .lm_bg {\n  display: none;\n}\n.lm_popin .lm_icon {\n  display: none;\n}\n";
 
 /* globals GoldenLayout, uki */
+
+/*
+  For forwarding each of GoldenLayout's events as uki events
+ */
+const EVENTS_TO_FORWARD = [
+  'initialised',
+  'stateChanged',
+  'windowOpened',
+  'windowClosed',
+  'selectionChanged',
+  'itemDestroyed',
+  'itemCreated',
+  'componentCreated',
+  'rowCreated',
+  'columnCreated',
+  'stackCreated',
+  'tabCreated'
+];
 
 const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
   classDefFunc: SuperClass => {
     class GLRootView extends RecolorableImageViewMixin(ThemeableMixin({
-      SuperClass, defaultStyle: defaultStyle$6, className: 'GLRootView'
+      SuperClass, defaultStyle: defaultStyle$2, className: 'GLRootView'
     })) {
       constructor (options) {
         options.resources = options.resources || [];
@@ -1929,94 +2018,168 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
         }
         super(options);
 
-        this.glSettings = options.glSettings || {
-          content: [{
-            type: 'stack',
-            content: []
-          }]
-        };
+        this._useThemeHeaderHeight = options.useThemeHeaderHeight || true;
+
+        // GoldenLayout requires that there be exactly one root item; we
+        // abstract that requirement away with options.glLayout referring to
+        // the first meaningful layer of items
+        if (options.glSettings) {
+          this._glSettings = options.glSettings;
+        } else {
+          this._glSettings = this.getDefaultGLSettings();
+          if (options.glLayout) {
+            this._glSettings.content[0] = options.glLayout;
+          }
+        }
+
         this.viewClassLookup = options.viewClassLookup;
+        this._fixingTabs = false;
+      }
+
+      getDefaultGLLayout () {
+        return {
+          type: 'stack',
+          content: [],
+          isClosable: false
+        };
+      }
+
+      getDefaultGLSettings () {
+        return {
+          content: [this.getDefaultGLLayout()]
+        };
       }
 
       setupLayout () {
-        // Add some default settings if they're not already set
-        this.glSettings.dimensions = this.glSettings.dimensions || {};
-        this.glSettings.dimensions.headerHeight =
-          this.glSettings.dimensions.headerHeight ||
-          parseInt(this.d3el.style('--form-element-height'));
+        const themeHeaderHeight = parseInt(this.d3el.style('--form-element-height'));
+        if (this._useThemeHeaderHeight && themeHeaderHeight !== undefined) {
+          this._glSettings.dimensions = this._glSettings.dimensions || {};
+          this._glSettings.dimensions.headerHeight = themeHeaderHeight;
+        }
 
         // Create the GoldenLayout instance and infrastructure for creating /
         // referencing views
-        this.goldenLayout = new GoldenLayout(this.glSettings, this.d3el.node());
+        this.goldenLayout = new GoldenLayout(this._glSettings, this.d3el.node());
         this.views = {};
         for (const [className, ViewClass] of Object.entries(this.viewClassLookup)) {
           const self = this;
-          this.goldenLayout.registerComponent(className, function (container, state) {
-            const view = self.createView(ViewClass, container, state);
+          this.goldenLayout.registerComponent(className, function (glContainer, glState) {
+            const view = new ViewClass({ glContainer, glState, glRootView: this });
             self.views[view.viewID] = view;
+            // Sneaky way to track the view instance *after* the container is
+            // created, without needing to take over GoldentLayout's native
+            // config ids for uki purposes
+            glContainer._config._ukiViewID = view.viewID;
             view.on('tabDrawn', () => { self.fixTabs(); });
           });
         }
-        this.goldenLayout.on('windowOpened', () => {
-          // TODO: deal with popouts
-        });
-        this.goldenLayout.on('itemDestroyed', component => {
-          const recurse = (component) => {
-            if (component.instance) {
-              this.handleViewDestruction(component.instance);
-            } else if (component.contentItems) {
-              for (const childComponent of component.contentItems) {
+
+        // TODO: deal with popouts
+
+        // Forward GoldenLayout events
+        const self = this;
+        for (const eventName of EVENTS_TO_FORWARD) {
+          this.goldenLayout.on(eventName, function () {
+            self.trigger(eventName, Array.from(arguments));
+          });
+        }
+        // Make sure to remove our references to a view when it's destroyed, and
+        // prevent it from rendering in a destroyed state
+        this.on('itemDestroyed.GLRootView', glItem => {
+          const recurse = (glItem) => {
+            const view = this.views[glItem.config?._ukiViewID];
+            if (view) {
+              this.handleViewDestruction(view);
+            } else if (glItem.contentItems) {
+              for (const childComponent of glItem.contentItems) {
                 recurse(childComponent);
               }
             }
           };
-          recurse(component);
+          recurse(glItem);
           this.renderAllViews();
-        });
-        window.addEventListener('resize', () => {
-          this.goldenLayout.updateSize();
-          this.render();
         });
         this.goldenLayout.init();
       }
 
-      createView (ViewClass, glContainer, glState) {
-        return new ViewClass({ glContainer, glState });
-      }
-
       handleViewDestruction (view) {
         // Prevent the view from rendering and remove it from our lookup
-        view.pauseRender = true;
+        view.revokeD3elOwnership();
         delete this.views[view.viewID];
       }
 
       raiseView (view) {
-        let child = view.glContainer;
-        let parent = child.parent;
-        while (parent !== null && parent.setActiveContentItem) {
-          child = child.parent;
-          parent = parent.parent;
-        }
+        const child = view.glContainer.parent; // get the glItem, not the glContainer
+        const parent = child.parent;
         if (parent.setActiveContentItem) {
           parent.setActiveContentItem(child);
         }
       }
 
-      getLayout () {
+      get glLayout () {
         return this.goldenLayout.toConfig().content[0];
       }
 
-      setLayout (layout) {
-        while (this.goldenLayout.root.contentItems.length > 0) {
-          this.goldenLayout.root.contentItems[0].remove();
+      set glLayout (glLayout) {
+        if (this.goldenLayout) {
+          // Extract the current glSettings; we only want to change the layout
+          this._glSettings = this.goldenLayout.toConfig();
+          this._glSettings.content[0] = glLayout;
+
+          // Make sure existing views and elements are properly destroyed
+          while (this.goldenLayout.root.contentItems.length > 0) {
+            this.goldenLayout.root.contentItems[0].remove();
+          }
+          this.goldenLayout.destroy();
+
+          // Re-initialize
+          this.setupLayout();
+        } else {
+          // We haven't initialized goldenLayout yet, so just override whatever
+          // settings we had before
+          this._glSettings.content[0] = glLayout;
         }
-        this.goldenLayout.root.addChild(layout);
+      }
+
+      addView (glConfig, glItem, index) {
+        const helper = item => {
+          let targetItem = glItem(item);
+          let index = 0;
+          const children = item.contentItems || [];
+          while (!targetItem && index < children.length) {
+            targetItem = helper(children[index]);
+            index += 1;
+          }
+          return targetItem || null;
+        };
+        if (typeof glItem === 'function') {
+          // Iterate through the hierarchy for which thing to use as a parent...
+          glItem = helper(this.goldenLayout.root.contentItems[0]);
+        }
+        if (!glItem) {
+          // ...or default to the root if we can't find a suitable place for it
+          glItem = this.goldenLayout.root.contentItems[0];
+        }
+        if (typeof index === 'function') {
+          // Given that we're adding to glItem, where should the new view go?
+          index = index(glItem);
+        }
+        index = index || 0;
+        glItem.addChild(glConfig, index);
+      }
+
+      clearLayout () {
+        this.glLayout = this.getDefaultGLLayout();
       }
 
       async setup () {
         await super.setup(...arguments);
 
         this.setupLayout();
+        window.addEventListener('resize', () => {
+          this.goldenLayout.updateSize();
+          this.render();
+        });
         this.renderAllViews();
       }
 
@@ -2035,11 +2198,17 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
       }
 
       fixTabs () {
+        if (this._fixingTabs) {
+          return;
+        }
+        this._fixingTabs = true;
         globalThis.clearTimeout(this._fixTabsTimeout);
         this._fixTabsTimeout = globalThis.setTimeout(() => {
           // Sometimes tabs add extra stuff, which can invalidate
           // GoldenLayout's initial calculation of which tabs should be visible
           this.goldenLayout.updateSize();
+          this._fixingTabs = false;
+          this.trigger('tabsRendered');
         }, 50);
       }
     }
@@ -2047,7 +2216,7 @@ const { GLRootView, GLRootViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-var defaultStyle$7 = ".GLView.scrollArea {\n  position: absolute;\n  top: 0.5em;\n  left: 0.5em;\n  right: 0.5em;\n  bottom: 0.5em;\n  overflow: auto;\n}\n";
+var defaultStyle$1 = ".GLView.scrollArea {\n  position: absolute;\n  top: 0.5em;\n  left: 0.5em;\n  right: 0.5em;\n  bottom: 0.5em;\n  overflow: auto;\n}\n";
 
 /* globals d3, uki, Blob */
 
@@ -2055,12 +2224,13 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
   classDefFunc: SuperClass => {
     class GLView extends uki.utils.IntrospectableMixin(ThemeableMixin({
-      SuperClass, defaultStyle: defaultStyle$7, className: 'GLView'
+      SuperClass, defaultStyle: defaultStyle$1, className: 'GLView'
     })) {
       constructor (options) {
         super(options);
         this.glContainer = options.glContainer;
         this.glState = options.glState;
+        this.glRootView = options.glRootView;
         if (options.viewID) {
           this.viewID = options.viewID;
         } else {
@@ -2094,7 +2264,13 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
           this.isHidden = false;
           this.render();
         });
-        this.glContainer.on('resize', () => this.render());
+        this.glContainer.on('resize', () => {
+          // Don't re-render the whole view if we're just fixing tabs
+          if (!this.glRootView._fixingTabs) {
+            this.render();
+            this.trigger('resize');
+          }
+        });
       }
 
       get title () {
@@ -2144,10 +2320,6 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
           .classed('scrollArea', true);
       }
 
-      getAvailableSpace (content = this.d3el) {
-        return content.node().getBoundingClientRect();
-      }
-
       async draw () {
         await super.draw(...arguments);
         if (this.glTabEl) {
@@ -2160,7 +2332,7 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-var download = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- Generator: Adobe Illustrator 19.2.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->\n<svg version=\"1.1\" id=\"Layer_1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" x=\"0px\" y=\"0px\"\n\t viewBox=\"0 0 512 512\" style=\"enable-background:new 0 0 512 512;\" xml:space=\"preserve\">\n<style type=\"text/css\">\n\t.st0{fill:#000000;}\n</style>\n<g>\n\t<path class=\"st0\" d=\"M6,358.5c7.7-21.2,14.4-25.8,37.4-25.8c41.4,0,82.8-0.1,124.2,0.2c4.1,0,9,2.2,12,5c11.3,10.6,22,21.9,33,32.9\n\t\tc26.3,26.1,60.3,26.2,86.7,0.1c11.2-11.1,22.1-22.5,33.7-33.3c2.8-2.7,7.5-4.7,11.4-4.7c41.4-0.3,82.8-0.2,124.2-0.2\n\t\tc23.1,0,29.7,4.6,37.4,25.8c0,34.2,0,68.3,0,102.5c-7.7,20.8-14.2,25.1-37,25.1c-142,0-284,0-426,0c-22.8,0-29.3-4.4-37-25.1\n\t\tC6,426.8,6,392.7,6,358.5z M390,428.6c-0.1-10.1-8.6-18.7-18.6-18.9c-10.2-0.2-19.3,8.9-19.2,19.1c0.1,10.4,9.1,19,19.5,18.7\n\t\tC381.8,447.3,390.1,438.7,390,428.6z M447.9,447.7c9.9,0,18.8-8.7,19.1-18.6c0.3-10-9-19.4-19.1-19.4c-10.1,0-19.3,9.4-19.1,19.4\n\t\tC429.1,439,438,447.7,447.9,447.7z\"/>\n\t<path class=\"st0\" d=\"M313.5,179.3c19.9,0,38.8,0,57.6,0c5.4,0,10.9,0.1,16.3,0c9.4-0.3,16.7,2.8,20.6,11.9\n\t\tc3.9,9.3,0.4,16.3-6.3,22.9c-41.1,40.9-82,81.9-123,122.9c-20.3,20.3-25.2,20.3-45.4,0.1c-40.8-40.8-81.6-81.6-122.5-122.3\n\t\tc-6.7-6.7-11-13.6-7-23.4c3.7-8.8,10.5-12.1,19.7-12.1c22,0.1,44,0,66,0c2.8,0,5.5,0,8.9,0c0-3.9,0-6.7,0-9.5\n\t\tc0-40.1,0-80.2,0-120.3c0-16.4,7.2-23.5,23.7-23.6c22.8-0.1,45.5-0.1,68.3,0c15.9,0.1,23,7.4,23.1,23.4c0,40.1,0,80.2,0,120.3\n\t\tC313.5,172.5,313.5,175.3,313.5,179.3z\"/>\n</g>\n</svg>\n";
+var download$1 = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- Generator: Adobe Illustrator 19.2.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->\n<svg version=\"1.1\" id=\"Layer_1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" x=\"0px\" y=\"0px\"\n\t viewBox=\"0 0 512 512\" style=\"enable-background:new 0 0 512 512;\" xml:space=\"preserve\">\n<style type=\"text/css\">\n\t.st0{fill:#000000;}\n</style>\n<g>\n\t<path class=\"st0\" d=\"M6,358.5c7.7-21.2,14.4-25.8,37.4-25.8c41.4,0,82.8-0.1,124.2,0.2c4.1,0,9,2.2,12,5c11.3,10.6,22,21.9,33,32.9\n\t\tc26.3,26.1,60.3,26.2,86.7,0.1c11.2-11.1,22.1-22.5,33.7-33.3c2.8-2.7,7.5-4.7,11.4-4.7c41.4-0.3,82.8-0.2,124.2-0.2\n\t\tc23.1,0,29.7,4.6,37.4,25.8c0,34.2,0,68.3,0,102.5c-7.7,20.8-14.2,25.1-37,25.1c-142,0-284,0-426,0c-22.8,0-29.3-4.4-37-25.1\n\t\tC6,426.8,6,392.7,6,358.5z M390,428.6c-0.1-10.1-8.6-18.7-18.6-18.9c-10.2-0.2-19.3,8.9-19.2,19.1c0.1,10.4,9.1,19,19.5,18.7\n\t\tC381.8,447.3,390.1,438.7,390,428.6z M447.9,447.7c9.9,0,18.8-8.7,19.1-18.6c0.3-10-9-19.4-19.1-19.4c-10.1,0-19.3,9.4-19.1,19.4\n\t\tC429.1,439,438,447.7,447.9,447.7z\"/>\n\t<path class=\"st0\" d=\"M313.5,179.3c19.9,0,38.8,0,57.6,0c5.4,0,10.9,0.1,16.3,0c9.4-0.3,16.7,2.8,20.6,11.9\n\t\tc3.9,9.3,0.4,16.3-6.3,22.9c-41.1,40.9-82,81.9-123,122.9c-20.3,20.3-25.2,20.3-45.4,0.1c-40.8-40.8-81.6-81.6-122.5-122.3\n\t\tc-6.7-6.7-11-13.6-7-23.4c3.7-8.8,10.5-12.1,19.7-12.1c22,0.1,44,0,66,0c2.8,0,5.5,0,8.9,0c0-3.9,0-6.7,0-9.5\n\t\tc0-40.1,0-80.2,0-120.3c0-16.4,7.2-23.5,23.7-23.6c22.8-0.1,45.5-0.1,68.3,0c15.9,0.1,23,7.4,23.1,23.4c0,40.1,0,80.2,0,120.3\n\t\tC313.5,172.5,313.5,175.3,313.5,179.3z\"/>\n</g>\n</svg>\n";
 
 /* globals uki */
 
@@ -2170,7 +2342,7 @@ const { SvgGLView, SvgGLViewMixin } = uki.utils.createMixinAndDefault({
     class SvgGLView extends SvgViewMixin(SuperClass) {
       constructor (options) {
         options.icons = [{
-          svg: download,
+          svg: download$1,
           onclick: () => {
             this.download();
           }
@@ -2188,7 +2360,7 @@ const { SvgGLView, SvgGLViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-var download$1 = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- Generator: Adobe Illustrator 19.2.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->\n<svg version=\"1.1\" id=\"Layer_1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" x=\"0px\" y=\"0px\"\n\t viewBox=\"0 0 512 512\" style=\"enable-background:new 0 0 512 512;\" xml:space=\"preserve\">\n<style type=\"text/css\">\n\t.st0{fill:#000000;}\n</style>\n<g>\n\t<path class=\"st0\" d=\"M6,358.5c7.7-21.2,14.4-25.8,37.4-25.8c41.4,0,82.8-0.1,124.2,0.2c4.1,0,9,2.2,12,5c11.3,10.6,22,21.9,33,32.9\n\t\tc26.3,26.1,60.3,26.2,86.7,0.1c11.2-11.1,22.1-22.5,33.7-33.3c2.8-2.7,7.5-4.7,11.4-4.7c41.4-0.3,82.8-0.2,124.2-0.2\n\t\tc23.1,0,29.7,4.6,37.4,25.8c0,34.2,0,68.3,0,102.5c-7.7,20.8-14.2,25.1-37,25.1c-142,0-284,0-426,0c-22.8,0-29.3-4.4-37-25.1\n\t\tC6,426.8,6,392.7,6,358.5z M390,428.6c-0.1-10.1-8.6-18.7-18.6-18.9c-10.2-0.2-19.3,8.9-19.2,19.1c0.1,10.4,9.1,19,19.5,18.7\n\t\tC381.8,447.3,390.1,438.7,390,428.6z M447.9,447.7c9.9,0,18.8-8.7,19.1-18.6c0.3-10-9-19.4-19.1-19.4c-10.1,0-19.3,9.4-19.1,19.4\n\t\tC429.1,439,438,447.7,447.9,447.7z\"/>\n\t<path class=\"st0\" d=\"M313.5,179.3c19.9,0,38.8,0,57.6,0c5.4,0,10.9,0.1,16.3,0c9.4-0.3,16.7,2.8,20.6,11.9\n\t\tc3.9,9.3,0.4,16.3-6.3,22.9c-41.1,40.9-82,81.9-123,122.9c-20.3,20.3-25.2,20.3-45.4,0.1c-40.8-40.8-81.6-81.6-122.5-122.3\n\t\tc-6.7-6.7-11-13.6-7-23.4c3.7-8.8,10.5-12.1,19.7-12.1c22,0.1,44,0,66,0c2.8,0,5.5,0,8.9,0c0-3.9,0-6.7,0-9.5\n\t\tc0-40.1,0-80.2,0-120.3c0-16.4,7.2-23.5,23.7-23.6c22.8-0.1,45.5-0.1,68.3,0c15.9,0.1,23,7.4,23.1,23.4c0,40.1,0,80.2,0,120.3\n\t\tC313.5,172.5,313.5,175.3,313.5,179.3z\"/>\n</g>\n</svg>\n";
+var download = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- Generator: Adobe Illustrator 19.2.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->\n<svg version=\"1.1\" id=\"Layer_1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" x=\"0px\" y=\"0px\"\n\t viewBox=\"0 0 512 512\" style=\"enable-background:new 0 0 512 512;\" xml:space=\"preserve\">\n<style type=\"text/css\">\n\t.st0{fill:#000000;}\n</style>\n<g>\n\t<path class=\"st0\" d=\"M6,358.5c7.7-21.2,14.4-25.8,37.4-25.8c41.4,0,82.8-0.1,124.2,0.2c4.1,0,9,2.2,12,5c11.3,10.6,22,21.9,33,32.9\n\t\tc26.3,26.1,60.3,26.2,86.7,0.1c11.2-11.1,22.1-22.5,33.7-33.3c2.8-2.7,7.5-4.7,11.4-4.7c41.4-0.3,82.8-0.2,124.2-0.2\n\t\tc23.1,0,29.7,4.6,37.4,25.8c0,34.2,0,68.3,0,102.5c-7.7,20.8-14.2,25.1-37,25.1c-142,0-284,0-426,0c-22.8,0-29.3-4.4-37-25.1\n\t\tC6,426.8,6,392.7,6,358.5z M390,428.6c-0.1-10.1-8.6-18.7-18.6-18.9c-10.2-0.2-19.3,8.9-19.2,19.1c0.1,10.4,9.1,19,19.5,18.7\n\t\tC381.8,447.3,390.1,438.7,390,428.6z M447.9,447.7c9.9,0,18.8-8.7,19.1-18.6c0.3-10-9-19.4-19.1-19.4c-10.1,0-19.3,9.4-19.1,19.4\n\t\tC429.1,439,438,447.7,447.9,447.7z\"/>\n\t<path class=\"st0\" d=\"M313.5,179.3c19.9,0,38.8,0,57.6,0c5.4,0,10.9,0.1,16.3,0c9.4-0.3,16.7,2.8,20.6,11.9\n\t\tc3.9,9.3,0.4,16.3-6.3,22.9c-41.1,40.9-82,81.9-123,122.9c-20.3,20.3-25.2,20.3-45.4,0.1c-40.8-40.8-81.6-81.6-122.5-122.3\n\t\tc-6.7-6.7-11-13.6-7-23.4c3.7-8.8,10.5-12.1,19.7-12.1c22,0.1,44,0,66,0c2.8,0,5.5,0,8.9,0c0-3.9,0-6.7,0-9.5\n\t\tc0-40.1,0-80.2,0-120.3c0-16.4,7.2-23.5,23.7-23.6c22.8-0.1,45.5-0.1,68.3,0c15.9,0.1,23,7.4,23.1,23.4c0,40.1,0,80.2,0,120.3\n\t\tC313.5,172.5,313.5,175.3,313.5,179.3z\"/>\n</g>\n</svg>\n";
 
 /* globals uki */
 
@@ -2198,7 +2370,7 @@ const { CanvasGLView, CanvasGLViewMixin } = uki.utils.createMixinAndDefault({
     class CanvasGLView extends CanvasViewMixin(SuperClass) {
       constructor (options) {
         options.icons = [{
-          svg: download$1,
+          svg: download,
           onclick: () => {
             this.download();
           }
@@ -2425,7 +2597,7 @@ const { BaseTableView, BaseTableViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-const img$2 = "data:image/svg+xml,%3c%3fxml version='1.0' encoding='UTF-8' standalone='no'%3f%3e%3csvg xmlns:dc='http://purl.org/dc/elements/1.1/' xmlns:cc='http://creativecommons.org/ns%23' xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns%23' xmlns:svg='http://www.w3.org/2000/svg' xmlns='http://www.w3.org/2000/svg' xmlns:sodipodi='http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd' xmlns:inkscape='http://www.inkscape.org/namespaces/inkscape' sodipodi:docname='gear.svg' inkscape:version='1.0 (4035a4fb49%2c 2020-05-01)' id='svg8' version='1.1' viewBox='0 0 511.41864 512' height='512' width='511.41864'%3e %3cdefs id='defs2' /%3e %3csodipodi:namedview fit-margin-bottom='0' fit-margin-right='0' fit-margin-left='0' fit-margin-top='0' inkscape:document-rotation='0' inkscape:pagecheckerboard='false' inkscape:window-maximized='1' inkscape:window-y='-12' inkscape:window-x='-12' inkscape:window-height='1890' inkscape:window-width='3000' units='px' showgrid='true' inkscape:current-layer='layer1' inkscape:document-units='px' inkscape:cy='405.52354' inkscape:cx='165.62285' inkscape:zoom='0.7' inkscape:pageshadow='2' inkscape:pageopacity='0.0' borderopacity='1.0' bordercolor='%23666666' pagecolor='white' id='base'%3e %3cinkscape:grid originy='-479.8705' originx='-106.04959' spacingy='20' spacingx='20' id='grid1358' type='xygrid' /%3e %3c/sodipodi:namedview%3e %3cmetadata id='metadata5'%3e %3crdf:RDF%3e %3ccc:Work rdf:about=''%3e %3cdc:format%3eimage/svg%2bxml%3c/dc:format%3e %3cdc:type rdf:resource='http://purl.org/dc/dcmitype/StillImage' /%3e %3cdc:title%3e%3c/dc:title%3e %3c/cc:Work%3e %3c/rdf:RDF%3e %3c/metadata%3e %3cg transform='translate(-106.04959%2c-491.12051)' id='layer1' inkscape:groupmode='layer' inkscape:label='Layer 1'%3e %3cpath id='path859' d='m 329.33072%2c1000.8335 c -6.98056%2c-3.12316 -16.17441%2c-13.40405 -17.44655%2c-19.50953 -0.48794%2c-2.34175 -1.23015%2c-12.19351 -1.64933%2c-21.89283 -0.85788%2c-19.84951 -3.8765%2c-26.99802 -14.46418%2c-34.25271 -8.38236%2c-5.74376 -21.68441%2c-7.29075 -29.21063%2c-3.39692 -3.14227%2c1.62556 -9.90171%2c7.0274 -15.02097%2c12.00384 -13.32301%2c12.95164 -20.48928%2c16.81236 -31.22345%2c16.82078 -14.17987%2c0.0196 -18.77379%2c-2.68564 -39.37481%2c-23.11652 -15.78953%2c-15.65902 -19.6681%2c-20.69914 -22.03329%2c-28.63181 -4.26917%2c-14.31834 -1.41503%2c-22.2179 13.93077%2c-38.55724 6.9483%2c-7.39813 13.50063%2c-15.73269 14.56078%2c-18.521 5.0312%2c-13.233 0.20316%2c-27.60603 -12.41723%2c-36.96558 -4.49991%2c-3.33715 -9.41639%2c-4.30473 -26.45269%2c-5.20628 -17.40832%2c-0.92114 -22.07977%2c-1.86776 -27.79283%2c-5.63208 -14.07512%2c-9.27411 -14.68672%2c-11.20437 -14.68672%2c-46.35332 0%2c-35.53419 0.85904%2c-38.60859 13.17205%2c-47.14164 6.84329%2c-4.74228 9.97818%2c-5.43828 28.9536%2c-6.42702 17.399%2c-0.90664 22.28732%2c-1.85639 26.80659%2c-5.20804 12.62039%2c-9.35955 17.44843%2c-23.73237 12.41723%2c-36.96538 -1.06013%2c-2.78851 -7.63842%2c-11.1505 -14.61843%2c-18.58234 -6.98%2c-7.43203 -13.24031%2c-16.00956 -13.9118%2c-19.06122 -0.67151%2c-3.05185 -1.54926%2c-6.62159 -1.9506%2c-7.93306 -0.40134%2c-1.31166 0.52862%2c-6.6218 2.06658%2c-11.80076 2.2563%2c-7.59776 6.11819%2c-12.67225 19.99808%2c-26.27724 21.69485%2c-21.26519 28.01536%2c-25.16265 40.82154%2c-25.17212 11.25431%2c-0.008 22.43719%2c6.05021 34.18428%2c18.51999 12.92373%2c13.71878 25.87742%2c16.43207 40.02191%2c8.38301 11.84254%2c-6.73913 16.80239%2c-17.88429 16.80239%2c-37.75624 0%2c-19.39387 3.17036%2c-28.03709 13.04883%2c-35.5743 l 7.21554%2c-5.50543 h 31.84873 c 29.24484%2c0 32.30134%2c0.33513 37.38468%2c4.09909 11.23648%2c8.32001 14.35353%2c15.51416 14.35353%2c33.12799 0%2c18.50805 2.35876%2c27.12065 9.57403%2c34.95796 6.85223%2c7.44292 14.26484%2c11.09194 22.53217%2c11.09194 10.54201%2c0 16.27037%2c-3.01609 29.32404%2c-15.4397 14.79368%2c-14.07963 18.20385%2c-15.91163 29.61871%2c-15.91163 13.83084%2c0 20.06425%2c3.80754 40.51878%2c24.74992 28.46179%2c29.14062 29.98342%2c40.58709 8.44409%2c63.52099 -18.70942%2c19.92084 -21.85956%2c28.67609 -15.65788%2c43.51879 3.20779%2c7.67736 12.8525%2c16.66833 19.32742%2c18.01742 2.34177%2c0.48791 12.2495%2c1.19233 22.01718%2c1.56521 14.38919%2c0.54924 18.89535%2c1.48684 23.74482%2c4.94 12.54543%2c8.93297 13.36056%2c11.82964 13.36056%2c47.47141 0%2c30.2795 -0.27647%2c32.71862 -4.35802%2c38.44064 -7.84803%2c11.00216 -13.25711%2c13.14835 -36.16203%2c14.34833 -16.95876%2c0.88822 -21.9503%2c1.86187 -26.33161%2c5.13613 -8.32298%2c6.21971 -12.68897%2c13.15601 -13.88263%2c22.05547 -1.51419%2c11.28903 2.04642%2c18.96285 15.16747%2c32.68828 14.02411%2c14.67008 15.60067%2c17.7813 15.60067%2c30.78643 0%2c12.8176 -1.4131%2c15.04923 -24.27885%2c38.34327 -14.27908%2c14.54643 -19.67271%2c18.72733 -26.96415%2c20.90135 -14.99475%2c4.4707 -26.16574%2c0.40816 -41.83129%2c-15.21285 -4.3108%2c-4.29866 -10.4831%2c-9.44106 -13.71621%2c-11.42776 -10.42635%2c-6.40703 -24.53884%2c-4.06235 -34.94089%2c5.80509 -8.48494%2c8.04888 -11.10638%2c16.4481 -11.10638%2c35.58495 0%2c14.51391 -0.66808%2c18.08776 -4.40878%2c23.58405 -9.27289%2c13.62442 -12.25222%2c14.62382 -45.20362%2c15.15972 -21.78684%2c0.3545 -31.3445%2c-0.2314 -35.7212%2c-2.1895 z m 66.14183%2c-151.70734 c 25.94628%2c-8.67864 50.90012%2c-29.62427 61.67158%2c-51.76537 10.87443%2c-22.35253 11.4053%2c-24.70466 11.4053%2c-50.53089 0%2c-20.84512 -0.66708%2c-26.21011 -4.47857%2c-36.02014 -12.48715%2c-32.13944 -36.29306%2c-55.1909 -68.59831%2c-66.42428 -13.92116%2c-4.84065 -45.64323%2c-5.67714 -60.1663%2c-1.58657 -36.79417%2c10.36377 -66.89093%2c40.72832 -76.63263%2c77.31436 -3.17209%2c11.91331 -3.54206%2c40.13831 -0.67125%2c51.20984 10.92692%2c42.14031 44.25552%2c73.17324 88.0809%2c82.01393 9.57758%2c1.93202 38.36085%2c-0.522 49.38928%2c-4.21088 z' style='fill:black%3bstroke-width:1' /%3e %3c/g%3e%3c/svg%3e";
+var img = "data:image/svg+xml,%3c%3fxml version='1.0' encoding='UTF-8' standalone='no'%3f%3e%3csvg xmlns:dc='http://purl.org/dc/elements/1.1/' xmlns:cc='http://creativecommons.org/ns%23' xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns%23' xmlns:svg='http://www.w3.org/2000/svg' xmlns='http://www.w3.org/2000/svg' xmlns:sodipodi='http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd' xmlns:inkscape='http://www.inkscape.org/namespaces/inkscape' sodipodi:docname='gear.svg' inkscape:version='1.0 (4035a4fb49%2c 2020-05-01)' id='svg8' version='1.1' viewBox='0 0 511.41864 512' height='512' width='511.41864'%3e %3cdefs id='defs2' /%3e %3csodipodi:namedview fit-margin-bottom='0' fit-margin-right='0' fit-margin-left='0' fit-margin-top='0' inkscape:document-rotation='0' inkscape:pagecheckerboard='false' inkscape:window-maximized='1' inkscape:window-y='-12' inkscape:window-x='-12' inkscape:window-height='1890' inkscape:window-width='3000' units='px' showgrid='true' inkscape:current-layer='layer1' inkscape:document-units='px' inkscape:cy='405.52354' inkscape:cx='165.62285' inkscape:zoom='0.7' inkscape:pageshadow='2' inkscape:pageopacity='0.0' borderopacity='1.0' bordercolor='%23666666' pagecolor='white' id='base'%3e %3cinkscape:grid originy='-479.8705' originx='-106.04959' spacingy='20' spacingx='20' id='grid1358' type='xygrid' /%3e %3c/sodipodi:namedview%3e %3cmetadata id='metadata5'%3e %3crdf:RDF%3e %3ccc:Work rdf:about=''%3e %3cdc:format%3eimage/svg%2bxml%3c/dc:format%3e %3cdc:type rdf:resource='http://purl.org/dc/dcmitype/StillImage' /%3e %3cdc:title%3e%3c/dc:title%3e %3c/cc:Work%3e %3c/rdf:RDF%3e %3c/metadata%3e %3cg transform='translate(-106.04959%2c-491.12051)' id='layer1' inkscape:groupmode='layer' inkscape:label='Layer 1'%3e %3cpath id='path859' d='m 329.33072%2c1000.8335 c -6.98056%2c-3.12316 -16.17441%2c-13.40405 -17.44655%2c-19.50953 -0.48794%2c-2.34175 -1.23015%2c-12.19351 -1.64933%2c-21.89283 -0.85788%2c-19.84951 -3.8765%2c-26.99802 -14.46418%2c-34.25271 -8.38236%2c-5.74376 -21.68441%2c-7.29075 -29.21063%2c-3.39692 -3.14227%2c1.62556 -9.90171%2c7.0274 -15.02097%2c12.00384 -13.32301%2c12.95164 -20.48928%2c16.81236 -31.22345%2c16.82078 -14.17987%2c0.0196 -18.77379%2c-2.68564 -39.37481%2c-23.11652 -15.78953%2c-15.65902 -19.6681%2c-20.69914 -22.03329%2c-28.63181 -4.26917%2c-14.31834 -1.41503%2c-22.2179 13.93077%2c-38.55724 6.9483%2c-7.39813 13.50063%2c-15.73269 14.56078%2c-18.521 5.0312%2c-13.233 0.20316%2c-27.60603 -12.41723%2c-36.96558 -4.49991%2c-3.33715 -9.41639%2c-4.30473 -26.45269%2c-5.20628 -17.40832%2c-0.92114 -22.07977%2c-1.86776 -27.79283%2c-5.63208 -14.07512%2c-9.27411 -14.68672%2c-11.20437 -14.68672%2c-46.35332 0%2c-35.53419 0.85904%2c-38.60859 13.17205%2c-47.14164 6.84329%2c-4.74228 9.97818%2c-5.43828 28.9536%2c-6.42702 17.399%2c-0.90664 22.28732%2c-1.85639 26.80659%2c-5.20804 12.62039%2c-9.35955 17.44843%2c-23.73237 12.41723%2c-36.96538 -1.06013%2c-2.78851 -7.63842%2c-11.1505 -14.61843%2c-18.58234 -6.98%2c-7.43203 -13.24031%2c-16.00956 -13.9118%2c-19.06122 -0.67151%2c-3.05185 -1.54926%2c-6.62159 -1.9506%2c-7.93306 -0.40134%2c-1.31166 0.52862%2c-6.6218 2.06658%2c-11.80076 2.2563%2c-7.59776 6.11819%2c-12.67225 19.99808%2c-26.27724 21.69485%2c-21.26519 28.01536%2c-25.16265 40.82154%2c-25.17212 11.25431%2c-0.008 22.43719%2c6.05021 34.18428%2c18.51999 12.92373%2c13.71878 25.87742%2c16.43207 40.02191%2c8.38301 11.84254%2c-6.73913 16.80239%2c-17.88429 16.80239%2c-37.75624 0%2c-19.39387 3.17036%2c-28.03709 13.04883%2c-35.5743 l 7.21554%2c-5.50543 h 31.84873 c 29.24484%2c0 32.30134%2c0.33513 37.38468%2c4.09909 11.23648%2c8.32001 14.35353%2c15.51416 14.35353%2c33.12799 0%2c18.50805 2.35876%2c27.12065 9.57403%2c34.95796 6.85223%2c7.44292 14.26484%2c11.09194 22.53217%2c11.09194 10.54201%2c0 16.27037%2c-3.01609 29.32404%2c-15.4397 14.79368%2c-14.07963 18.20385%2c-15.91163 29.61871%2c-15.91163 13.83084%2c0 20.06425%2c3.80754 40.51878%2c24.74992 28.46179%2c29.14062 29.98342%2c40.58709 8.44409%2c63.52099 -18.70942%2c19.92084 -21.85956%2c28.67609 -15.65788%2c43.51879 3.20779%2c7.67736 12.8525%2c16.66833 19.32742%2c18.01742 2.34177%2c0.48791 12.2495%2c1.19233 22.01718%2c1.56521 14.38919%2c0.54924 18.89535%2c1.48684 23.74482%2c4.94 12.54543%2c8.93297 13.36056%2c11.82964 13.36056%2c47.47141 0%2c30.2795 -0.27647%2c32.71862 -4.35802%2c38.44064 -7.84803%2c11.00216 -13.25711%2c13.14835 -36.16203%2c14.34833 -16.95876%2c0.88822 -21.9503%2c1.86187 -26.33161%2c5.13613 -8.32298%2c6.21971 -12.68897%2c13.15601 -13.88263%2c22.05547 -1.51419%2c11.28903 2.04642%2c18.96285 15.16747%2c32.68828 14.02411%2c14.67008 15.60067%2c17.7813 15.60067%2c30.78643 0%2c12.8176 -1.4131%2c15.04923 -24.27885%2c38.34327 -14.27908%2c14.54643 -19.67271%2c18.72733 -26.96415%2c20.90135 -14.99475%2c4.4707 -26.16574%2c0.40816 -41.83129%2c-15.21285 -4.3108%2c-4.29866 -10.4831%2c-9.44106 -13.71621%2c-11.42776 -10.42635%2c-6.40703 -24.53884%2c-4.06235 -34.94089%2c5.80509 -8.48494%2c8.04888 -11.10638%2c16.4481 -11.10638%2c35.58495 0%2c14.51391 -0.66808%2c18.08776 -4.40878%2c23.58405 -9.27289%2c13.62442 -12.25222%2c14.62382 -45.20362%2c15.15972 -21.78684%2c0.3545 -31.3445%2c-0.2314 -35.7212%2c-2.1895 z m 66.14183%2c-151.70734 c 25.94628%2c-8.67864 50.90012%2c-29.62427 61.67158%2c-51.76537 10.87443%2c-22.35253 11.4053%2c-24.70466 11.4053%2c-50.53089 0%2c-20.84512 -0.66708%2c-26.21011 -4.47857%2c-36.02014 -12.48715%2c-32.13944 -36.29306%2c-55.1909 -68.59831%2c-66.42428 -13.92116%2c-4.84065 -45.64323%2c-5.67714 -60.1663%2c-1.58657 -36.79417%2c10.36377 -66.89093%2c40.72832 -76.63263%2c77.31436 -3.17209%2c11.91331 -3.54206%2c40.13831 -0.67125%2c51.20984 10.92692%2c42.14031 44.25552%2c73.17324 88.0809%2c82.01393 9.57758%2c1.93202 38.36085%2c-0.522 49.38928%2c-4.21088 z' style='fill:black%3bstroke-width:1' /%3e %3c/g%3e%3c/svg%3e";
 
 /* globals d3, uki */
 
@@ -2503,7 +2675,7 @@ const { FlexTableView, FlexTableViewMixin } = uki.utils.createMixinAndDefault({
           if (!this.attributeSelector) {
             this.attributeSelector = new ButtonView({
               d3el: this.cornerHeader.append('div').classed('attributeSelector', true),
-              img: img$2,
+              img: img,
               size: 'small'
             });
           }
@@ -2538,9 +2710,9 @@ const { FlexTableView, FlexTableViewMixin } = uki.utils.createMixinAndDefault({
   }
 });
 
-var defaultStyle$8 = ".LineChartView path {\n  fill: none;\n  stroke-width: 1px;\n  stroke: var(--text-color);\n}\n";
+var defaultStyle = ".LineChartView path {\n  fill: none;\n  stroke-width: 1px;\n  stroke: var(--text-color);\n}\n";
 
-var template$2 = "<defs>\n  <clipPath>\n    <rect></rect>\n  </clipPath>\n</defs>\n<g class=\"chart\">\n  <path></path>\n</g>\n<g class=\"y axis\"></g>\n<g class=\"x axis\"></g>\n";
+var template = "<defs>\n  <clipPath>\n    <rect></rect>\n  </clipPath>\n</defs>\n<g class=\"chart\">\n  <path></path>\n</g>\n<g class=\"y axis\"></g>\n<g class=\"x axis\"></g>\n";
 
 /* globals d3, uki */
 
@@ -2548,7 +2720,7 @@ const { LineChartView, LineChartViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: SvgView,
   classDefFunc: SuperClass => {
     class LineChartView extends SvgViewMixin(ThemeableMixin({
-      SuperClass, defaultStyle: defaultStyle$8, className: 'LineChartView'
+      SuperClass, defaultStyle, className: 'LineChartView'
     })) {
       constructor (options) {
         super(options);
@@ -2586,7 +2758,7 @@ const { LineChartView, LineChartViewMixin } = uki.utils.createMixinAndDefault({
         this.clipPathId = 'lineChartView' + LineChartView.CLIP_PATH_NEXT_ID;
         LineChartView.CLIP_PATH_NEXT_ID += 1;
 
-        this.d3el.html(template$2);
+        this.d3el.html(template);
         this.d3el.select('clipPath')
           .attr('id', this.clipPathId);
       }
@@ -2743,7 +2915,7 @@ const { VegaView, VegaViewMixin } = uki.utils.createMixinAndDefault({
 });
 
 var name = "@ukijs/ui";
-var version = "0.2.4";
+var version$1 = "0.2.5";
 var description = "A UI toolkit using the uki.js library";
 var module = "dist/uki-ui.esm.js";
 var scripts = {
@@ -2783,38 +2955,38 @@ var eslintConfig = {
 	}
 };
 var devDependencies = {
-	"@rollup/plugin-image": "^2.0.5",
+	"@rollup/plugin-image": "^2.0.6",
 	"@rollup/plugin-json": "^4.1.0",
-	d3: "^6.2.0",
-	eslint: "^7.13.0",
+	d3: "^6.6.1",
+	eslint: "^7.22.0",
 	"eslint-config-semistandard": "^15.0.1",
-	"eslint-config-standard": "^16.0.1",
+	"eslint-config-standard": "^16.0.2",
 	"eslint-plugin-import": "^2.22.1",
 	"eslint-plugin-node": "^11.1.0",
-	"eslint-plugin-promise": "^4.2.1",
-	"eslint-plugin-standard": "^4.1.0",
+	"eslint-plugin-promise": "^4.3.1",
+	"eslint-plugin-standard": "^5.0.0",
 	"normalize.css": "^8.0.1",
-	rollup: "^2.33.1",
+	rollup: "^2.42.4",
 	"rollup-plugin-execute": "^1.1.1",
-	"rollup-plugin-less": "^1.1.2",
+	"rollup-plugin-less": "^1.1.3",
 	"rollup-plugin-string": "^3.0.0",
 	serve: "^11.3.2",
-	uki: "^0.7.6"
+	uki: "^0.7.8"
 };
 var peerDependencies = {
-	d3: "^6.2.0",
-	uki: "^0.7.6"
+	d3: "^6.6.1",
+	uki: "^0.7.9"
 };
 var optionalDependencies = {
-	"golden-layout": "^1.5.9",
-	jquery: "^3.5.1",
-	less: "^3.12.2",
-	vega: "^5.17.0",
-	"vega-lite": "^4.17.0"
+	"golden-layout": "1.5.9",
+	jquery: "^3.6.0",
+	less: "^4.1.1",
+	vega: "^5.20.0",
+	"vega-lite": "^5.0.0"
 };
 var pkg = {
 	name: name,
-	version: version,
+	version: version$1,
 	description: description,
 	module: module,
 	"jsnext:main": "dist/uki-ui.esm.js",
@@ -2830,7 +3002,7 @@ var pkg = {
 	optionalDependencies: optionalDependencies
 };
 
-const version$1 = pkg.version;
+const version = pkg.version;
 
 const jqueryVersion = pkg.optionalDependencies.jquery.match(/[\d.]+/)[0];
 const glVersion = pkg.optionalDependencies['golden-layout'].match(/[\d.]+/)[0];
@@ -2839,7 +3011,7 @@ const vegaLiteVersion = pkg.optionalDependencies['vega-lite'].match(/[\d.]+/)[0]
 
 const dynamicDependencies = {
   jquery: `https://code.jquery.com/jquery-${jqueryVersion}.min.js`,
-  jqueryIntegrity: 'sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=', // TODO: find a way to automate this after running ncu -u?
+  jqueryIntegrity: 'sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=', // TODO: find a way to automate this after running ncu -u?
   'golden-layout': `https://cdnjs.cloudflare.com/ajax/libs/golden-layout/${glVersion}/goldenlayout.min.js`,
   glCSS: `https://cdnjs.cloudflare.com/ajax/libs/golden-layout/${glVersion}/css/goldenlayout-base.css`,
   vega: `https://cdnjs.cloudflare.com/ajax/libs/vega/${vegaVersion}/vega.min.js`,
@@ -2853,12 +3025,12 @@ const showContextMenu = options => globalUI.showContextMenu(options);
 const hideTooltip = options => globalUI.hideTooltip(options);
 const showModal = options => globalUI.showModal(options);
 const hideModal = options => globalUI.hideModal(options);
-const alert = message => globalUI.alert(message);
-const confirm = message => globalUI.confirm(message);
-const prompt = (message, defaultValue, validate) => globalUI.prompt(message, defaultValue, validate);
+const alert = async (...args) => { return await globalUI.alert(...args); };
+const confirm = async (...args) => { return await globalUI.confirm(...args); };
+const prompt = async (...args) => { return await globalUI.prompt(...args); };
 
 globalThis.uki.ui = {
-  version: version$1,
+  version,
   dynamicDependencies,
   globalUI,
   showTooltip,
@@ -2915,4 +3087,4 @@ globalThis.uki.ui = {
   PromptModalViewMixin
 };
 
-export { AnimatedView, AnimatedViewMixin, BaseTableView, BaseTableViewMixin, ButtonView, ButtonViewMixin, CanvasGLView, CanvasGLViewMixin, CanvasView, CanvasViewMixin, FlexTableView, FlexTableViewMixin, GLRootView, GLRootViewMixin, GLView, GLViewMixin, IFrameGLView, IFrameGLViewMixin, IFrameView, IFrameViewMixin, InformativeView, InformativeViewMixin, LineChartView, LineChartViewMixin, ModalView, ModalViewMixin, OverlaidView, OverlaidViewMixin, ParentSizeView, ParentSizeViewMixin, PromptModalView, PromptModalViewMixin, RecolorableImageView, RecolorableImageViewMixin, SvgGLView, SvgGLViewMixin, SvgView, SvgViewMixin, ThemeableMixin, TooltipView, TooltipViewMixin, VegaView, VegaViewMixin, alert, confirm, dynamicDependencies, globalUI, hideModal, hideTooltip, prompt, showContextMenu, showModal, showTooltip, version$1 as version };
+export { AnimatedView, AnimatedViewMixin, BaseTableView, BaseTableViewMixin, ButtonView, ButtonViewMixin, CanvasGLView, CanvasGLViewMixin, CanvasView, CanvasViewMixin, FlexTableView, FlexTableViewMixin, GLRootView, GLRootViewMixin, GLView, GLViewMixin, IFrameGLView, IFrameGLViewMixin, IFrameView, IFrameViewMixin, InformativeView, InformativeViewMixin, LineChartView, LineChartViewMixin, ModalView, ModalViewMixin, OverlaidView, OverlaidViewMixin, ParentSizeView, ParentSizeViewMixin, PromptModalView, PromptModalViewMixin, RecolorableImageView, RecolorableImageViewMixin, SvgGLView, SvgGLViewMixin, SvgView, SvgViewMixin, ThemeableMixin, TooltipView, TooltipViewMixin, VegaView, VegaViewMixin, alert, confirm, dynamicDependencies, globalUI, hideModal, hideTooltip, prompt, showContextMenu, showModal, showTooltip, version };

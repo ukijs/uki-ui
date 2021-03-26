@@ -3,6 +3,7 @@
 import { OverlaidView, OverlaidViewMixin } from '../OverlaidView/OverlaidView.js';
 import { RecolorableImageViewMixin } from '../RecolorableImageView/RecolorableImageView.js';
 import { ThemeableMixin } from '../ThemeableMixin/ThemeableMixin.js';
+import { ButtonView } from '../ButtonView/ButtonView.js';
 import spinnerImg from './spinner.png';
 import warningImg from './warning.img.svg';
 import defaultStyle from './style.less';
@@ -21,9 +22,9 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
         this._informativeImg = options.informativeImg || null;
         this._loading = options.loading || false;
         this._firstRenderCompleted = false;
-        this.on('load', () => {
-          this.render();
-        });
+        this.on('resourcesLoaded', () => { this.render(); });
+        this.on('resourceLoaded', () => { this.render(); });
+        this.on('resourceUnloaded', () => { this.render(); });
       }
 
       get informativeMessage () {
@@ -44,7 +45,7 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
       }
 
       get error () {
-        return this._error;
+        return this._error || this.resources.find(r => r instanceof Error) || null;
       }
 
       set error (value) {
@@ -53,7 +54,7 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
       }
 
       get isLoading () {
-        return this._loading || !this._resourcesLoaded || !this._firstRenderCompleted;
+        return super.isLoading || this._loading || !this._firstRenderCompleted;
       }
 
       set isLoading (value) {
@@ -77,11 +78,13 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
       async loadLateResource () {
         this.render();
         await super.loadLateResource(...arguments);
+        this.render();
       }
 
       async updateResource () {
         this.render();
         await super.updateResource(...arguments);
+        this.render();
       }
 
       async setup () {
@@ -112,7 +115,13 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
           this.informativeErrorEl = this.overlayContentEl.append('details')
             .classed('informativeErrorEl', true)
             .style('display', 'none');
-          this.informativeErrorEl.append('pre');
+          this.informativeErrorEl.append('pre').classed('body', true);
+          this.informativeErrorEl.append('pre').classed('stack', true);
+          this.informativeErrorRethrowButton = new ButtonView({
+            d3el: this.informativeErrorEl.append('div'),
+            label: 'Rethrow in DevTools',
+            primary: true
+          });
         }
       }
 
@@ -121,8 +130,8 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
 
         await super.draw(...arguments);
 
-        if (this._error) {
-          await this.drawError(this.d3el, this._error);
+        if (this.error) {
+          await this.drawError(this.d3el, this.error);
         } else {
           this.overlayContentEl.classed('error', false);
           this.informativeIconEl.attr('src', this.isLoading ? spinnerImg : this.informativeImg)
@@ -137,8 +146,8 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
       async drawError (d3el, error) {
         // In the event that there are multiple errors (i.e. this._error could
         // be different than error), we want to show the earliest one (e.g. one
-        // from setup() or from some custom source) before showing an error from
-        // draw()
+        // from setup() or one from a subclass overriding the this.error getter)
+        // before showing an error from draw()
         error = this._error || error;
 
         // Force the overlay to display; it may not have displayed
@@ -152,12 +161,17 @@ const { InformativeView, InformativeViewMixin } = uki.utils.createMixinAndDefaul
           .classed('spin', false);
         this.informativeMessageEl.text('An error occurred while attempting to render this view')
           .style('display', null);
-        this.informativeErrorEl.style('display', null)
-          .select('pre')
-          .text(error.stack)
-          .on('click', () => {
-            throw error;
-          });
+        this.informativeErrorEl.style('display', null);
+        let errorBody = error.body || null;
+        if (errorBody && errorBody instanceof Object) {
+          // Display objects (usually details from a server error) as pretty JSON
+          errorBody = JSON.stringify(errorBody, null, 2);
+        }
+        this.informativeErrorEl.select('.body')
+          .text(errorBody);
+        this.informativeErrorEl.select('.stack')
+          .text(error.stack);
+        this.informativeErrorRethrowButton.onclick = () => { throw error; };
       }
     }
     return InformativeView;

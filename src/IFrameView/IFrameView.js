@@ -1,10 +1,9 @@
 /* globals uki */
-import { ParentSizeViewMixin } from '../ParentSizeView/ParentSizeView.js';
 
 const { IFrameView, IFrameViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
   classDefFunc: SuperClass => {
-    class IFrameView extends ParentSizeViewMixin(SuperClass) {
+    class IFrameView extends SuperClass {
       constructor (options) {
         super(options);
         this._src = options.src;

@@ -33,7 +33,7 @@ const vegaLiteVersion = pkg.optionalDependencies['vega-lite'].match(/[\d.]+/)[0]
 
 const dynamicDependencies = {
   jquery: `https://code.jquery.com/jquery-${jqueryVersion}.min.js`,
-  jqueryIntegrity: 'sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=', // TODO: find a way to automate this after running ncu -u?
+  jqueryIntegrity: 'sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=', // TODO: find a way to automate this after running ncu -u?
   'golden-layout': `https://cdnjs.cloudflare.com/ajax/libs/golden-layout/${glVersion}/goldenlayout.min.js`,
   glCSS: `https://cdnjs.cloudflare.com/ajax/libs/golden-layout/${glVersion}/css/goldenlayout-base.css`,
   vega: `https://cdnjs.cloudflare.com/ajax/libs/vega/${vegaVersion}/vega.min.js`,
@@ -47,9 +47,9 @@ const showContextMenu = options => globalUI.showContextMenu(options);
 const hideTooltip = options => globalUI.hideTooltip(options);
 const showModal = options => globalUI.showModal(options);
 const hideModal = options => globalUI.hideModal(options);
-const alert = message => globalUI.alert(message);
-const confirm = message => globalUI.confirm(message);
-const prompt = (message, defaultValue, validate) => globalUI.prompt(message, defaultValue, validate);
+const alert = async (...args) => { return await globalUI.alert(...args); };
+const confirm = async (...args) => { return await globalUI.confirm(...args); };
+const prompt = async (...args) => { return await globalUI.prompt(...args); };
 
 globalThis.uki.ui = {
   version,

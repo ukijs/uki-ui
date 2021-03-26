@@ -12,6 +12,7 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
         super(options);
         this.glContainer = options.glContainer;
         this.glState = options.glState;
+        this.glRootView = options.glRootView;
         if (options.viewID) {
           this.viewID = options.viewID;
         } else {
@@ -45,7 +46,13 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
           this.isHidden = false;
           this.render();
         });
-        this.glContainer.on('resize', () => this.render());
+        this.glContainer.on('resize', () => {
+          // Don't re-render the whole view if we're just fixing tabs
+          if (!this.glRootView._fixingTabs) {
+            this.render();
+            this.trigger('resize');
+          }
+        });
       }
 
       get title () {
@@ -93,10 +100,6 @@ const { GLView, GLViewMixin } = uki.utils.createMixinAndDefault({
         // Default setup is a scrollable div; subclasses might override this
         return this.glEl.append('div')
           .classed('scrollArea', true);
-      }
-
-      getAvailableSpace (content = this.d3el) {
-        return content.node().getBoundingClientRect();
       }
 
       async draw () {

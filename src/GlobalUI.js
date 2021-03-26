@@ -104,41 +104,49 @@ class GlobalUI extends ThemeableMixin({
     return this.modal;
   }
 
-  async alert (message) {
+  async alert (message, modalArgs = {}) {
     return new Promise((resolve, reject) => {
-      this.showModal({
-        content: message,
-        buttonSpecs: ['defaultOK'],
-        confirmAction: resolve
-      });
+      modalArgs.content = modalArgs.content || message;
+      modalArgs.buttonSpecs = modalArgs.buttonSpecs || ['defaultOK'];
+      const customConfirm = modalArgs.confirmAction;
+      modalArgs.confirmAction = customConfirm
+        ? async () => { await customConfirm(); resolve(); }
+        : resolve;
+      this.showModal(modalArgs);
     });
   }
 
-  async confirm (message) {
+  async confirm (message, modalArgs = {}) {
     return new Promise((resolve, reject) => {
-      this.showModal({
-        content: message,
-        buttonSpecs: 'default',
-        cancelAction: () => { resolve(false); },
-        confirmAction: () => { resolve(true); }
-      });
+      modalArgs.content = modalArgs.content || message;
+      modalArgs.buttonSpecs = modalArgs.buttonSpecs || 'default';
+      const customCancel = modalArgs.cancelAction;
+      modalArgs.cancelAction = customCancel
+        ? async () => { await customCancel(); resolve(false); }
+        : () => { resolve(false); };
+      const customConfirm = modalArgs.confirmAction;
+      modalArgs.confirmAction = customConfirm
+        ? async () => { await customConfirm(); resolve(true); }
+        : () => { resolve(true); };
+      this.showModal(modalArgs);
     });
   }
 
-  async prompt (message, defaultValue, validate) {
-    validate = validate || (() => true);
+  async prompt (message, defaultValue, promptModalArgs) {
     return new Promise((resolve, reject) => {
-      this.showModal(new PromptModalView({
-        message,
-        defaultValue,
-        validate,
-        confirmAction: () => {
-          const currentValue = this.modal.modalContentEl
-            .select('.promptInputEl').node().value;
-          resolve(currentValue);
-        },
-        cancelAction: () => { resolve(null); }
-      }));
+      let promptView = null; // pointer to the view so we can resolve its value
+      promptModalArgs.message = promptModalArgs.message || message;
+      promptModalArgs.defaultValue = promptModalArgs.defaultValue || defaultValue;
+      const customCancel = promptModalArgs.cancelAction;
+      promptModalArgs.cancelAction = customCancel
+        ? async () => { await customCancel(null); resolve(null); }
+        : () => { resolve(null); };
+      const customConfirm = promptModalArgs.confirmAction;
+      promptModalArgs.confirmAction = customConfirm
+        ? async () => { await customConfirm(promptView.currentValue); resolve(promptView.currentValue); }
+        : () => { resolve(promptView.currentValue); };
+      promptView = new PromptModalView(promptModalArgs);
+      this.showModal(promptView);
     });
   }
 }

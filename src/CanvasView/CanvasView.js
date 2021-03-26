@@ -1,10 +1,9 @@
 /* globals d3, uki */
-import { ParentSizeViewMixin } from '../ParentSizeView/ParentSizeView.js';
 
 const { CanvasView, CanvasViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
   classDefFunc: SuperClass => {
-    class CanvasView extends ParentSizeViewMixin(SuperClass) {
+    class CanvasView extends SuperClass {
       async setup () {
         const tagName = this.d3el.node().tagName.toUpperCase();
         if (tagName !== 'CANVAS') {
@@ -20,6 +19,12 @@ const { CanvasView, CanvasViewMixin } = uki.utils.createMixinAndDefault({
           .attr('href', this.d3el.node().toDataURL('image/png;base64'));
         link.node().click();
         link.remove();
+      }
+
+      updateContainerCharacteristics (d3el) {
+        // Computing em and scrollbar sizes doesn't work on canvas elements; use
+        // its parent node
+        super.updateContainerCharacteristics(d3.select(d3el.node().parentNode));
       }
     }
     return CanvasView;

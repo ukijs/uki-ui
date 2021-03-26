@@ -19,6 +19,12 @@
   .menuItem {
     display: block;
     margin: 0.5em 0;
+    text-align: left;
+    .label {
+      max-width: 30em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     &.submenu {
       &:after {
         content: '\25b6';

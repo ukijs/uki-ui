@@ -1,10 +1,9 @@
 /* globals d3, uki, XMLSerializer, Blob */
-import { ParentSizeViewMixin } from '../ParentSizeView/ParentSizeView.js';
 
 const { SvgView, SvgViewMixin } = uki.utils.createMixinAndDefault({
   DefaultSuperClass: uki.View,
   classDefFunc: SuperClass => {
-    class SvgView extends ParentSizeViewMixin(SuperClass) {
+    class SvgView extends SuperClass {
       async setup () {
         const tagName = this.d3el.node().tagName.toUpperCase();
         if (tagName !== 'SVG') {
@@ -54,6 +53,12 @@ const { SvgView, SvgViewMixin } = uki.utils.createMixinAndDefault({
           .attr('href', url);
         link.node().click();
         link.remove();
+      }
+
+      updateContainerCharacteristics (d3el) {
+        // Computing em and scrollbar sizes doesn't work on SVG elements; use
+        // its parent node
+        super.updateContainerCharacteristics(d3.select(d3el.node().parentNode));
       }
     }
     return SvgView;

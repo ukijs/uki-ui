@@ -6,7 +6,7 @@ const { ParentSizeView, ParentSizeViewMixin } = uki.utils.createMixinAndDefault(
     class ParentSizeView extends SuperClass {
       getBounds (parent = d3.select(this.d3el.node().parentNode)) {
         // Temporarily set this element's size to 0,0 so that it doesn't influence
-        // it's parent's natural size
+        // its parent's natural size
         const previousBounds = {
           width: this.d3el.attr('width'),
           height: this.d3el.attr('height')

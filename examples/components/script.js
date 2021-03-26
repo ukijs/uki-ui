@@ -22,8 +22,8 @@ class BasicDemoView extends ui.InformativeViewMixin(
     return super.isLoading;
   }
 
-  setup () {
-    super.setup(...arguments);
+  async setup () {
+    await super.setup(...arguments);
     this.d3el.html(this.getNamedResource('lipsum'));
   }
 }
@@ -33,8 +33,8 @@ class ModalLauncherView extends ui.GLView {
     return 'Buttons, Tooltips, and Modals';
   }
 
-  setup () {
-    super.setup({
+  async setup () {
+    await super.setup({
       lessArgs: {
         modifyVars: {
           '@contentPadding': '2em'
@@ -173,9 +173,10 @@ class ModalLauncherView extends ui.GLView {
 }
 
 class SvgDemoView extends ui.InformativeViewMixin(
-                          ui.SvgGLView) {
-  setup () {
-    super.setup(...arguments);
+                          ui.ParentSizeViewMixin(
+                          ui.SvgGLView)) {
+  async setup () {
+    await super.setup(...arguments);
     const circle = this.d3el.append('circle')
       .attr('r', 20)
       .style('fill', 'var(--text-color-softer)');
@@ -190,7 +191,8 @@ class SvgDemoView extends ui.InformativeViewMixin(
 
 class IFrameView extends ui.InformativeViewMixin(
                          ui.IFrameGLViewMixin(
-                         ui.GLView)) {
+                         ui.ParentSizeViewMixin(
+                         ui.GLView))) {
   constructor (options) {
     options.src = 'https://github.com/ukijs/uki';
     super(options);
@@ -199,7 +201,8 @@ class IFrameView extends ui.InformativeViewMixin(
 
 class LineView extends ui.LineChartViewMixin(
                        ui.InformativeViewMixin(
-                       ui.SvgGLView)) {
+                       ui.ParentSizeViewMixin(
+                       ui.SvgGLView))) {
   constructor (options) {
     super(options);
     globalThis.setTimeout(() => {
@@ -254,8 +257,8 @@ class VegaView extends ui.VegaViewMixin(
     super(options);
   }
 
-  async draw () {
-    await super.draw(...arguments);
+  async setup () {
+    await super.setup(...arguments);
 
     throw new Error('Sorry, VegaView is not fully implemented just yet');
   }

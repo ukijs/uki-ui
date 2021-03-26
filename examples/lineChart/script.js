@@ -1,5 +1,7 @@
 /* globals d3, uki */
-class LineView extends uki.ui.LineChartViewMixin(uki.ui.InformativeView) {
+class LineView extends uki.ui.LineChartViewMixin(
+                       uki.ui.ParentSizeViewMixin( // eslint-disable-line indent
+                       uki.ui.InformativeView)) { // eslint-disable-line indent
   constructor (options) {
     options.resources = options.resources || [];
     options.resources.push({

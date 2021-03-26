@@ -70,18 +70,21 @@ const { OverlaidView, OverlaidViewMixin } = uki.utils.createMixinAndDefault({
 
         await super.draw(...arguments);
 
-        this.updateOverlaySize();
+        if (this.overlayVisible) {
+          this.updateOverlaySize();
+        }
       }
 
       updateOverlaySize () {
-        // Match the position / size of this.d3el, relative to its parent
+        // Make sure the overlay covers both this.d3el and its parent, whichever
+        // is larger (e.g. this.d3el might be scrolled)
         const bounds = this.getBounds();
         const parentBounds = this.getBounds(d3.select(this.d3el.node().parentNode));
         this.overlayShadowEl
-          .style('top', (bounds.top - parentBounds.top) + 'px')
-          .style('left', (bounds.left - parentBounds.left) + 'px')
-          .style('right', (bounds.right - parentBounds.right) + 'px')
-          .style('bottom', (bounds.bottom - parentBounds.bottom) + 'px')
+          .style('top', '0px')
+          .style('left', '0px')
+          .style('width', Math.max(bounds.width, parentBounds.width) + 'px')
+          .style('height', Math.max(bounds.height, parentBounds.height) + 'px')
           .classed('shadowed', this.overlayShadow);
       }
 

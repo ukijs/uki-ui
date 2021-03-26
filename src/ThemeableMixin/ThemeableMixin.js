@@ -76,6 +76,6 @@ Object.defineProperty(ThemeableMixin, Symbol.hasInstance, {
   value: i => !!i._instanceOfThemeableMixin
 });
 
-class ThemeableView extends ThemeableMixin({ SuperClass: uki.View }) {}
+class ThemeableView extends ThemeableMixin({ SuperClass: uki.View, cnNotOnD3el: true }) {}
 
 export { ThemeableView, ThemeableMixin };

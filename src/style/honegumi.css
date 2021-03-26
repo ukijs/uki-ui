@@ -8,79 +8,22 @@
 /* CSS Variable definitions omitted (defaultVars.css is always loaded by UkiSettings.js)
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 
-/* grid-420
+/* VERY basic / elegant layout baked in for (my) convenience
+from https://heydonworks.com/article/the-flexbox-holy-albatross-reincarnated/
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
-/*
-  Auto-split when there's space for more than one 420px column... or if the
-	number of columns is constrained, don't let them get wider than the
-	threshold where they'd normally split
-*/
 
-.grid-420 {
-	position: relative;
-	margin: 0 auto;
-	display: grid;
-	grid-gap: 38px;
-	gap: 38px;
-
-	/* by default use 1 column */
-	max-width: max(420px, calc(100% - 200px));
+.flexbox-albatross {
+  display: flex;
+  flex-wrap: wrap;
+  --margin: 1rem;
+  --modifier: calc(40rem - 100%);
+  margin: calc(var(--margin) * -1);
 }
 
-@media (min-width: 620px) {
-	/* space for 1 column + 200px margin */
-	.grid-420 {
-		grid-template-columns: minmax(420px, 1fr);
-	}
-}
-
-@media (min-width: 1078px) {
-	/* space for 2 columns + 1 gap + 200px margin */
-	.grid-420 {
-		grid-template-columns: repeat(2, 1fr);
-		max-width: max(878px, calc(100% - 200px));
-	}
-	.grid-420.full {
-		grid-template-columns: minmax(420px, 1fr);
-		max-width: 878px;
-	}
-}
-
-@media (min-width: 1536px) {
-	/* space for 3 columns + 2 gaps + 200px margin */
-	.grid-420 {
-		grid-template-columns: repeat(3, 1fr);
-		max-width: minmax(1336px, calc(100% - 200px));
-	}
-	.grid-420.halves {
-		grid-template-columns: repeat(2, 1fr);
-		max-width: 1336px;
-	}
-	.grid-420.full {
-		grid-template-columns: minmax(420px, 1fr);
-		max-width: 878px;
-	}
-}
-
-@media (min-width: 1994px) {
-	/* space for 4 columns + 3 gaps + 200px margin */
-	.grid-420 {
-		grid-template-columns: repeat(4, 1fr);
-		max-width: 2252px;
-		/* don't go above where we'd otherwise break for 5 columns */
-	}
-	.grid-420.thirds {
-		grid-template-columns: repeat(3, 1fr);
-		max-width: 1794px;
-	}
-	.grid-420.halves {
-		grid-template-columns: repeat(2, 1fr);
-		max-width: 1336px;
-	}
-	.grid-420.full {
-		grid-template-columns: minmax(420px, 1fr);
-		max-width: 878px;
-	}
+.flexbox-albatross > * {
+  flex-grow: 1;
+  flex-basis: calc(var(--modifier) * 999);
+  margin: var(--margin);
 }
 
 /* Base Styles
@@ -485,6 +428,11 @@ hr {
   margin-bottom: 3.5em;
   border-width: 0;
   border-top: 1px solid var(--border-color-softer); }
+
+iframe {
+	border: 0;
+	background-color: white;
+}
 
 
 /* Clearing

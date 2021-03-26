@@ -33,9 +33,12 @@ const { PromptModalView, PromptModalViewMixin } = uki.utils.createMixinAndDefaul
         }
       }
 
+      get currentValue () {
+        return this.promptInputEl.node().value;
+      }
+
       validateForm () {
-        const currentValue = this.promptInputEl.node().value;
-        if (!this._validate(currentValue)) {
+        if (!this._validate(this.currentValue)) {
           return ['.promptInputEl'];
         } else {
           return [];
